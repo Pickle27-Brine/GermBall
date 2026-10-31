@@ -40,7 +40,7 @@ public sealed class PState
     public bool alive = true; public float deadT; public Vehicle vehicle; public Ragdoll ragdoll; public bool berserk;
 }
 
-public sealed class InputState { public float mx, mz, yaw, aimYaw; public bool jump, roll, pound, ads, fire, grab, use; public V3 throwAt; }
+public sealed class InputState { public float mx, mz, yaw, aimYaw; public bool jump, roll, pound, ads, fire, grab, use, up, down; public V3 throwAt; }
 public sealed class AimState { public float px, py, pz, fx, fy, fz = -1; public bool ok; }
 public sealed class Anim { public float phase, lean, down, aimK, holdK, throwT, punchT, hurtT, twist, hop, yawRate, swingT, squashT, upYaw; }
 

@@ -135,7 +135,6 @@ public sealed partial class World
     }
 
     // ----- ground pound shockwave: knocks men over, flings props
-    readonly V3 IMP = new();
     void GroundPound(Actor A)
     {
         var P = A.P; float R2 = 6 * P.s, x = P.x, y = P.y, z = P.z;
