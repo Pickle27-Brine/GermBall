@@ -40,6 +40,18 @@ public sealed unsafe class Renderer : IDisposable
     public int Triangles { get; private set; }
     /// <summary>Render resolution scale (the original's pixelated look rendered small and scaled up; 1 = native).</summary>
     public float RenderScale = 1;
+    // low-resolution scene target (the original rendered a few hundred lines and scaled up with nearest filtering)
+    ID3D11Texture2D lowTex, lowDepth; ID3D11RenderTargetView lowRtv; ID3D11ShaderResourceView lowSrv; ID3D11DepthStencilView lowDsv; int lowW, lowH;
+    void EnsureLow(int w, int h)
+    {
+        if (lowTex != null && lowW == w && lowH == h) return;
+        lowRtv?.Dispose(); lowSrv?.Dispose(); lowTex?.Dispose(); lowDsv?.Dispose(); lowDepth?.Dispose();
+        lowW = w; lowH = h;
+        lowTex = Device.CreateTexture2D(new Texture2DDescription(Format.R8G8B8A8_UNorm, (uint)w, (uint)h, 1, 1, BindFlags.RenderTarget | BindFlags.ShaderResource));
+        lowRtv = Device.CreateRenderTargetView(lowTex); lowSrv = Device.CreateShaderResourceView(lowTex);
+        lowDepth = Device.CreateTexture2D(new Texture2DDescription(Format.D24_UNorm_S8_UInt, (uint)w, (uint)h, 1, 1, BindFlags.DepthStencil));
+        lowDsv = Device.CreateDepthStencilView(lowDepth);
+    }
 
     const int VSTRIDE = 11 * 4, ISTRIDE = 20 * 4;
 
@@ -355,10 +367,22 @@ public sealed unsafe class Renderer : IDisposable
         if (cast) casters.Add(it);
     }
 
+    /// <summary>Clears the back buffer (screens with no 3D scene).</summary>
+    public void Clear(System.Numerics.Vector3 c)
+    {
+        Ctx.OMSetRenderTargets(rtv, dsv);
+        Ctx.ClearRenderTargetView(rtv, new Color4(c.X, c.Y, c.Z, 1));
+        Ctx.ClearDepthStencilView(dsv, DepthStencilClearFlags.Depth | DepthStencilClearFlags.Stencil, 1, 0);
+    }
+
     public void Render(Scene scene, Camera cam)
     {
+        if (scene == null || cam == null) { Clear(new System.Numerics.Vector3(0x12 / 255f, 0x06 / 255f, 0x1f / 255f)); return; }
         DrawCalls = 0; Triangles = 0;
         cam.Aspect = (float)Width / Height;
+        bool low = RenderScale < 0.999f;
+        int rw = low ? Math.Max(1, (int)MathF.Round(Width * RenderScale)) : Width, rh = low ? Math.Max(1, (int)MathF.Round(Height * RenderScale)) : Height;
+        if (low) EnsureLow(rw, rh);
         scene.UpdateWorld(Matrix4x4.Identity);
         var view = cam.View; var proj = cam.Proj; var vp = view * proj;
         Extract(vp, frustum);
@@ -386,7 +410,7 @@ public sealed unsafe class Renderer : IDisposable
             FogParams = new Vector4(scene.FogFar, -0.0015f, scene.ShadowNormalBias, shadowSize > 0 ? 1f / shadowSize : 0),
             HemiSky = new Vector4(scene.HemiSky * scene.HemiIntensity, 0), HemiGround = new Vector4(scene.HemiGround * scene.HemiIntensity, 0),
             SunDir = new Vector4(Vector3.Normalize(scene.SunDir), shadows ? 1 : 0), SunColor = new Vector4(scene.SunColor * scene.SunIntensity, 0),
-            Screen = new Vector4(Width, Height, 1f / Width, 1f / Height), Proj = new Vector4(MathF.Tan(cam.Fov * MathF.PI / 360), cam.Aspect, 0, 0),
+            Screen = new Vector4(rw, rh, 1f / rw, 1f / rh), Proj = new Vector4(MathF.Tan(cam.Fov * MathF.PI / 360), cam.Aspect, 0, 0),
         };
         var map = Ctx.Map(frameCb, 0, MapMode.WriteDiscard); *(FrameData*)map.DataPointer = fd; Ctx.Unmap(frameCb, 0);
 
@@ -405,10 +429,11 @@ public sealed unsafe class Renderer : IDisposable
             foreach (var it in casters) if (it.Kind <= 1) Draw(it, true, proj);
         }
 
-        Ctx.OMSetRenderTargets(rtv, dsv);
-        Ctx.ClearRenderTargetView(rtv, new Color4(scene.Background.X, scene.Background.Y, scene.Background.Z, 1));
-        Ctx.ClearDepthStencilView(dsv, DepthStencilClearFlags.Depth | DepthStencilClearFlags.Stencil, 1, 0);
-        Ctx.RSSetViewport(new Viewport(0, 0, Width, Height));
+        var tRtv = low ? lowRtv : rtv; var tDsv = low ? lowDsv : dsv;
+        Ctx.OMSetRenderTargets(tRtv, tDsv);
+        Ctx.ClearRenderTargetView(tRtv, new Color4(scene.Background.X, scene.Background.Y, scene.Background.Z, 1));
+        Ctx.ClearDepthStencilView(tDsv, DepthStencilClearFlags.Depth | DepthStencilClearFlags.Stencil, 1, 0);
+        Ctx.RSSetViewport(new Viewport(0, 0, rw, rh));
         if (shadows) Ctx.PSSetShaderResources(1, new[] { shadowSrv });
 
         opaque.Sort((a, b) => a.Node.RenderOrder != b.Node.RenderOrder ? a.Node.RenderOrder.CompareTo(b.Node.RenderOrder) : a.Depth.CompareTo(b.Depth));
@@ -416,6 +441,30 @@ public sealed unsafe class Renderer : IDisposable
         foreach (var it in opaque) Draw(it, false, proj);
         foreach (var it in transp) Draw(it, false, proj);
         Ctx.PSSetShaderResources(1, new ID3D11ShaderResourceView[] { null });
+        if (low) Upscale();
+    }
+
+    /// <summary>Stretches the low-resolution scene over the back buffer with nearest filtering.</summary>
+    void Upscale()
+    {
+        Span<UIVert> q = stackalloc UIVert[6];
+        UIVert V(float x, float y, float u, float v) => new() { X = x, Y = y, U = u, V = v, R = 1, G = 1, B = 1, A = 1 };
+        q[0] = V(0, 0, 0, 0); q[1] = V(Width, 0, 1, 0); q[2] = V(Width, Height, 1, 1); q[3] = V(0, 0, 0, 0); q[4] = V(Width, Height, 1, 1); q[5] = V(0, Height, 0, 1);
+        if (uiVb == null || uiCap < 6) { uiVb?.Dispose(); uiCap = Math.Max(4096, uiCap); uiVb = Device.CreateBuffer(new BufferDescription((uint)(uiCap * sizeof(UIVert)), BindFlags.VertexBuffer, ResourceUsage.Dynamic, CpuAccessFlags.Write)); }
+        var map = Ctx.Map(uiVb, 0, MapMode.WriteDiscard);
+        fixed (UIVert* src = q) Buffer.MemoryCopy(src, (void*)map.DataPointer, uiCap * sizeof(UIVert), 6 * sizeof(UIVert));
+        Ctx.Unmap(uiVb, 0);
+        var m2 = Ctx.Map(uiCb, 0, MapMode.WriteDiscard); *(Vector4*)m2.DataPointer = new Vector4(Width, Height, 1f / Width, 1f / Height); Ctx.Unmap(uiCb, 0);
+        Ctx.OMSetRenderTargets(rtv, dsv);
+        Ctx.RSSetViewport(new Viewport(0, 0, Width, Height));
+        Ctx.IASetInputLayout(uiLayout); Ctx.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
+        Ctx.IASetVertexBuffers(0, new[] { uiVb }, new uint[] { (uint)sizeof(UIVert) }, new uint[] { 0 });
+        Ctx.VSSetShader(uiVs); Ctx.PSSetShader(uiPs); Ctx.VSSetConstantBuffers(0, new[] { uiCb });
+        Ctx.OMSetBlendState(bsOpaque); Ctx.OMSetDepthStencilState(dsOff); Ctx.RSSetState(rsScissor);
+        Ctx.RSSetScissorRect(0, 0, Width, Height);
+        Ctx.PSSetShaderResources(0, new[] { lowSrv }); Ctx.PSSetSamplers(0, new[] { sampNearestClamp });
+        Ctx.Draw(6, 0);
+        Ctx.PSSetShaderResources(0, new ID3D11ShaderResourceView[] { null });
     }
 
     void Draw(in Item it, bool shadow, Matrix4x4 proj)
@@ -545,7 +594,7 @@ public sealed unsafe class Renderer : IDisposable
     {
         foreach (var p in programs.Values) { p.vs.Dispose(); p.ps.Dispose(); }
         foreach (var e in pointBufs.Values) e.buf?.Dispose();
-        rtv?.Dispose(); dsv?.Dispose(); depthTex?.Dispose(); shadowSrv?.Dispose(); shadowDsv?.Dispose(); shadowTex?.Dispose();
+        rtv?.Dispose(); dsv?.Dispose(); depthTex?.Dispose(); lowRtv?.Dispose(); lowSrv?.Dispose(); lowTex?.Dispose(); lowDsv?.Dispose(); lowDepth?.Dispose(); shadowSrv?.Dispose(); shadowDsv?.Dispose(); shadowTex?.Dispose();
         swap?.Dispose(); factory?.Dispose(); Ctx?.Dispose(); Device?.Dispose();
     }
 }

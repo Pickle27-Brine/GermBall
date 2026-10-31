@@ -38,6 +38,7 @@ public sealed unsafe class Window
     void UpdateSize() { Win32.GetClientRect(Handle, out var r); Width = Math.Max(1, r.Right - r.Left); Height = Math.Max(1, r.Bottom - r.Top); }
 
     /// <summary>Pumps the message queue. Returns false once the window has been closed.</summary>
+    public void Close() { Closed = true; Win32.PostQuitMessage(0); }
     public bool Pump()
     {
         while (Win32.PeekMessageW(out var m, IntPtr.Zero, 0, 0, Win32.PM_REMOVE))
