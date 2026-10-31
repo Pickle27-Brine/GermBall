@@ -20,7 +20,7 @@ public sealed class Chip { public V3 pos, pp, vel, w, ell; public Q4 q, pq; publ
 
 public sealed partial class Actor
 {
-    public string lastHurtKind; public Actor lastTarget; public float lastTargetT; public bool[] lost; public Actor pilotBy, mech; public bool pilot;
+    public string lastHurtKind; public Actor lastTarget; public float lastTargetT; public bool[] lost; public Actor pilotBy, mech; public bool pilot => pilotBy != null;
     public Body lastProp; public float lastPropT;
     public float hitByVeh; public bool hidden; public float needleT; public Actor needleSrc; public float flatMax, animFlatT, animFlatMax, animSwingDur; public string animSwingStyle; public bool animSwingFin;
 }

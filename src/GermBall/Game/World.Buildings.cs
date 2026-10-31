@@ -17,7 +17,7 @@ public sealed class Chunk
 public sealed class Place { public float x, z, r, y; public string name; public List<(float x, float z)> waypoints = new(); public List<Squad> squads = new(); public List<(float x, float z)> outside; }
 public sealed class BigCell { public float x, z, y, r, h, ph; }
 public sealed class Bone { public float x, z, y, a, L, r; }
-public sealed class Prop { public string kind; public bool heavy, rock; public Node vis; public Mesh lit; }
+public sealed class Prop { public string kind; public bool heavy, rock, debug; public float ripT; public bool ripped => kind == "ripped"; public Node vis; public Mesh lit; }
 
 public sealed partial class World
 {

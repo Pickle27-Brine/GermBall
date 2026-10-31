@@ -82,16 +82,17 @@ public sealed partial class World
     }
     // throw at whatever the thrower is aiming at: the crosshair for people, the brain's target for AI
     readonly V3 THR = new();
-    struct ThrowV { public float vx, vy, vz; }
+    struct ThrowV { public float x, y, z, vx, vy, vz; }
     ThrowV ThrowVel(Actor A, float charge)
     {
         var P = A.P; bool heavy = P.hold != null && P.hold.M > 150, man = P.holdA != null;
         float vmax = (TYPES[A.type].Big ? 36 : A.type == "brute" ? 32 : A.type == "small" ? 18 : 27) * (heavy && !TYPES[A.type].Big ? 0.7f : man ? 0.85f : 1);
         float sp = Lerp(0.3f, 1, charge) * vmax;
+        var TVp = HoldPoint(A, new V3());
         float dx, dy, dz;
         if (A.AIM.ok) { dx = A.AIM.fx; dy = A.AIM.fy; dz = A.AIM.fz; } else { dx = -MathF.Sin(P.facing); dy = 0; dz = -MathF.Cos(P.facing); }
         dy += 0.12f + 0.12f * (1 - charge); float l = Hypot(dx, dy, dz); dx /= l; dy /= l; dz /= l;
-        return new ThrowV { vx = dx * sp + P.vx * 0.5f, vy = dy * sp + MathF.Max(0, P.vy) * 0.5f, vz = dz * sp + P.vz * 0.5f };
+        return new ThrowV { x = TVp.x, y = TVp.y, z = TVp.z, vx = dx * sp + P.vx * 0.5f, vy = dy * sp + MathF.Max(0, P.vy) * 0.5f, vz = dz * sp + P.vz * 0.5f };
     }
     void ThrowHeld(Actor A, float? charge = null)
     {

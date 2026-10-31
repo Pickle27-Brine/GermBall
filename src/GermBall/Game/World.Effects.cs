@@ -176,7 +176,7 @@ public sealed partial class World
 
     // ---------------------------------------------------------------- light flying scraps
     /// <summary>Flying pieces at once; the oldest go first (the browser shrank this under load; the setting is the cap here).</summary>
-    public int CHIP_MAX => Math.Max(50, SET.debrisMax);
+    public int CHIP_MAX => Math.Max(50, chipMaxDyn);
     int stepNo;
     // a light particle (no collisions but the ground): rubble, shed plates, chunks of membrane
     Chip AddChip(float x, float y, float z, float vx, float vy, float vz, Q4 q, float sx, float sy, float sz, string mk, float life)

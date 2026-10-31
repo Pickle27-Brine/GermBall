@@ -8,7 +8,7 @@ using static GermBall.Core.M;
 
 namespace GermBall.Game;
 
-public sealed class CoverPt { public float x, z, nx, nz; public Actor by; }
+public sealed class CoverPt { public float x, y, z, nx, nz; public Actor by; }
 
 public sealed partial class World
 {
