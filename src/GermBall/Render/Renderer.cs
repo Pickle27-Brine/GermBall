@@ -123,7 +123,7 @@ public sealed unsafe class Renderer : IDisposable
         sampLinearWrap = Device.CreateSamplerState(S(Filter.Anisotropic, TextureAddressMode.Wrap));
         sampLinearClamp = Device.CreateSamplerState(S(Filter.MinMagMipLinear, TextureAddressMode.Clamp));
         sampShadow = Device.CreateSamplerState(new SamplerDescription(Filter.ComparisonMinMagLinearMipPoint, TextureAddressMode.Border, TextureAddressMode.Border, TextureAddressMode.Border, 0, 1, ComparisonFunction.LessEqual, new Color4(1, 1, 1, 1), 0, float.MaxValue));
-        RasterizerDescription R(CullMode c, int bias = 0, float slope = 0, bool scissor = false) => new(c, FillMode.Solid) { DepthClipEnable = true, DepthBias = bias, SlopeScaledDepthBias = slope, ScissorEnable = scissor };
+        RasterizerDescription R(CullMode c, int bias = 0, float slope = 0, bool scissor = false) => new(c, FillMode.Solid) { FrontCounterClockwise = true /* three.js winding (CCW front, right-handed) */, DepthClipEnable = true, DepthBias = bias, SlopeScaledDepthBias = slope, ScissorEnable = scissor };
         rsBack = Device.CreateRasterizerState(R(CullMode.Back)); rsFront = Device.CreateRasterizerState(R(CullMode.Front)); rsNone = Device.CreateRasterizerState(R(CullMode.None));
         rsBackOffset = Device.CreateRasterizerState(R(CullMode.Back, -40, -2)); rsNoneOffset = Device.CreateRasterizerState(R(CullMode.None, -40, -2));
         rsShadow = Device.CreateRasterizerState(R(CullMode.None, 600, 1.5f));
