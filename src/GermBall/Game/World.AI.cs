@@ -12,7 +12,7 @@ public sealed class Squad
 {
     public int id; public Place home; public string kind; public List<(float x, float z)> route; public SquadComp comp; public int wpi; public List<Actor> members = new();
     public float x, z, heading; public string state = "patrol"; public Knowledge know; public (float x, float z)? investigate; public float searchT, engageT0, respawnT, wait; public bool dormant;
-    public bool dropping, toMid; public Vehicle ship, bike; public int size0, tokN;
+    public bool dropping, toMid, boss; public Vehicle ship, bike; public int size0, tokN;
 }
 
 /// <summary>An AI's working memory (the original's brain object).</summary>

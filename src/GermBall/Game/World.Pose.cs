@@ -13,7 +13,7 @@ public sealed class Dyn
     public float[][] wr = { new float[3], new float[3] }, wv = { new float[3], new float[3] };
 }
 
-public sealed partial class Actor { public Dyn dyn; public float animFist, animFlail, animBreath = 1, animFlatPop; public List<float[]> trail; }
+public sealed partial class Actor { public string brainState; public bool wasDown, saidHurt, isBoss; public float curlT; public (float, float)? dodge; public Dyn dyn; public float animFist, animFlail, animBreath = 1, animFlatPop; public List<float[]> trail; }
 
 public sealed partial class World
 {
