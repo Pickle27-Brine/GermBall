@@ -14,7 +14,7 @@ public sealed class Draw2D
     Texture curTex; Rect? curClip; int batchStart;
     readonly Stack<Rect?> clips = new();
     public float Alpha = 1;
-    public UiFont Display, DisplayBig, DisplayHuge, Mono, MonoSmall;
+    public UiFont Display, DisplayBig, DisplayHuge, Mono, MonoSmall, DisplaySmall, DisplayMid, DisplayNum, DisplayTitle;
     public float Scale = 1;   // UI scale for high-DPI screens
 
     public void Begin() { n = 0; batches.Clear(); curTex = null; curClip = null; batchStart = 0; clips.Clear(); Alpha = 1; }

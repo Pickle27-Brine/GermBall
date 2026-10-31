@@ -30,6 +30,10 @@ public sealed class App : IDisposable
         UI.DisplayHuge = new UiFont("Bahnschrift Condensed", 112, 800);
         UI.Mono = new UiFont("Consolas", 14);
         UI.MonoSmall = new UiFont("Consolas", 12);
+        UI.DisplaySmall = new UiFont("Bahnschrift SemiCondensed", 12, 700);
+        UI.DisplayMid = new UiFont("Bahnschrift SemiCondensed", 20, 800);
+        UI.DisplayNum = new UiFont("Bahnschrift SemiCondensed", 44, 800);
+        UI.DisplayTitle = new UiFont("Bahnschrift Condensed", 60, 800);
         Screen = Game.Boot.CreateTitle(this);
     }
 
