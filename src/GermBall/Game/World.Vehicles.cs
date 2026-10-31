@@ -21,7 +21,7 @@ public sealed class Vehicle
     public float hp, max; public Actor rider; public bool dead; public float wheel, flash; public (float x, float z, float yaw) home; public float crashT; public bool air, dashUsed;
     public VPieceState[] pieces; public float turretYaw, turretPitch, gunCD, boostCD, boostT, heat; public float[] susp = new float[4], suspV = new float[4]; public bool prevJump, prevRoll;
     public float[] wc, wv, wheelY; public float? lastTy, lastG; public float flipT, alt, beamAcc, respawnT, idleT, t, doorOpen, lx, lz; public bool over, unloaded; public int gunSide = 1;
-    public List<float[]> beams; public Squad squad; public string[] comp;
+    public List<float[]> beams; public Squad squad; public SquadComp comp;
     public object vis;
 }
 
@@ -543,7 +543,7 @@ public sealed partial class World
         }
     }
     // ---------- dropships: fly in high, come down over the drop point, open up, deliver, and leave
-    public Vehicle CallDropship(Squad S, float x, float z, string[] comp)
+    public Vehicle CallDropship(Squad S, float x, float z, SquadComp comp)
     {
         float lx = x, lz = z; int k = 0;
         while (InsideStatic(lx, lz, GroundY(lx, lz), 5) && k++ < 14) { lx += (R() - 0.5f) * 16; lz += (R() - 0.5f) * 16; }
