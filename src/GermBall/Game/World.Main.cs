@@ -708,7 +708,7 @@ public sealed partial class World
         if (FREECAM.on) UpdateFreeCam(fdt); else UpdateCamera(fdt, playing ? clockT : -100);
         camPos = camera.Position;
         Sound.LX = camPos.X; Sound.LY = camPos.Y; Sound.LZ = camPos.Z; Sound.LRx = MathF.Cos(cam.yaw); Sound.LRz = -MathF.Sin(cam.yaw);
-        UpdateHolo(fdt); UpdateDashReticle(fdt); UpdateThrowReticle(fdt);
+        UpdateHolo(fdt); UpdateDashReticle(fdt); UpdateThrowReticle(fdt); UpdateSpores(clockT);
         UpdateOrganic(clockT, fdt, camPos);
         scene.ShadowCenter = new Vector3(RP.x, RP.y, RP.z); scene.Time = clockT;
         hurtA = MathF.Max(0, hurtA - fdt * 1.8f);

@@ -29,7 +29,7 @@ public sealed partial class World
         BuildLayout(); Mark("buildings");
         PlaceProps();
         BuildLeviathan(); Mark("leviathan");
-        InitSprites();
+        InitSprites(); InitSpores();
         InitWaves();
         BuildGerms(); BuildFace(); InitDrawLists(); InitReticles(); Mark("germs");
 
