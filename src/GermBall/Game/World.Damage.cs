@@ -16,7 +16,7 @@ public sealed class Dmg
 public sealed class ArmorPlate { public int part; public string spec, mk; public float sc, hp, max, flash, y0, y1, phi, arc; }
 public sealed class Ragdoll { public Body[] bodies = new Body[World.NPART]; public List<Joint> joints = new(); public float t, minT; public object grp; }
 /// <summary>A light flying scrap (no rigid body): parts of a burst germ, shed armor.</summary>
-public sealed class Chip { public V3 pos, pp, vel, w, ell; public Q4 q, pq; public float r, rest, life; public string mk; }
+public sealed class Chip { public V3 pos, pp, vel, w, ell; public Q4 q, pq; public float r, rest, life, g = float.NaN; public string mk; }
 
 public sealed partial class Actor
 {
