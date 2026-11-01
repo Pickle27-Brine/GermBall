@@ -40,7 +40,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\data\**\*" LinkBase="data" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\data\**\*" LinkBase="data" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
 </Project>
