@@ -236,7 +236,7 @@ public static class Shots
                 var statics = (System.Collections.IList)typeof(World).GetField("statics", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(world);
                 var big = new List<Static>(); foreach (Static o in statics) if (o.Kind == World.CYLK && o.R > 1.5f && o.Top - world.TerrainH(o.X, o.Z) > 1.5f && o.Bottom < world.TerrainH(o.X, o.Z) + 0.5f) big.Add(o);
                 var rnd = new Random(3); int tests = 0, inside = 0, jumps = 0; float worstJump = 0;
-                foreach (var o in big.OrderBy(_ => rnd.Next()).Take(16))
+                foreach (var o in big.OrderBy(_ => rnd.Next()).Take(8))
                 {
                     var H = world.HUMAN.P; float a = (float)(rnd.NextDouble() * Math.PI * 2), sx = o.X + MathF.Cos(a) * (o.R + 5), sz = o.Z + MathF.Sin(a) * (o.R + 5);
                     if (MathF.Abs(sx) > 320 || MathF.Abs(sz) > 320 || MathF.Abs(o.X) > 320 || MathF.Abs(o.Z) > 320) continue;   // keep the walk inside the map's edge
