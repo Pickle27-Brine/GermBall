@@ -37,7 +37,7 @@ public sealed class GameScreen : IScreen
         everDeployed = true; wd_.playing = true; Input.Lock(app.Window, true); wd_.padArmed = false;
         Speech.Cancel();
     }
-    void Pause() { wd_.playing = false; Input.Lock(app.Window, false); waiting = null; gui.Focus = null; }
+    void Pause() { wd_.playing = false; Input.Lock(app.Window, false); waiting = null; gui.Focus = null; gui.SyncPad(); }
     void QuitToTitle()
     {
         Pause(); Speech.Cancel();
@@ -163,11 +163,11 @@ public sealed class GameScreen : IScreen
         ("W A S D", "Move. Reverse at speed to skid"), ("Mouse", "Orbit camera (look, in first person)"), ("Space", "Jump. Again in the air: dash. With homing charges the dash locks on, flies fast and bursts small germs outright"),
         ("Left click / F", "Fire or swing. Melee swings chain into a three-hit combo ending in a finisher, and step you in toward the nearest enemy; the squash hammer flattens germs like pancakes. Bows and charge weapons: hold, then release. Energy weapons overheat"),
         ("1 2 3 / wheel / P", "Switch weapon (three slots; an empty slot is your fists)"), ("G", "Interact: take a weapon (swaps out the one in hand when full), get in or out of a vehicle or the battle mecha"), ("R", "Reload. Guns hold a magazine; spare magazines are stored (shown as pips on the weapon slot)"),
-        ("Q / mouse 4", "Punch, whatever you're holding. Curled into a ball in the air: ground pound"),
+        ("Q / mouse 4", "Punch, whatever you're holding (not while rolling). Curled into a ball in the air: ground pound"),
         ("C / Shift", "Roll. From a standstill, hold to charge a spin dash"),
-        ("E / right click", "Pick up the thing or small germ in front of you. Then hold to wind up a throw (watch the meter and the arc) and release to throw at the crosshair"),
+        ("E / right click", "Pick up the thing or small germ in front of you (any germ below a brute once it has lost both legs). Then hold this, or the fire button, to wind up a throw (watch the meter and the arc) and release to throw at the crosshair"),
         ("Right mouse", "Aim down sights. In the air you hover and can still shoot; dashing ends the hover"),
-        ("Vehicles", "Chopper: Space jumps, Space again in the air jump-dashes, W/S pitch and A/D roll it in the air; land on the wheels or you're thrown off. Rover: Shift boosts (5 s cooldown), the turret follows your aim and fires with the trigger. Hover chair: slides any way you push, Space / E rises and C / Shift sinks (rebind under Keys), fires its armrest beams"),
+        ("Vehicles", "Hand weapons are stowed in the blood cell and the virus (they have their own guns); on the bike only sidearms, the shotgun and melee work. Chopper: Space jumps, Space again in the air jump-dashes, W/S pitch and A/D roll it in the air; land on the wheels or you're thrown off. Rover: Shift boosts (5 s cooldown), the turret follows your aim and fires with the trigger. Hover chair: slides any way you push, Space / E rises and C / Shift sinks (rebind under Keys), fires its armrest beams"),
         ("V", "Free camera on/off (also in Debug)"), ("B", "Back to base"), ("M", "Next song"), ("Esc", "Pause"), ("F11 / Alt+Enter", "Fullscreen"), ("F12", "Screenshot (saved under Documents\\My Games\\GermBall\\screenshots)"),
     };
     static readonly (string, string)[] PAD_HELP =

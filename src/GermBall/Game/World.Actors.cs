@@ -33,7 +33,7 @@ public sealed partial class PState
 {
     public string type; public float s, f, R, H, BR, STEP, km, mass;
     public float x, y, z, vx, vy, vz, px, py, pz; public bool ground = true, rolling, jumping, jumpRolled, charging; public float rev, ctrlLock, facing, nx, ny = 1, nz;
-    public Body gBody; public bool skid; public float shield = 100, lastHit = -10, squash; public bool prevJump, prevRoll, prevGrab, prevJumpG, prevRollG, prevPound, prevUse, prevPunch, prevReload, onStairs;
+    public Body gBody; public bool skid; public float shield = 100, lastHit = -10, squash; public bool prevJump, prevRoll, prevGrab, prevJumpG, prevRollG, prevPound, prevUse, prevPunch, prevReload, onStairs, prevFireT, chargeFire, fireBlock;
     public V3 spin = new(1, 0, 0); public float spinRate; public Q4 ballQ = new(), pBallQ = new(); public V3 up = new(0, 1, 0);
     public bool dashUsed; public float dashT, curl, downT, hoverFuel = 2.5f; public bool hover, ads; public float charge;
     public Actor grabbed; public float grabCD, struggle, flungT; public Actor flungBy; public Body hold; public Actor holdA; public float stunT, flatT; public int pound; public float poundT; public int homing; public float homingT; public Actor homeTgt;
@@ -395,7 +395,7 @@ public sealed partial class World
         // the punch button doubles as ground pound, but only while curled into a ball in the air
         bool ballAir = !P.ground && P.rolling && P.vehicle == null;
         bool jumpHeld = IN.jump && !outp && legs > 0, rollHeld = IN.roll && !outp, grabHeld = IN.grab && !outp, poundHeld = (IN.pound || (punchHeld && ballAir)) && !outp;
-        if (punchPress && !ballAir && P.vehicle == null && P.grabbed == null && P.hold == null && P.holdA == null) W.punchQ = 0.25f;
+        if (punchPress && !P.rolling && P.vehicle == null && P.grabbed == null && P.hold == null && P.holdA == null) W.punchQ = 0.25f;
         bool jumpPress = jumpHeld && !P.prevJump, rollPress = rollHeld && !P.prevRoll, grabPress = grabHeld && !P.prevGrab, poundPress = poundHeld && !P.prevPound;
         bool grabRelease = !grabHeld && P.prevGrab;
         P.prevJump = jumpHeld; P.prevRoll = rollHeld; P.prevGrab = grabHeld; P.prevPound = poundHeld;
@@ -425,15 +425,20 @@ public sealed partial class World
         }
         float km = P.km * (legs == 2 ? 1 : legs == 1 ? 0.55f : 0.3f) * (P.hold != null ? (P.hold.M > 200 ? 0.6f : 0.85f) : P.holdA != null ? 0.75f : 1) * (P.berserk ? 1.55f : 1);
         if (P.hold == null && P.holdA == null) P.charge = 0;
+        // the fire button throws too: press it while holding something to wind up, release to let go
+        bool holding = P.hold != null || P.holdA != null;
+        bool fireT = A.human && IN.fire && !outp, firePress = fireT && !P.prevFireT; P.prevFireT = fireT;
         if (grabPress)
         {
-            if (P.hold != null || P.holdA != null) { if (IN.throwAt != null) ThrowHeld(A); else P.charge = 0.001f; }
+            if (holding) { if (IN.throwAt != null) ThrowHeld(A); else { P.charge = 0.001f; P.chargeFire = false; } }
             else TryPickUp(A);
         }
+        else if (firePress && holding && P.charge <= 0) { P.charge = 0.001f; P.chargeFire = true; P.fireBlock = true; }
         else if (P.charge > 0)
         {   // hold to wind up, release to throw
-            if (grabHeld) P.charge = MathF.Min(1, P.charge + dt / 0.9f);
-            else if (grabRelease) { ThrowHeld(A, P.charge); P.charge = 0; }
+            bool held = P.chargeFire ? fireT : grabHeld, released = P.chargeFire ? !fireT : grabRelease;
+            if (held) P.charge = MathF.Min(1, P.charge + dt / 0.9f);
+            else if (released) { ThrowHeld(A, P.charge); P.charge = 0; P.chargeFire = false; }
         }
 
         if (rollPress && P.ground && !P.charging)

@@ -429,6 +429,14 @@ public sealed partial class World
         for (int i = 0; i < 8; i++) Puff(G.x, G.y + 0.1f, G.z, 2.5f, 0.3f, 0.12f);
     }
     // the per-step weapon handler for the current actor
+    /// <summary>Hand weapons in vehicles: the blood cell and the virus fire their own mounted guns instead, and on the bike you
+    /// can only use what works with one hand on the bars (sidearms, the shotgun, melee).</summary>
+    static bool HandWeaponOk(Vehicle v, WeaponDef d)
+    {
+        if (v == null) return true;
+        if (v.kind != "bike") return false;
+        string g = GripOf(d); return g is "onehand" or "shotgun" or "melee";
+    }
     void ActorWeapons(float dt, bool held)
     {
         var A = CUR;
@@ -441,8 +449,9 @@ public sealed partial class World
                 sw.heat = MathF.Max(0, sw.heat - cool * dt); if (sw.over && sw.heat <= 0.3f) { sw.over = false; if (A.human) Sfx("cooled", P.x, P.y, P.z, 0.5f); }
             }
         var w = CurWpn(A); var def = CurDef(A);
+        if (P.fireBlock) { if (!held) P.fireBlock = false; held = false; }   // the trigger pull that threw something doesn't also shoot
         if (P.flatT > 0) { P.flatT -= dt; if (P.flatT <= 0) { Sfx("boing", P.x, P.y + 0.5f, P.z, 0.7f); P.vy = 5; P.ground = false; } }
-        bool able = !(P.flatT > 0) && P.alive && (!P.rolling || P.hover) && P.hold == null && P.holdA == null && P.grabbed == null && P.stunT <= 0 && P.ragdoll == null && (def.Type == "melee" ? ArmsOf(A) > 0 : CanShoot(A)) && !P.berserk;
+        bool able = !(P.flatT > 0) && P.alive && (!P.rolling || P.hover) && P.hold == null && P.holdA == null && P.grabbed == null && P.stunT <= 0 && P.ragdoll == null && (def.Type == "melee" ? ArmsOf(A) > 0 : CanShoot(A)) && !P.berserk && HandWeaponOk(P.vehicle, def);
         // swings in progress
         if (W.swingT > 0) { W.swingT -= dt; if (W.swingHit == 0 && W.swingT < W.swingDur * 0.55f) { W.swingHit = 1; MeleeResolve(W.swingDef); } }
         // the punch: a quick jab with the off hand, whatever you're holding (it interrupts a reload)

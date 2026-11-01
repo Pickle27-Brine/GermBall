@@ -90,7 +90,7 @@ public sealed class TitleScreen : IScreen
     void FlipGeorge()
     {
         lopezFlip = !lopezFlip; Sound.Ui("boing", 0.6f);
-        if (factTask == null || factTask.IsCompleted) { fact = "Searching…"; factTask = FunFacts.Next(); }
+        if (factTask == null || factTask.IsCompleted) { fact = "Thinking…"; factTask = FunFacts.Next(); }
     }
 
     public void Update(float dt)
@@ -191,7 +191,7 @@ public sealed class TitleScreen : IScreen
         if (gui.IsFocused("lopez")) d.Frame(lx - 3, ly - 3, lw + 6, lh + 6, Pal.White, 2);
         // the speech bubble to his left
         var f = d.MonoSmall; float bwid = MathF.Min(300, Wd * 0.32f), pad = 10;
-        string shown = factTask != null ? "Searching the web…" : fact;
+        string shown = factTask != null ? "Thinking…" : fact;
         float th = MeasureWrap(f, shown, bwid - pad * 2) + 22, bx = lx - bwid - 14, by = ly + 6;
         float pop = Math.Clamp(factT * 6, 0, 1);
         d.Alpha = 0.3f + 0.7f * pop;

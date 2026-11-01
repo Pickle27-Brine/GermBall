@@ -49,9 +49,15 @@ public sealed partial class World
         // a footing under it all, so the floor is flat whatever the ground does
         AddBox(x0 - 0.2f, y - 1.5f, z0 - 0.2f, x1 + 0.2f, y + 0.05f, z1 + 0.2f, "dark");
         // walls: four sides of panels; corners always solid; a door on every side; windows scattered
+        var keep = new List<(float x0, float z0, float x1, float z1)>();   // interior keep-out: doorways, the stairs, the atrium
         for (int side = 0; side < 4; side++)
         {
             bool alongX = side < 2; float L = alongX ? w : d; int ncol = Math.Max(3, (int)MathF.Round(L / 3)); float cw = L / ncol; int door = ncol / 2 + (r() < 0.5f && ncol > 4 ? -1 : 0);
+            {   // keep the space inside each doorway clear of interior walls
+                float dc = (alongX ? x0 : z0) + (door + 0.5f) * cw;
+                if (alongX) { float zz = side == 0 ? z0 : z1 - 2.8f; keep.Add((dc - cw / 2 - 0.6f, zz, dc + cw / 2 + 0.6f, zz + 2.8f)); }
+                else { float xx = side == 2 ? x0 : x1 - 2.8f; keep.Add((xx, dc - cw / 2 - 0.6f, xx + 2.8f, dc + cw / 2 + 0.6f)); }
+            }
             for (int f = 0; f < floors; f++) for (int row = 0; row < 2; row++) for (int c = 0; c < ncol; c++)
                     {
                         float ya = y + 0.05f + f * FH + (row != 0 ? ROWH[0] : 0), yb = y + 0.05f + f * FH + (row != 0 ? FH : ROWH[0]);
@@ -72,10 +78,16 @@ public sealed partial class World
         // Flights alternate between two strips side by side, so one never runs under the next.
         float sw = 1.6f, sl = MathF.Min(d - 2 * WT - 1.4f, 6.2f), hz0 = z0 + WT + 0.9f, hz1 = hz0 + sl;
         float StripX(int l) => x0 + WT + 0.2f + (l % 2) * (sw + 0.25f);
+        if (floors > 1) keep.Add((x0, z0, StripX(1) + sw + 1.0f, hz1 + 1.6f));   // the stairs and their landings
+        // big buildings get an atrium: a well open through every storey, ringed by railings, so floors look down on each other
+        bool atrium = floors >= 2 && w >= 18 && d >= 18;
+        float ax0 = x + w * 0.02f, ax1 = ax0 + w * 0.3f, az0 = z - d * 0.05f, az1 = az0 + d * 0.3f;
+        if (atrium) keep.Add((ax0 - 0.4f, az0 - 0.4f, ax1 + 0.4f, az1 + 0.4f));
         for (int l = 1; l <= floors; l++)
         {
             float ly = y + 0.05f + l * FH, hx0 = StripX(l - 1), hx1 = hx0 + sw; bool hole = l < floors || floors > 1, cut = hole && floors > 1;
             var xs = new List<float> { x0 + WT, hx0, hx1 }; var zs = new List<float> { z0 + WT, hz0, hz1 };
+            if (atrium) { xs.Add(ax0); xs.Add(ax1); zs.Add(az0); zs.Add(az1); }
             for (float v = x0 + WT + 4; v < x1 - WT - 0.5f; v += 4) xs.Add(v); for (float v = z0 + WT + 4; v < z1 - WT - 0.5f; v += 4) zs.Add(v);
             xs.Add(x1 - WT); zs.Add(z1 - WT);
             var X = xs.Select(v => MathF.Round(v * 1000) / 1000).Distinct().Where(v => v >= x0 + WT - 1e-3f && v <= x1 - WT + 1e-3f).OrderBy(v => v).ToList();
@@ -85,8 +97,17 @@ public sealed partial class World
                     float cx = (X[i] + X[i + 1]) / 2, cz = (Z[j] + Z[j + 1]) / 2;
                     if (cut && l < floors + 1 && cx > hx0 && cx < hx1 && cz > hz0 && cz < hz1 && l <= floors - (l == floors ? 1 : 0)) continue;
                     if (X[i + 1] - X[i] < 0.05f || Z[j + 1] - Z[j] < 0.05f) continue;
+                    if (atrium && l < floors && cx > ax0 && cx < ax1 && cz > az0 && cz < az1) continue;   // the atrium well
                     AddChunk(B, X[i], ly - 0.3f, Z[j], X[i + 1], ly, Z[j + 1], "dark", "slab", null, 220);
                 }
+            if (atrium && l < floors)
+            {   // railings around the well, with a gap on one side so you can drop down
+                AddChunk(B, ax0, ly, az0 - 0.2f, ax1, ly + 1.0f, az0, "cover", "rail", null, 80);
+                AddChunk(B, ax0 - 0.2f, ly, az0, ax0, ly + 1.0f, az1, "cover", "rail", null, 80);
+                AddChunk(B, ax1, ly, az0, ax1 + 0.2f, ly + 1.0f, az1, "cover", "rail", null, 80);
+                float gm = (ax0 + ax1) / 2;
+                AddChunk(B, ax0, ly, az1, gm - 1.2f, ly + 1.0f, az1 + 0.2f, "cover", "rail", null, 80); AddChunk(B, gm + 1.2f, ly, az1, ax1, ly + 1.0f, az1 + 0.2f, "cover", "rail", null, 80);
+            }
             // parapet on the roof
             if (l == floors) foreach (var a in new[] { new[] { x0, z0, x1, z0 + 0.3f }, new[] { x0, z1 - 0.3f, x1, z1 }, new[] { x0, z0, x0 + 0.3f, z1 }, new[] { x1 - 0.3f, z0, x1, z1 } }) AddChunk(B, a[0], ly, a[1], a[2], ly + 0.7f, a[3], wall, "rail", null, 90);
         }
@@ -99,15 +120,89 @@ public sealed partial class World
             var flight = new List<Chunk>();
             for (int i = 0; i < n; i++) { var c = AddChunk(B, hx0, bse + i * rise, hz0 + i * run, hx1, bse + (i + 1) * rise, hz0 + (i + 1) * run, "dark", "stair", null, 200, true); c.ramp = ramp; c.flight = flight; flight.Add(c); }
         }
-        // an inner wall with a doorway splits the bigger floors
-        if (w > 11 && d > 11)
-            for (int f = 0; f < floors; f++)
-            {
-                float ya = y + 0.05f + f * FH, zc = z + 1.5f, gap0 = x - 1.0f, gap1 = x + 1.0f;
-                foreach (var (a0, a1) in new[] { (x0 + WT + 2 * sw + 0.6f, gap0), (gap1, x1 - WT) }) if (a1 - a0 > 0.5f) AddChunk(B, a0, ya, zc - 0.15f, a1, ya + FH - 0.3f, zc + 0.15f, wall, "inner", null, 120);
-            }
+        // interiors: every storey is split into its own set of rooms
+        string inner = style == 3 ? "innerT" : new[] { "innerA", "innerB", "innerC" }[style % 3];
+        for (int f = 0; f < floors; f++) Rooms(B, x0 + WT, z0 + WT, x1 - WT, z1 - WT, y + 0.05f + f * FH, f, inner, keep, r, 0);
         return B;
     }
+    bool InsideBuilding(float x, float z, float margin) { foreach (var B in BLDG) if (MathF.Abs(x - B.x) < B.w / 2 + margin && MathF.Abs(z - B.z) < B.d / 2 + margin) return true; return false; }
+    // ---- interiors
+    static bool Overlaps(List<(float x0, float z0, float x1, float z1)> keep, float x0, float z0, float x1, float z1)
+    {
+        foreach (var k in keep) if (x1 > k.x0 && x0 < k.x1 && z1 > k.z0 && z0 < k.z1) return true;
+        return false;
+    }
+    /// <summary>Splits a floor rectangle into rooms (a few levels of binary splits), each partition wall with a doorway,
+    /// then dresses the leaf rooms: pillars, counters to fight over, crates, now and then a supply stash.</summary>
+    void Rooms(Building B, float rx0, float rz0, float rx1, float rz1, float ya, int f, string mat, List<(float x0, float z0, float x1, float z1)> keep, Func<float> r, int depth)
+    {
+        float rw = rx1 - rx0, rd = rz1 - rz0;
+        bool split = depth < 3 && (rw > 9 || rd > 9) && !(depth >= 1 && rw < 12 && rd < 12 && r() < 0.35f);
+        if (split)
+        {
+            bool cutX = rw >= rd;   // cut across the longer side
+            float a0 = cutX ? rx0 : rz0, a1 = cutX ? rx1 : rz1, at = a0 + (a1 - a0) * (0.38f + r() * 0.24f);
+            if (at - a0 >= 4 && a1 - at >= 4)
+            {
+                Partition(B, !cutX, at, cutX ? rz0 : rx0, cutX ? rz1 : rx1, ya, mat, keep, r);
+                if (cutX) { Rooms(B, rx0, rz0, at - 0.15f, rz1, ya, f, mat, keep, r, depth + 1); Rooms(B, at + 0.15f, rz0, rx1, rz1, ya, f, mat, keep, r, depth + 1); }
+                else { Rooms(B, rx0, rz0, rx1, at - 0.15f, ya, f, mat, keep, r, depth + 1); Rooms(B, rx0, at + 0.15f, rx1, rz1, ya, f, mat, keep, r, depth + 1); }
+                return;
+            }
+        }
+        // a leaf room
+        float cx = (rx0 + rx1) / 2, cz = (rz0 + rz1) / 2, roll = r();
+        if (rw >= 7 && rd >= 7 && roll < 0.3f)
+        {   // a hall held up by pillars
+            foreach (float sx in new[] { -1f, 1f }) foreach (float sz in new[] { -1f, 1f })
+                {
+                    float px = cx + sx * rw * 0.22f, pz = cz + sz * rd * 0.22f;
+                    if (!Overlaps(keep, px - 0.8f, pz - 0.8f, px + 0.8f, pz + 0.8f)) { AddChunk(B, px - 0.35f, ya, pz - 0.35f, px + 0.35f, ya + FH - 0.3f, pz + 0.35f, "dark", "inner", null, 260); AddCoverPts(px - 0.35f, pz - 0.35f, px + 0.35f, pz + 0.35f); }
+                }
+        }
+        else if (rw >= 5 && rd >= 5 && roll < 0.65f)
+        {   // a waist-high counter across the room: cover
+            bool ax = rw >= rd; float len = (ax ? rw : rd) * 0.45f;
+            float bx0 = ax ? cx - len / 2 : cx - 0.35f, bx1 = ax ? cx + len / 2 : cx + 0.35f, bz0 = ax ? cz - 0.35f : cz - len / 2, bz1 = ax ? cz + 0.35f : cz + len / 2;
+            if (!Overlaps(keep, bx0 - 0.6f, bz0 - 0.6f, bx1 + 0.6f, bz1 + 0.6f)) { AddChunk(B, bx0, ya, bz0, bx1, ya + 1.1f, bz1, "cover", "inner", null, 140); AddCoverPts(bx0, bz0, bx1, bz1); }
+        }
+        else if (rw >= 4 && rd >= 4 && roll < 0.8f)
+        {   // crates in a corner
+            float px = rx0 + 1.3f, pz = rz0 + 1.3f;
+            if (!Overlaps(keep, px - 0.9f, pz - 0.9f, px + 2.2f, pz + 0.9f)) CrateStack(px, pz, ya + 0.2f, 1 + (int)(r() * 3));
+        }
+        if (f == 0 && rw >= 4 && rd >= 4 && r() < 0.18f)
+        {   // a supply cache tucked against a wall
+            float px = rx1 - 1.1f, pz = rz1 - 0.9f;
+            if (!Overlaps(keep, px - 1, pz - 0.8f, px + 1, pz + 0.8f)) StashAt(px, pz, ya, new[] { "ammo" }, RACK_POOLS["town"]);
+        }
+    }
+    /// <summary>An interior wall along one axis at a fixed coordinate, with a doorway, broken around the keep-out areas.</summary>
+    void Partition(Building B, bool alongX, float c, float a0, float a1, float ya, string mat, List<(float x0, float z0, float x1, float z1)> keep, Func<float> r)
+    {
+        const float T2 = 0.15f, DOOR = 2.4f;
+        var cuts = new List<(float, float)>();
+        float dc = a0 + 1.6f + DOOR / 2 + r() * MathF.Max(0, a1 - a0 - 3.2f - DOOR); cuts.Add((dc - DOOR / 2, dc + DOOR / 2));
+        foreach (var k in keep)
+        {
+            if (alongX) { if (c + T2 > k.z0 && c - T2 < k.z1) cuts.Add((k.x0, k.x1)); }
+            else if (c + T2 > k.x0 && c - T2 < k.x1) cuts.Add((k.z0, k.z1));
+        }
+        cuts.Sort((p, q) => p.Item1.CompareTo(q.Item1));
+        float cur = a0;
+        void Seg(float s0, float s1)
+        {   // pieces of at most 4 m, so a wall breaks up bit by bit
+            for (float u = s0; u < s1 - 0.4f; u += 4)
+            {
+                float v = MathF.Min(s1, u + 4); if (v - u < 0.4f) break;
+                if (alongX) AddChunk(B, u, ya, c - T2, v, ya + FH - 0.3f, c + T2, mat, "inner", null, 120);
+                else AddChunk(B, c - T2, ya, u, c + T2, ya + FH - 0.3f, v, mat, "inner", null, 120);
+            }
+        }
+        foreach (var (s0, s1) in cuts) { if (s0 > cur) Seg(cur, MathF.Min(s0, a1)); cur = MathF.Max(cur, s1); if (cur >= a1) break; }
+        if (cur < a1) Seg(cur, a1);
+    }
+
     // one instanced mesh per material holds every chunk; a smashed chunk's instance is zeroed
     readonly Dictionary<string, InstancedMesh> CH_MESH = new();
     static readonly Geometry boxGeo = Geo.Box(1, 1, 1), pillowGeo = Geo.Pillow(0.32f);
@@ -116,7 +211,7 @@ public sealed partial class World
         foreach (var (mat, list) in CH_BY_MAT)
         {
             // walls are packed cells (rounded tiles that bulge slightly into each other); floors and stairs stay flat underfoot
-            bool cells = mat != "dark";
+            bool cells = mat != "dark" && !mat.StartsWith("inner");
             var m = new InstancedMesh(cells ? pillowGeo : boxGeo, SMAT[mat], list.Count) { CastShadow = true, ReceiveShadow = true };
             for (int i = 0; i < list.Count; i++) { var c = list[i]; c.idx = i; float k = cells ? 1.12f : 1; m.Matrices[i] = Matrix4x4.CreateScale(c.sx * k, c.sy * (cells ? 1.06f : 1), c.sz * k) * Matrix4x4.CreateTranslation(c.x, c.y, c.z); }
             m.Touch(); scene.Add(m); CH_MESH[mat] = m;
@@ -167,10 +262,16 @@ public sealed partial class World
             B.map.TryGetValue($"{side}:{f}:{row}:{col - 1}", out var l); B.map.TryGetValue($"{side}:{f}:{row}:{col + 1}", out var rr);
             return Alive(l) && Alive(rr);
         }
-        if (c.kind == "slab" || c.kind == "rail" || c.kind == "inner")
-        {
+        if (c.kind == "inner")
+        {   // interior walls, pillars and counters stand on the floor under them
+            if (c.y - c.sy / 2 < B.y + 0.3f) return true;
+            foreach (var o in B.chunks) if (o.alive && o.kind == "slab" && o.y < c.y && c.y - o.y < FH && MathF.Abs(o.x - c.x) < o.sx / 2 + c.sx / 2 + 0.5f && MathF.Abs(o.z - c.z) < o.sz / 2 + c.sz / 2 + 0.5f) return true;
+            return false;
+        }
+        if (c.kind == "slab" || c.kind == "rail")
+        {   // floors rest on the outer walls, interior walls or pillars just below
             int near = 0;
-            foreach (var o in B.chunks) if (o.alive && o.kind == "wall" && MathF.Abs(o.y - c.y) < FH && o.y < c.y && Hypot(o.x - c.x, o.z - c.z) < 6) { near++; if (near >= 2) return true; }
+            foreach (var o in B.chunks) if (o.alive && (o.kind == "wall" || o.kind == "inner") && MathF.Abs(o.y - c.y) < FH && o.y < c.y && Hypot(o.x - c.x, o.z - c.z) < 7) { near++; if (near >= 2) return true; }
             return false;
         }
         return true;
@@ -220,7 +321,7 @@ public sealed partial class World
     void BuildLayout()
     {
         var r = Rng(2024);
-        foreach (var p in PADS)
+        foreach (var p in PADS.OrderBy(q => q.Kind == "base" ? 0 : 1))   // bases first, so a town around a base builds around it
         {
             float y = p.H, R2 = p.R;
             if (p.Kind == "base")
@@ -253,7 +354,7 @@ public sealed partial class World
             {
                 var T = new Place { x = p.X, z = p.Z, r = R2, y = y, name = p.Name };
                 // a loose grid of blocks with 7 m streets
-                bool small = R2 < 30; float cell = small ? 14 : R2 > 50 ? 21 : 24, bk = small ? 0.56f : 1; int nb0 = BLDG.Count;
+                bool small = R2 < 30; float cell = small ? 16 : R2 > 50 ? 28 : 26, bk = small ? 0.62f : 1; int nb0 = BLDG.Count;
                 int span = Math.Max(1, (int)MathF.Floor((R2 - (small ? 4 : 6)) / cell));
                 var plaza = PADS.FirstOrDefault(q => q != p && q.Kind == "base" && Hypot(q.X - p.X, q.Z - p.Z) < R2);   // a base inside the town keeps its square clear
                 for (int gi = -span; gi <= span; gi++) for (int gj = -span; gj <= span; gj++)
@@ -263,7 +364,13 @@ public sealed partial class World
                         if (plaza != null && Hypot(cx - plaza.X, cz - plaza.Z) < plaza.R + 4) continue;
                         float roll = r();
                         if (gi == 0 && gj == 0) { Arch(cx, cz, 5, r() < 0.5f, y); continue; }
-                        if (roll < 0.62f) MakeBuilding(cx, cz, (5 + r() * 3) * bk, (5 + r() * 3) * bk, (3.5f + r() * 6) * (small ? 0.8f : 1), y, (int)MathF.Floor(r() * 4));
+                        if (roll < 0.62f)
+                        {   // shrink a block to keep a 6 m street from anything already standing (a base inside the town, say)
+                            float tw2 = (7 + r() * 3) * bk, td2 = (7 + r() * 3) * bk, bh = (3.6f + r() * 6) * (small ? 0.8f : 1); int st = (int)MathF.Floor(r() * 4);
+                            for (int tries = 0; tries < 4 && BLDG.Any(o => MathF.Abs(o.x - cx) < o.w / 2 + tw2 * BSCALE / 2 + 6 && MathF.Abs(o.z - cz) < o.d / 2 + td2 * BSCALE / 2 + 6); tries++) { tw2 *= 0.8f; td2 *= 0.8f; }
+                            if (tw2 >= 3.5f && !BLDG.Any(o => MathF.Abs(o.x - cx) < o.w / 2 + tw2 * BSCALE / 2 + 6 && MathF.Abs(o.z - cz) < o.d / 2 + td2 * BSCALE / 2 + 6)) MakeBuilding(cx, cz, tw2, td2, bh, y, st);
+                            else T.waypoints.Add((cx, cz));
+                        }
                         else if (roll < 0.8f) { CoverWall(cx, cz, 4 + r() * 2, r() < 0.5f, y); CrateStack(cx + 2.5f, cz + 2.5f, y, 1 + (int)MathF.Floor(r() * 3)); }
                         else T.waypoints.Add((cx, cz));
                     }
@@ -288,14 +395,17 @@ public sealed partial class World
                 AddBox(p.X + s * hs - wt / 2, y - 0.4f, p.Z + gate / 2, p.X + s * hs + wt / 2, y + wh, p.Z + hs, "fence");
                 foreach (float q in new[] { -1f, 1f }) AddBox(p.X + s * hs - 1, y - 0.4f, p.Z + q * hs - 1, p.X + s * hs + 1, y + 4.2f, p.Z + q * hs + 1, "dark");   // corner posts
             }
-            MakeBuilding(p.X, p.Z, 6, 6, 11, y, 3);                     // watch tower
-            MakeBuilding(p.X - hs * 0.55f, p.Z - hs * 0.5f, 7, 4.5f, 3.2f, y, 1); MakeBuilding(p.X + hs * 0.55f, p.Z + hs * 0.5f, 7, 4.5f, 3.2f, y, 2);
+            float tw = hs > 30 ? 9 : 6;   // (sizes before BSCALE)
+            MakeBuilding(p.X, p.Z, tw, tw, 11, y, 3);                     // watch tower
+            float bw = Clamp((hs - 8) * 0.8f, 8, 20) / BSCALE, bd = bw * 0.62f, bx = hs - bw * BSCALE / 2 - 2, bz = MathF.Max(hs * 0.5f, tw * BSCALE / 2 + bd * BSCALE / 2 + 2);
+            if (bz + bd * BSCALE / 2 > hs - 1) bz = hs - 1 - bd * BSCALE / 2;
+            MakeBuilding(p.X - bx, p.Z - bz, bw, bd, 3.6f, y, 1); MakeBuilding(p.X + bx, p.Z + bz, bw, bd, 3.6f, y, 2);
             RackOn(BLDG[^2], 0, "outpost"); RackOn(BLDG[^1], 1, "outpost");
             PARKED.Add((p.X + hs + 15, p.Z + 4, PI / 2, "rover"));
             for (int i = 0; i < 9; i++)
             {
                 float a = r() * 6.28f, d = 8 + r() * (hs - 11), cx = p.X + MathF.Cos(a) * d, cz = p.Z + MathF.Sin(a) * d;
-                if (MathF.Abs(cx - p.X) < 6.5f && MathF.Abs(cz - p.Z) < 6.5f) continue;
+                if (InsideBuilding(cx, cz, 3)) continue;
                 if (r() < 0.6f) CoverWall(cx, cz, 3.5f + r() * 2.5f, r() < 0.5f, y); else CrateStack(cx, cz, y, 1 + (int)MathF.Floor(r() * 3));
             }
             // cover outside each gate, too

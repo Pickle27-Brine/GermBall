@@ -118,6 +118,36 @@ public static class Shots
                 Directory.CreateDirectory(Path.Combine(dir, "maps")); File.WriteAllBytes(Path.Combine(dir, "maps", map + ".png"), Screenshot.Png(px, ww, hh)); Console.WriteLine("map " + map);
             }
         }
+        if (Want("interior"))
+        {   // inside the biggest building: the ground floor and the floor above, looking across the rooms
+            var world = new World(new BootConfig { Mode = "waves", Map = "city", Seed = 7, Custom = GermDraw.DefaultCustom() }, new Settings { res = 0, density = 1 }, World.DefaultBinds());
+            var gs = new GameScreen(app, world); world.playing = true;
+            for (int i = 0; i < 10; i++) Frame(gs);
+            var B = world.BLDG.OrderByDescending(b => b.w * b.d * (b.floors > 1 ? 2 : 1)).First();
+            Console.WriteLine($"interior: building {B.w:0.0} x {B.d:0.0}, {B.floors} floors");
+            foreach (var mm in new[] { ("waves", "city"), ("sandbox", "classic"), ("sandbox", "random") })
+            {
+                var w2 = mm.Item2 == "city" ? world : new World(new BootConfig { Mode = mm.Item1, Map = mm.Item2, Seed = 12345, Custom = GermDraw.DefaultCustom() }, new Settings { res = 0 }, World.DefaultBinds());
+                int ov = 0; for (int i = 0; i < w2.BLDG.Count; i++) for (int j = i + 1; j < w2.BLDG.Count; j++) { var p = w2.BLDG[i]; var q = w2.BLDG[j]; if (MathF.Abs(p.x - q.x) < (p.w + q.w) / 2 && MathF.Abs(p.z - q.z) < (p.d + q.d) / 2) { ov++; Console.WriteLine($"  overlap {mm.Item2}: {p.x:0},{p.z:0} {p.w:0}x{p.d:0} vs {q.x:0},{q.z:0} {q.w:0}x{q.d:0}"); } }
+                Console.WriteLine($"buildings {mm.Item2}: {w2.BLDG.Count}, overlapping pairs {ov}, sizes {string.Join(" ", w2.BLDG.Select(b => $"{b.w:0}x{b.d:0}x{b.floors}"))}");
+            }
+            world.SetFreeCam(true);
+            for (int f = 0; f < Math.Min(2, B.floors); f++)
+                foreach (var (cx, cz, yaw) in new[] { (-0.38f, -0.38f, MathF.PI * 1.25f), (0.38f, 0.38f, MathF.PI * 0.25f) })
+                {
+                    world.FREECAM.x = B.x + cx * B.w; world.FREECAM.z = B.z + cz * B.d; world.FREECAM.y = B.y + 1.7f + f * 3.6f; world.FREECAM.yaw = yaw; world.FREECAM.pitch = -0.12f; world.FREECAM.fov = 80;
+                    for (int i = 0; i < 4; i++) Frame(gs);
+                    Frame(gs, name: $"interior-f{f}-{(cx < 0 ? "a" : "b")}");
+                }
+            world.FREECAM.x = B.x; world.FREECAM.z = B.z + B.d * 0.15f; world.FREECAM.y = B.y + B.h + 14; world.FREECAM.pitch = -1.5f; world.FREECAM.fov = 70;
+            for (int i = 0; i < 4; i++) Frame(gs);
+            Frame(gs, name: "interior-roof");
+            // a plan view of the ground floor: the near plane slices the building just under the first ceiling
+            world.scene.Shadows = false; float near0 = world.camera.Near; world.camera.Near = B.h + 14 - 3.3f;
+            sr.Render(world.scene, world.camera); { var px = sr.Capture(out int ww, out int hh); File.WriteAllBytes(Path.Combine(outDir, "interior-plan.png"), Screenshot.Png(px, ww, hh)); }
+            world.camera.Near = near0;
+            world.SetFreeCam(false);
+        }
         if (Want("cast")) { Lineup.Run(sr, Path.Combine(dir, "cast-raw.png"), false, 18, false); }
         if (Want("heroes"))
             foreach (var k in MedDraw.PRESETS.Keys)

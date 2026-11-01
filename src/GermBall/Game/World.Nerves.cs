@@ -27,6 +27,15 @@ public sealed partial class World
         var m = new Mesh(Geo.Tube(pts, seg, rad, 7), mat) { CastShadow = true, ReceiveShadow = true }; scene.Add(m); return m;
     }
 
+    /// <summary>Collision for the parts of a nerve near the ground, so nothing you can walk into is a ghost.</summary>
+    void SolidNerve(IList<Vector3> pts, float rad)
+    {
+        for (int i = 0; i <= 16; i++)
+        {
+            var q = Geo.CatmullRom(pts, i / 16f, false); float g = GroundY(q.X, q.Z);
+            if (q.Y - rad - g < 2.2f && !InsideBuilding(q.X, q.Z, 0)) AddStatic(new Static { Kind = CYLK, X = q.X, Z = q.Z, R = rad + 0.12f, Bottom = g - 1, Top = q.Y + rad });
+        }
+    }
     void BuildNerves()
     {
         var r = Rng(4242);
@@ -42,13 +51,18 @@ public sealed partial class World
             {
                 float a = r() * TAU, sx = B.x + MathF.Cos(a) * hw * 0.85f, sz = B.z + MathF.Sin(a) * hd * 0.85f;
                 float reach = 6 + r() * 10, ex = sx + MathF.Cos(a) * reach, ez = sz + MathF.Sin(a) * reach, ey = GroundY(ex, ez);
+                if (InsideBuilding(ex, ez, 1.5f) || PADS.Any(p => p.Kind == "base" && Hypot(ex - p.X, ez - p.Z) < p.R)) continue;   // never into another building or the base
                 var pts = new List<Vector3> { new(sx, top - 0.4f, sz), new(sx + MathF.Cos(a) * reach * 0.3f, top + 1.2f, sz + MathF.Sin(a) * reach * 0.3f), new(sx + MathF.Cos(a) * reach * 0.7f, (top + ey) * 0.5f, sz + MathF.Sin(a) * reach * 0.7f), new(ex, ey + 0.2f, ez) };
-                NerveTube(pts, 0.28f, dend, 22);
+                NerveTube(pts, 0.28f, dend, 22); SolidNerve(pts, 0.28f);
                 bulbs.Add(Matrix4x4.CreateScale(0.7f) * Matrix4x4.CreateTranslation(ex, ey + 0.45f, ez));
+                AddStatic(new Static { Kind = CYLK, X = ex, Z = ez, R = 0.75f, Bottom = ey - 1, Top = ey + 1.15f });
                 // a branch off it
                 var mid = pts[2]; float b = a + (r() < 0.5f ? 0.9f : -0.9f), bl = 4 + r() * 5, bx = mid.X + MathF.Cos(b) * bl, bz = mid.Z + MathF.Sin(b) * bl, by = GroundY(bx, bz);
-                NerveTube(new List<Vector3> { mid, new((mid.X + bx) / 2, (mid.Y + by) / 2 + 1, (mid.Z + bz) / 2), new(bx, by + 0.15f, bz) }, 0.16f, dend, 12);
+                if (InsideBuilding(bx, bz, 1.5f)) continue;
+                var br = new List<Vector3> { mid, new((mid.X + bx) / 2, (mid.Y + by) / 2 + 1, (mid.Z + bz) / 2), new(bx, by + 0.15f, bz) };
+                NerveTube(br, 0.16f, dend, 12); SolidNerve(br, 0.16f);
                 bulbs.Add(Matrix4x4.CreateScale(0.45f) * Matrix4x4.CreateTranslation(bx, by + 0.3f, bz));
+                AddStatic(new Static { Kind = CYLK, X = bx, Z = bz, R = 0.5f, Bottom = by - 1, Top = by + 0.75f });
             }
         }
         // axons between neighbouring cells: an arch from roof to roof, beaded with myelin

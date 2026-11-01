@@ -159,7 +159,7 @@ public sealed partial class World
         o.HasBall = G.curl > 0.6f;
         if (o.HasBall) { o.BallX = Lerp(G.px, G.x, alpha); o.BallY = Lerp(G.py, G.y, alpha) + G.BR; o.BallZ = Lerp(G.pz, G.z, alpha); o.BallR = G.BR; QNlerp(G.pBallQ, G.ballQ, alpha, o.BallQ); }
         EMIT_T = A.type;
-        if (MED.TryGetValue(A.type, out var med)) MedDraw.Draw(med, A.pose, o, germEmit);
+        if (MED.TryGetValue(A.type, out var med)) MedDraw.Draw(med, A.pose, o, germEmit, true);
         else GermDraw.Draw(sp, A.pose, o, germEmit);
     }
     // ---- germ chunks: hits knock blobs of membrane off; a burst part sprays them
@@ -266,7 +266,7 @@ public sealed partial class World
             if (pc.flash > 0) pc.flash -= 1 / 60f;
             if (G.curl >= 0.6f) continue;
             EMIT_T = A.type;
-            if (MED.TryGetValue(A.type, out var med)) MedDraw.Armor(med, A.pose, pc.part, pc.y0, pc.y1, pc.phi, med.ArmorStyle, pc.flash > 0 ? 'f' : 'd', germEmit);
+            if (MED.TryGetValue(A.type, out var med)) MedDraw.Armor(med, A.pose, pc.part, pc.y0, pc.y1, pc.phi, med.ArmorStyle, pc.flash > 0 ? 'f' : 'd', germEmit, true);
             else if (gs != null) GermDraw.ArmorPiece(gs.ArmorStyle, new ArmorPieceSpec(pc.part, pc.y0, pc.y1, pc.phi, pc.arc, pc.sc), A.pose, germEmit, pc.flash > 0 ? 'f' : 'd', clockT, GermDraw.LimbK(gs, pc.part));
         }
         // weapon in hand

@@ -26,7 +26,7 @@ public sealed partial class World
         }
         foreach (var B in actors)
         {
-            if (B == A || B.dormant || !T.LiftMen.Contains(B.type) || B.P.holdA == A || !CanGrab(A, B)) continue;
+            if (B == A || B.dormant || !(T.LiftMen.Contains(B.type) || Legless(A, B)) || B.P.holdA == A || !CanGrab(A, B)) continue;
             float dx = B.P.x - P.x, dz = B.P.z - P.z, d = Hypot(dx, dz) - B.P.R;
             if (d > reach || MathF.Abs(B.P.y - P.y) > 1.2f * P.s) continue;
             float hd = Hypot(dx, dz); float c = (dx * fx + dz * fz) / (hd == 0 ? 1 : hd); if (c < 0.1f && d > 0.4f) continue;
@@ -40,7 +40,13 @@ public sealed partial class World
         }
         return false;
     }
-    static bool CanGrab(Actor A, Actor B) { var G = B.P; return G.alive && !Guarded(B) && G.grabCD <= 0 && !G.rolling && G.stunT <= 0 && G.downT <= 0 && G.grabbed == null && LegsOf(A) > 0 && ArmsOf(A) > 0; }
+    /// <summary>A germ below brute rank that has lost both legs can be picked up by anyone on the other side.</summary>
+    static bool Legless(Actor A, Actor B) => B.team != A.team && B.type is "small" or "normal" or "assassin" && LegsOf(B) == 0;
+    static bool CanGrab(Actor A, Actor B)
+    {
+        var G = B.P; bool legless = Legless(A, B);
+        return G.alive && G.ragdoll == null && !Guarded(B) && G.grabCD <= 0 && !G.rolling && (legless || (G.stunT <= 0 && G.downT <= 0)) && G.grabbed == null && LegsOf(A) > 0 && ArmsOf(A) > 0;
+    }
     bool GrabActor(Actor A, Actor B)
     {
         if (!CanGrab(A, B)) return false;

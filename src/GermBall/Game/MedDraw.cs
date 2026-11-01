@@ -15,6 +15,9 @@ public sealed class SegStyle
     /// <summary>Main tone and second tone (a body, b second colour, c glow, d armor colour, e visor/eye, k dark).</summary>
     public char Tone = 'a', Tone2 = 'b';
     public bool TwoTone;
+    /// <summary>Anchor offset for a limb root (head, upper arms, thighs): moves the whole limb, in units of the torso's radius,
+    /// in the body frame (x right, y up, z back).</summary>
+    public float OX, OY, OZ;
     public SegStyle Clone() => (SegStyle)MemberwiseClone();
 }
 
@@ -196,8 +199,36 @@ public static class MedDraw
         }
     }
 
-    public static void Draw(MedSpec sp, float[] pose, DrawOpts o, Emit emit)
+    /// <summary>The chain each limb root carries with it when its anchor moves.</summary>
+    public static readonly int[][] CHAINS = { new[] { 0 }, new[] { 3, 4, 5 }, new[] { 6, 7, 8 }, new[] { 9, 10, 11 }, new[] { 12, 13, 14 } };
+    public static bool IsRoot(int i) => i is 0 or 3 or 6 or 9 or 12;
+    /// <summary>The root segment whose anchor moves part i (or -1 for the torso and pelvis).</summary>
+    public static int RootOf(int i) => i switch { 0 => 0, 3 or 4 or 5 => 3, 6 or 7 or 8 => 6, 9 or 10 or 11 => 9, 12 or 13 or 14 => 12, _ => -1 };
+    static float[] anch = new float[15 * 13];
+    /// <summary>The pose with limb anchors applied (the input pose when no anchor is moved). The result is shared scratch.</summary>
+    public static float[] Anchored(MedSpec sp, float[] pose)
     {
+        bool any = false;
+        foreach (var c in CHAINS) { var st = sp.Seg[c[0]]; if (st != null && (st.OX != 0 || st.OY != 0 || st.OZ != 0)) { any = true; break; } }
+        if (!any || pose.Length < 15 * 13) return pose;
+        if (anch.Length < pose.Length) anch = new float[pose.Length];
+        Array.Copy(pose, anch, pose.Length);
+        float tr = (pose[13 + 7] + pose[13 + 9]) * 0.5f * (sp.Seg[1]?.Thick ?? 1) * sp.Bulk;
+        foreach (var c in CHAINS)
+        {
+            var st = sp.Seg[c[0]]; if (st == null || (st.OX == 0 && st.OY == 0 && st.OZ == 0)) continue;
+            int bk = (c[0] >= 9 ? 2 : 1) * 13;   // legs follow the pelvis frame, arms and head the torso
+            PQ.Set(pose[bk + 3], pose[bk + 4], pose[bk + 5], pose[bk + 6]);
+            QRot(PQ, st.OX * tr, st.OY * tr, st.OZ * tr, TV);
+            foreach (int i in c) { int k = i * 13; anch[k] += TV.x; anch[k + 1] += TV.y; anch[k + 2] += TV.z; }
+        }
+        return anch;
+    }
+
+    /// <param name="anchored">True when the pose already has the limb anchors applied (the game does that when posing).</param>
+    public static void Draw(MedSpec sp, float[] pose, DrawOpts o, Emit emit, bool anchored = false)
+    {
+        if (!anchored) pose = Anchored(sp, pose);
         ps = pose; em = emit; var has = o.Has; var fl = o.Flash;
         if (o.Curl > 0.6f && o.HasBall)
         {   // curled up: one pill-shaped ball, two-toned, the seam rolling with it
@@ -322,7 +353,7 @@ public static class MedDraw
             case "box": Put('B', at.Tone, lx, ly, lz, sx, sy, sz, AQ); break;
             case "ring": Put('T', at.Tone, lx, ly, lz, sx, sy, sz, AQ); break;
             case "disc": case "cylinder": Put('C', at.Tone, lx, ly, lz, sx, sy, sz, AQ); break;
-            case "pauldron": Put('Z', at.Tone, lx, ly, lz, sx, sy, sz, AQ); Put('T', 'c', lx, ly - sy * 0.35f, lz, sx * 0.97f, sy * 0.25f, sz * 0.97f, AQ); break;
+            case "pauldron": Put('Z', at.Tone, lx, ly, lz, sx, sy, sz, AQ); Put('T', 'c', lx, ly - sy * 0.35f, lz, sx * 0.97f, MathF.Max(sy * 0.25f, sx * 0.8f), sz * 0.97f, AQ); break;   // a round trim band, never a paper-thin disc
             case "fin": Put('B', at.Tone, lx, ly, lz, sx, sy, sz, AQ); break;
             case "needle": Put('C', at.Tone, lx, ly, lz, sx * 0.5f, sy * 0.55f, sz * 0.5f, AQ); QRot(AQ, 0, -sy * 0.75f, 0, TV); Put('P', 'k', lx + TV.x, ly + TV.y, lz + TV.z, sx * 0.18f, sy * 0.9f, sz * 0.18f, QMul(AQ, QAxis(1, 0, 0, PI, TQ), TQ)); break;
             case "cross": Put('B', at.Tone, lx, ly, lz, sx, sy * 0.33f, sz, AQ); Put('B', at.Tone, lx, ly, lz, sx * 0.33f, sy, sz, AQ); break;
@@ -332,9 +363,9 @@ public static class MedDraw
 
     /// <summary>One armor plate: a single thin piece on the side of its segment given by phi, covering y0..y1 of it.
     /// Plates sit just off the surface and never cover more than about half the segment, so the body shows through.</summary>
-    public static void Armor(MedSpec sp, float[] pose, int part, float y0, float y1, float phi, string style, char tone, Emit emit)
+    public static void Armor(MedSpec sp, float[] pose, int part, float y0, float y1, float phi, string style, char tone, Emit emit, bool anchored = false)
     {
-        ps = pose; em = emit; flashTone = '\0'; Part(part);
+        ps = anchored ? pose : Anchored(sp, pose); em = emit; flashTone = '\0'; Part(part);
         var st = sp.Seg[part] ?? new SegStyle(); var (r, L) = Dims(ps, part, st, sp);
         bool flatFront = st.Shape is "tablet" or "tablethead";
         float yc = (y0 + y1) * 0.5f * L, hh = MathF.Max(r * 0.35f, (y1 - y0) * 0.5f * L * 0.85f), a = phi * PI / 180;

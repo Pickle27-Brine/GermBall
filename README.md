@@ -64,14 +64,18 @@ The music is data, not code: `data/music/songs.json` holds the 36 songs (chord r
 | Jump, air dash | Space | A |
 | Fire / swing | left click or F | RT |
 | Aim | right click | LT |
-| Punch | Q or mouse 4 | RB |
+| Punch (not while rolling) | Q or mouse 4 | RB |
 | Ground pound | Q or mouse 4 while curled into a ball in the air | RB in ball mode only |
 | Reload | R | tap X |
 | Interact (take a weapon, enter a vehicle) | G | hold X |
-| Grab and throw | E | LB |
+| Grab and throw | E (or fire while holding: hold to wind up, release to throw) | LB (or RT while holding) |
 | Roll / ball | C or Shift | B |
 | Switch weapon | 1 2 3, wheel, P | Y |
 | Call the base | B | Back |
+
+Germs below brute rank that have lost both legs can be picked up and thrown. When three or fewer germs are left, each one gets a waypoint with its distance, pinned to the screen edge when it's off screen.
+
+**Weapons in vehicles.** The blood cell and the virus fire their own mounted guns, so your hand weapons are stowed. On the bike you keep one hand on the bars: sidearms, the shotgun and melee work, two-handed weapons don't.
 
 Guns use magazines. Spare magazines are stored and shown as pips on the weapon slot, with "clip | reserve" counts. With homing charged, the air dash is fast enough to burst small germs in one hit, and brutes can't counter it.
 
@@ -80,12 +84,13 @@ Guns use magazines. Spare magazines are stored and shown as pips on the weapon s
 ## What's in this build
 
 - **Heroes are medicine.** There are eight presets: gelcap, tablet, bottle, syringe, caplet, lozenge, gummy and med-mech. Each has a V-shaped heroic silhouette, its own walk and idle style, and its own motifs (a plunger, a cap, a score line). Companions use the tablet, bottle and syringe; the battle mecha is the med-mech. Enemies are all germs.
-- **Customizer.** Start from a preset, then click any segment (head, chest, each limb part) and change its shape, size and colour. Drag a segment to change its thickness and length. You can add, move and resize attachments, or drag them with the mouse. On a controller, hold L3 and use the stick. A mirror toggle keeps the two sides matched. The face system is gone.
+- **Customizer.** Start from a preset, then click any segment (head, chest, each limb part) and change its shape, size and colour. Drag a segment to change its thickness and length. Switch the drag to "Drag moves anchor" (or use the Side / Height / Depth sliders) to move where the head, an arm or a leg joins the body; with a controller, hold L3 and use the stick. You can add, move and resize attachments, or drag them with the mouse. On a controller, hold L3 and use the stick. A mirror toggle keeps the two sides matched. The face system is gone.
 - **Armor** is eight slim plates that don't overlap and don't hide the body.
 - **Weapon animations by role.** Pistols are one-handed with a snap recoil. Rifles brace on the off hand. The shotgun pumps, scoped weapons work a bolt, the launcher shoulders, the bow draws, beams jitter, and melee weapons have their own swings. Reloads use the off hand.
 - **Vehicles.** The rover is a drivable, hovering red blood cell that drifts, banks and hops. The hover chair is a floating virus whose spider legs step on the ground and dangle when it climbs.
 - **Loose weapons are physics props** that tumble and settle. They no longer spin in place.
-- **Map decor.** Floating decor is removed; ground foliage such as villi stays. Buildings are cell walls and towers, and nerve fibres (dendrites, synapse bulbs, myelinated axon arches) pulse with light.
+- **Map decor.** Floating decor is removed; ground foliage such as villi stays. Everything you can walk into has collision: organs, the vessels and nerve tendrils where they meet the ground, synapse bulbs. Floor veins are half buried, and the crawling bacteria and hanging mucus strands are gone.
+- **Buildings** are cell walls and towers, about 14–20 m across, with nerve fibres (dendrites, synapse bulbs, myelinated axon arches) pulsing between them. Every storey has its own layout: rooms split off with doorways, pillared halls, waist-high counters for cover, crates and the odd supply cache. The biggest buildings have an open atrium through every floor, ringed by railings. Interiors break apart like the outer walls.
 - **AI.** Enemies and companions path around obstacles with grid A*. Companions no longer teleport: they follow your trail and roll to catch up. Enemy squads have ranks (leader, veterans, grunts) and formations. The leader gives push, hold and flank orders and hangs back. Squads break when the leader dies, and then someone is promoted.
 - **Title screen.** Pre-rendered overhead views of each map pan and crossfade behind the menu; hovering over a map previews it. Flip George Lopez and he looks up a fresh fun fact online. Without a connection he uses an offline list.
 - **UI scaling.** Fonts and 2D UI scale with window height, and text is rendered at 2× oversampling.
@@ -116,7 +121,7 @@ It also contains a software rasteriser that mirrors the D3D11 renderer, so every
 dotnet run --project tools/Smoke -c Release -- data --shots out 1280 720
 ```
 
-The modes are `title`, `custom`, `heroes`, `lineup`, `vehicles`, `weapons`, `maps`, `cast`, `sandbox-random`, `waves-bowl`, `sandbox-leviathan` and `game`. Pass one as the last argument to render only that mode. The map stills in `data/ui/maps/` and `data/ui/cast.png` were made this way.
+The modes are `interior`, `title`, `custom`, `heroes`, `lineup`, `vehicles`, `weapons`, `maps`, `cast`, `sandbox-random`, `waves-bowl`, `sandbox-leviathan` and `game`. Pass one as the last argument to render only that mode. The map stills in `data/ui/maps/` and `data/ui/cast.png` were made this way.
 
 ## Layout
 

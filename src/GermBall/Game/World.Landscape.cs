@@ -186,6 +186,8 @@ public sealed partial class World
             ["tower"] = Lam(0xb89cff, texWindows), ["dark"] = Lam(0x5a2440), ["trim"] = BasicM(0x7affef), ["trimHot"] = BasicM(0xff4fd8),
             ["cover"] = Lam(0xf0e0c8, texHazard), ["crate"] = Lam(0xd8f0a0, texCrate), ["stash"] = new Material { Kind = MatKind.Phong, Color = C(0x6dffb0), Emissive = C(0x1e8a55), Shininess = 80 },
             ["fence"] = Lam(0x8a4a48),
+            // interior membranes: smooth, pale, a step lighter than the floors so rooms read clearly
+            ["innerA"] = Lam(0xd8f0c8, texPanel), ["innerB"] = Lam(0xffd4e2, texPanel), ["innerC"] = Lam(0xe6dcff, texPanel), ["innerT"] = Lam(0xd0c0ff, texPanel),
         };
     }
     void AddBox(float x0, float y0, float z0, float x1, float y1, float z1, string mat, bool collide = true)

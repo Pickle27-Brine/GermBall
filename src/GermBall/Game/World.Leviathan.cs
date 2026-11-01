@@ -85,6 +85,20 @@ public sealed partial class World
             Mesh Piece(Geometry geo, Material mat, float x, float y, float z, float sx, float sy, float sz, float rx = 0, float ry = 0, float rz = 0)
             { var m = new Mesh(geo, mat) { Position = new Vector3(x, y, z), Scale = new Vector3(sx, sy, sz), CastShadow = true, ReceiveShadow = true }; m.SetEuler(rx, ry, rz); G.Add(m); return m; }
             float w = o.W, h = o.H;
+            // every organ is solid: a core you can't walk through (the mound under it is terrain you can climb)
+            {
+                float cr = o.Kind == "lung" ? w * 0.75f : o.Kind == "kidney" ? w * 0.55f : w * 0.62f;
+                AddStatic(new Static { Kind = CYLK, X = o.X, Z = o.Z, R = cr, Bottom = y0 - 2, Top = y0 + h * 0.9f });
+                if (o.Kind is "lung" or "stomach" or "liver") foreach (float sd in new[] { -1f, 1f })
+                {   // long organs: two more cores along their length
+                    float ca = MathF.Cos(-o.Ang), sa = MathF.Sin(-o.Ang), ox = o.Kind == "lung" ? 0 : sd * w * 0.5f, oz = o.Kind == "lung" ? sd * w * 0.6f : 0;
+                    AddStatic(new Static { Kind = CYLK, X = o.X + ox * ca - oz * sa, Z = o.Z + ox * sa + oz * ca, R = cr * 0.75f, Bottom = y0 - 2, Top = y0 + h * 0.8f });
+                }
+            }
+            void Solid(IList<float[]> pts, float rad)
+            {   // the low parts of a vessel rising out of the floor get collision too
+                for (int q = 0; q < pts.Count; q++) { var p = pts[q]; float g = Gy(p[0], p[2]); if (p[1] - g < 3) AddStatic(new Static { Kind = CYLK, X = p[0], Z = p[2], R = rad + 0.2f, Bottom = g - 2, Top = p[1] + rad }); }
+            }
             if (o.Kind == "heart")
             {
                 var m = Wet(0x9a1024); var fat = Wet(0xffd8a0, 30);
@@ -96,7 +110,7 @@ public sealed partial class World
                 Tube(new[] { new[] { o.X, y0 + h * 0.3f, o.Z }, new[] { o.X + 4, y0 + h * 0.9f, o.Z }, new[] { o.X + 10, y0 + h * 1.6f, o.Z - 4 }, new[] { o.X + 14, (y0 + top) / 2, o.Z - 10 }, new[] { o.X + 8, top - 2, o.Z - 18 } }, w * 0.14f, art, 60);
                 Tube(new[] { new[] { o.X - 3, y0 + h * 0.3f, o.Z + 2 }, new[] { o.X - 7, y0 + h * 1.2f, o.Z + 6 }, new[] { o.X - 16, (y0 + top) / 2, o.Z + 10 }, new[] { o.X - 22, top - 2, o.Z + 12 } }, w * 0.1f, ven, 60);
                 ORG.heart = (G, o);
-                for (int k = 0; k < 4; k++) { float a = k * 1.6f; Tube(new[] { new[] { o.X + MathF.Cos(a) * w * 0.6f, y0 + h * 0.1f, o.Z + MathF.Sin(a) * w * 0.6f }, new[] { o.X + MathF.Cos(a + 0.4f) * w * 0.4f, y0 + h * 0.4f, o.Z + MathF.Sin(a + 0.4f) * w * 0.4f }, new[] { o.X + MathF.Cos(a + 0.6f) * w * 0.15f, y0 + h * 0.7f, o.Z + MathF.Sin(a + 0.6f) * w * 0.15f } }, 0.35f, art, 20); }
+                for (int k = 0; k < 4; k++) { float a = k * 1.6f; Solid(new[] { new[] { o.X + MathF.Cos(a) * w * 0.6f, y0 + h * 0.1f, o.Z + MathF.Sin(a) * w * 0.6f } }, 0.35f); Tube(new[] { new[] { o.X + MathF.Cos(a) * w * 0.6f, y0 + h * 0.1f, o.Z + MathF.Sin(a) * w * 0.6f }, new[] { o.X + MathF.Cos(a + 0.4f) * w * 0.4f, y0 + h * 0.4f, o.Z + MathF.Sin(a + 0.4f) * w * 0.4f }, new[] { o.X + MathF.Cos(a + 0.6f) * w * 0.15f, y0 + h * 0.7f, o.Z + MathF.Sin(a + 0.6f) * w * 0.15f } }, 0.35f, art, 20); }
             }
             else if (o.Kind == "lung")
             {
@@ -116,7 +130,8 @@ public sealed partial class World
             {
                 var m = Wet(0x8a2232, 80);
                 Piece(S, m, 0, h * 0.6f, -w * 0.25f, w * 0.5f, h * 0.9f, w * 0.42f, 0.4f, 0, 0); Piece(S, m, 0, h * 0.6f, w * 0.25f, w * 0.5f, h * 0.9f, w * 0.42f, -0.4f, 0, 0);
-                Tube(new[] { new[] { o.X, y0 + h * 0.5f, o.Z }, new[] { o.X + w, y0 + 1, o.Z + w * 0.5f }, new[] { o.X + w * 2.5f, y0 + 0.5f, o.Z + w } }, 0.7f, Wet(0xf2d0b0), 20);
+                var ureter = new[] { new[] { o.X, y0 + h * 0.5f, o.Z }, new[] { o.X + w, y0 + 1, o.Z + w * 0.5f }, new[] { o.X + w * 2.5f, y0 + 0.5f, o.Z + w } };
+                Tube(ureter, 0.7f, Wet(0xf2d0b0), 20); Solid(ureter, 0.7f);
             }
             else if (o.Kind == "stomach")
             {
@@ -152,7 +167,7 @@ public sealed partial class World
         ORG.veinMats.Add((artMat, artMat.Emissive)); ORG.veinMats.Add((venMat, venMat.Emissive));
         void Vein(float x, float z, float a, int len, float rad, Material mat, int depth)
         {
-            var pts = new List<float[]>(); for (int k = 0; k <= len; k++) { pts.Add(new[] { x, Gy(x, z) + rad * 0.3f, z }); a += (r() - 0.5f) * 0.7f; x += MathF.Cos(a) * 4; z += MathF.Sin(a) * 4; }
+            var pts = new List<float[]>(); for (int k = 0; k <= len; k++) { pts.Add(new[] { x, Gy(x, z) - rad * 0.45f, z }); a += (r() - 0.5f) * 0.7f; x += MathF.Cos(a) * 4; z += MathF.Sin(a) * 4; }
             if (pts.Count > 2) Tube(pts, rad, mat, pts.Count * 4);
             if (depth < 2) for (int b = 0; b < 2; b++) { int k = 2 + (int)MathF.Floor(r() * (len - 2)); if (k < pts.Count) Vein(pts[k][0], pts[k][2], a + (r() < 0.5f ? 1 : -1) * (0.6f + r() * 0.6f), Math.Max(3, len >> 1), rad * 0.6f, mat, depth + 1); }
         }
@@ -165,8 +180,7 @@ public sealed partial class World
             AddStatic(new Static { Kind = CYLK, X = x, Z = z, R = rad + 0.2f, Bottom = y0 - 2, Top = y0 + 12 });
         }
         // mucus strands hanging from the roof
-        var mucus = Glow(0xffd0e0, 0.35f);
-        for (int i = 0; i < (arena ? 10 : 40); i++) { float x = (r() * 2 - 1) * LIM, z = (r() * 2 - 1) * LIM, top = RoofY(x, z), L = 20 + r() * 60; Tube(new[] { new[] { x, top + 2, z }, new[] { x + 1, top - L * 0.5f, z }, new[] { x, top - L, z + 1 } }, 0.15f + r() * 0.2f, mucus, 12).CastShadow = false; }
+        // (the mucus strands that hung from the roof are gone: they passed through everything)
         // ---- giant cells in the colonies: a membrane, a nucleus inside, organelles
         var memb = Toon(Phong(0xf0c8ff, 120, 0xffffff), 4); memb.Transparent = true; memb.Opacity = 0.55f; memb.DepthWrite = false;
         var nuc = Matte(0x5a2a8a); var mito = Matte(0xff9040); var s24 = Geo.Sphere(1, 24, 16); var s14 = Geo.Sphere(1, 14, 10); var s8 = Geo.Sphere(1, 8, 6);
@@ -238,11 +252,7 @@ public sealed partial class World
         }
         // (the browser build filled the air with drifting red cells, white cells, platelets, viruses, phages and antibodies;
         //  floating decor is gone now: only things on the floor or attached to the walls remain)
-        // bacteria: rods with whipping tails, in colonies crawling over the floor
-        var bacGeo = MergeGeo((Geo.Sphere(1, 12, 8), Mtx(0, 0, 0, 0.45f, 0.45f, 1.3f)), (Geo.Cone(0.12f, 1.6f, 4), Mtx(0, 0, 2.0f, 1, 1, 1, -PI / 2, 0, 0)), (Geo.Cone(0.08f, 1.2f, 4), Mtx(0.2f, 0.1f, 1.8f, 1, 1, 1, -PI / 2, 0.4f, 0)));
-        var colonies = new List<(float, float)>(); for (int c = 0; c < (arena ? 4 : 14); c++) colonies.Add(((r() * 2 - 1) * LIM * 0.85f, (r() * 2 - 1) * LIM * 0.85f));
-        Fl(bacGeo, Matte(0x9ae03a), arena ? 50 : 220, i => { var (cx, cz) = colonies[i % colonies.Count]; return new Floater { kind = "bac", cx = cx, cz = cz, a = r() * 6.28f, d = r() * 10, ph = r() * 6.28f, s = 0.6f + r() * 0.7f, sp = 0.4f + r() * 0.6f }; });
-        Fl(bacGeo, Matte(0xffb63a), arena ? 20 : 80, i => { var (cx, cz) = colonies[(i * 3 + 1) % colonies.Count]; return new Floater { kind = "bac", cx = cx, cz = cz, a = r() * 6.28f, d = r() * 12, ph = r() * 6.28f, s = 0.5f + r() * 0.5f, sp = 0.6f + r() * 0.6f }; });
+        // (the crawling bacteria colonies are gone too: decor that walks through you reads as a bug. The germs that matter fight back.)
         ORG.LIM = LIM;
     }
     /// <summary>Rotation that turns an object's +Z toward the target (three.js Object3D.lookAt for non-cameras).</summary>

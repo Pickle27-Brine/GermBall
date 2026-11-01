@@ -214,6 +214,40 @@ public sealed partial class World
                 d.Line(a, b, Pal.Warn, 2); d.Line(b, c, Pal.Warn, 2); d.Line(c, e, Pal.Warn, 2); d.Line(e, a, Pal.Warn, 2);
             }
         }
+        // ---- last few germs: when three or fewer are left, every one gets a waypoint (clamped to the screen edge when off screen)
+        {
+            int left = 0; foreach (var E in actors) if (E.team == "enemy" && E.P.alive && !E.dormant) left++;
+            if (left > 0 && left <= 3 && P.alive)
+            {
+                var red = Css(0xff4a6a); var inv = Quaternion.Inverse(camera.Rotation);
+                foreach (var E in actors)
+                {
+                    if (E.team != "enemy" || !E.P.alive || E.dormant) continue;
+                    var G = E.P; var wp = new Vector3(G.x, G.y + G.H + 0.5f, G.z);
+                    var cs = Vector3.Transform(wp - camera.Position, inv);
+                    float dist = Hypot(G.x - P.x, G.y - P.y, G.z - P.z), pulse = 0.75f + 0.25f * MathF.Sin(t * 5 + E.uid);
+                    var col = new Vector4(red.X, red.Y, red.Z, pulse);
+                    var v = camera.Project(wp);
+                    bool onScreen = cs.Z < 0 && MathF.Abs(v.X) < 0.94f && MathF.Abs(v.Y) < 0.9f;
+                    if (onScreen)
+                    {   // a downward chevron over the germ, with the distance
+                        float x = (v.X + 1) / 2 * Wd, y = (1 - v.Y) / 2 * Ht, s = 9;
+                        d.Line(new Vector2(x - s, y - s), new Vector2(x, y), col, 2.5f); d.Line(new Vector2(x + s, y - s), new Vector2(x, y), col, 2.5f);
+                        d.Text(MathF.Round(dist) + " m", x, y - s - 18, d.MonoSmall, col, "center");
+                    }
+                    else
+                    {   // an arrow on the edge of the screen pointing the way
+                        float ax = cs.X, ay = cs.Y; if (cs.Z > 0 && MathF.Abs(ax) < 1e-3f && MathF.Abs(ay) < 1e-3f) ay = -1;
+                        float l = MathF.Max(1e-4f, Hypot(ax, ay)); ax /= l; ay /= l;
+                        float hw = Wd / 2 - 46, hh = Ht / 2 - 56, k = MathF.Min(hw / MathF.Max(1e-4f, MathF.Abs(ax)), hh / MathF.Max(1e-4f, MathF.Abs(ay)));
+                        float x = Wd / 2 + ax * k, y = Ht / 2 - ay * k;
+                        var dir = new Vector2(ax, -ay); var nrm = new Vector2(-dir.Y, dir.X); var tip = new Vector2(x, y) + dir * 12;
+                        d.Line(tip, tip - dir * 14 + nrm * 9, col, 2.5f); d.Line(tip, tip - dir * 14 - nrm * 9, col, 2.5f);
+                        d.Text(MathF.Round(dist) + " m", x - dir.X * 20, y - dir.Y * 20 - 6, d.MonoSmall, col, "center");
+                    }
+                }
+            }
+        }
         // ---- throw / charge meter
         {
             bool carrying = (P.hold != null || P.holdA != null) && P.alive, charging = !carrying && W.charge > 0;

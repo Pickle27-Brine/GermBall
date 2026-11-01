@@ -144,7 +144,19 @@ public sealed partial class World
     }
 
     readonly float[] AIMD = new float[3], PJ = new float[3]; readonly Q4 SEATQ = new(); readonly V3 SEATV = new(), SEATO = new();
+    /// <summary>Poses an actor, then moves limb anchors (heroes the player has customised), so weapons, armor and hit
+    /// boxes all follow the limbs where they are drawn.</summary>
     public void PoseActor(Actor A, float alpha, float fdt)
+    {
+        if (!A.P.alive || A.P.ragdoll != null) { PoseActorCore(A, alpha, fdt); return; }   // these don't rebuild the pose, so don't shift it again
+        PoseActorCore(A, alpha, fdt);
+        if (MED.TryGetValue(A.type, out var med))
+        {
+            var ap = MedDraw.Anchored(med, A.pose);
+            if (!ReferenceEquals(ap, A.pose)) Array.Copy(ap, A.pose, A.pose.Length);
+        }
+    }
+    void PoseActorCore(Actor A, float alpha, float fdt)
     {
         var G = A.P; var an = A.anim; float s = G.s, f = G.f;
         if (!G.alive) return;

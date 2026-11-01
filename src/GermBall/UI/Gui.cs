@@ -32,6 +32,13 @@ public sealed class Gui
     public bool Back, TabNext, TabPrev;   // B / Esc, RB / LB this frame
     bool prevA, prevB, prevLb, prevRb, prevStart; public bool StartHit;
 
+    /// <summary>Treat the pad's buttons as already held, so a press that opened this menu isn't read again as a menu press.</summary>
+    public void SyncPad()
+    {
+        var p = Gamepad.First;
+        prevA = p != null && p.B(0); prevB = p != null && p.B(1); prevLb = p != null && p.B(4); prevRb = p != null && p.B(5); prevStart = p != null && p.B(9);
+    }
+
     public void Begin(Draw2D d, float dt)
     {
         D = d; prev.Clear(); prev.AddRange(cur); cur.Clear();
