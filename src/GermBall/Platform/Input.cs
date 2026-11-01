@@ -44,6 +44,7 @@ public static class Input
     {
         if (on == Locked) return;
         Locked = on;
+        if (w == null || w.IsHeadless) return;
         if (on)
         {
             Win32.GetClientRect(w.Handle, out var r);

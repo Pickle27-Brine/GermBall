@@ -12,6 +12,9 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="bakefont.py" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\src\GermBall\GermBall.csproj" />
   </ItemGroup>
 </Project>

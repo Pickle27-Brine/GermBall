@@ -5,7 +5,43 @@ using System.Linq;
 using GermBall.Game;
 using GermBall.Platform;
 
-// Usage: Smoke <repo>/data [seconds-per-map]
+// Usage: Smoke <repo>/data [seconds-per-map]   |   Smoke <repo>/data --shots <outdir> [w h] [only]
+if (args.Length > 1 && args[0] == "--geo")
+{
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    string A(float[] a) => a == null ? "null" : "[" + string.Join(",", a.Select(v => v.ToString("R", inv))) + "]";
+    string D(GermBall.Render.Geometry g) => "{\"p\":" + A(g.Position) + ",\"n\":" + A(g.Normal) + ",\"uv\":" + A(g.Uv) + ",\"i\":" + (g.Index == null ? "null" : "[" + string.Join(",", g.Index) + "]") + "}";
+    var G = new System.Collections.Generic.Dictionary<string, GermBall.Render.Geometry>
+    {
+        ["box"] = GermBall.Render.Geo.Box(1, 2, 3), ["sphere"] = GermBall.Render.Geo.Sphere(1, 18, 12), ["spherePart"] = GermBall.Render.Geo.Sphere(1, 24, 16, MathF.PI * 0.25f, MathF.PI * 0.5f, MathF.PI * 0.15f, MathF.PI * 0.7f),
+        ["ico0"] = GermBall.Render.Geo.Icosahedron(1, 0), ["ico1"] = GermBall.Render.Geo.Icosahedron(1, 1), ["ico2"] = GermBall.Render.Geo.Icosahedron(1, 2), ["oct"] = GermBall.Render.Geo.Octahedron(1, 0), ["dod"] = GermBall.Render.Geo.Dodecahedron(1),
+        ["cone"] = GermBall.Render.Geo.Cone(1, 1, 10), ["cyl"] = GermBall.Render.Geo.Cylinder(0.5f, 1, 2, 12, 2), ["cylOpen"] = GermBall.Render.Geo.Cylinder(1, 1, 1, 8, 1, true),
+        ["plane"] = GermBall.Render.Geo.Plane(2, 3, 2, 3), ["circle"] = GermBall.Render.Geo.Circle(1, 12), ["ring"] = GermBall.Render.Geo.Ring(0.5f, 1, 16), ["torus"] = GermBall.Render.Geo.Torus(1, 0.18f, 8, 24),
+        ["lathe"] = GermBall.Render.Geo.Lathe(new[] { new System.Numerics.Vector2(0, 0), new System.Numerics.Vector2(1, 0.5f), new System.Numerics.Vector2(0.5f, 1) }, 8),
+        ["tube"] = GermBall.Render.Geo.Tube(new[] { new System.Numerics.Vector3(0, 0, 0), new System.Numerics.Vector3(1, 1, 0), new System.Numerics.Vector3(2, 0, 1), new System.Numerics.Vector3(3, 1, 1) }, 8, 0.2f, 5, false),
+    };
+    File.WriteAllText(args[1], "{" + string.Join(",", G.Select(kv => "\"" + kv.Key + "\":" + D(kv.Value))) + "}"); return 0;
+}
+if (args.Length > 1 && args[0] == "--gd")
+{
+    var sb = new System.Text.StringBuilder("{");
+    bool first = true;
+    foreach (var (k, sp0) in GermDraw.SPECIES)
+    {
+        var sp = sp0.Clone(); var o = new DrawOpts { T = 0.5f, Fdt = 1 / 60f, Lod = 2, Has = Enumerable.Repeat(true, 15).ToArray(), St = GermDraw.NewSpringState(), S = 1 };
+        var ps = GermDraw.RestPose(1, 0.5f); var em = new System.Collections.Generic.List<string>();
+        GermDraw.Draw(sp, ps, o, (sh, tone, x, y, z, qx, qy, qz, qw, sx, sy, sz) => em.Add(string.Join(",", new[] { "\"" + sh + "\"", "\"" + tone + "\"" }.Concat(new[] { x, y, z, qx, qy, qz, qw, sx, sy, sz }.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))))));
+        sb.Append((first ? "" : ",") + "\"" + k + "\":{\"pose\":[" + string.Join(",", ps.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))) + "],\"em\":[" + string.Join(",", em.Select(e => "[" + e + "]")) + "]}"); first = false;
+    }
+    File.WriteAllText(args[1], sb.Append("}").ToString()); return 0;
+}
+if (args.Length > 2 && args[1] == "--shots")
+{
+    var sv = Path.Combine(Path.GetTempPath(), "germball-smoke"); Directory.CreateDirectory(sv);
+    Paths.Init(new[] { "--data", Path.GetFullPath(args[0]), "--saves", sv }); Log.Init();
+    Smoke.Shots.Run(args[2], args.Length > 4 ? int.Parse(args[3]) : 960, args.Length > 4 ? int.Parse(args[4]) : 540, args.Length > 5 ? args[5] : null);
+    return 0;
+}
 string data = args.Length > 0 ? args[0] : "data"; float secs = args.Length > 1 ? float.Parse(args[1]) : 20;
 var saves = Path.Combine(Path.GetTempPath(), "germball-smoke"); Directory.CreateDirectory(saves);
 Paths.Init(new[] { "--data", Path.GetFullPath(data), "--saves", saves }); Log.Init();

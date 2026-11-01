@@ -18,14 +18,14 @@ public sealed class Draw2D
     public float Scale = 1;   // UI scale for high-DPI screens
 
     public void Begin() { n = 0; batches.Clear(); curTex = null; curClip = null; batchStart = 0; clips.Clear(); Alpha = 1; }
-    public void End(Renderer r) { Flush(); r.DrawUI(batches, v, n); }
+    public void End(IRenderer r) { Flush(); r.DrawUI(batches, v, n); }
 
     void Flush() { if (n > batchStart) batches.Add((curTex, batchStart, n - batchStart, curClip)); batchStart = n; }
     void Use(Texture t) { if (t != curTex) { Flush(); curTex = t; } }
     public void PushClip(float x, float y, float w, float h)
     {
         Flush(); clips.Push(curClip);
-        var r = new Rect(x, y, w, h);
+        var r = new Rect(x * Scale, y * Scale, w * Scale, h * Scale);
         if (curClip is Rect c) { float x0 = MathF.Max(c.X, r.X), y0 = MathF.Max(c.Y, r.Y), x1 = MathF.Min(c.X + c.Width, r.X + r.Width), y1 = MathF.Min(c.Y + c.Height, r.Y + r.Height); r = new Rect(x0, y0, MathF.Max(0, x1 - x0), MathF.Max(0, y1 - y0)); }
         curClip = r;
     }
@@ -34,7 +34,7 @@ public sealed class Draw2D
     void Vert(float x, float y, float u, float vv, Vector4 c)
     {
         if (n >= v.Length) Array.Resize(ref v, v.Length * 2);
-        v[n++] = new Renderer.UIVert { X = x, Y = y, U = u, V = vv, R = c.X, G = c.Y, B = c.Z, A = c.W * Alpha };
+        v[n++] = new Renderer.UIVert { X = x * Scale, Y = y * Scale, U = u, V = vv, R = c.X, G = c.Y, B = c.Z, A = c.W * Alpha };
     }
     public void Quad(Vector2 a, Vector2 b, Vector2 c, Vector2 d, Vector4 col, Texture t = null, float u0 = 0, float v0 = 0, float u1 = 1, float v1 = 1)
     {
@@ -74,7 +74,7 @@ public sealed class Draw2D
         if (string.IsNullOrEmpty(s) || f == null) return 0;
         float w = f.Measure(s, spacing);
         if (align == "center") x -= w / 2; else if (align == "right") x -= w;
-        x = MathF.Round(x); y = MathF.Round(y);
+        x = MathF.Round(x * Scale) / Scale; y = MathF.Round(y * Scale) / Scale;
         if (shadow) DrawRun(s, x + 2, y + 2, f, shadowCol ?? new Vector4(0, 0, 0, 0.6f), spacing);
         DrawRun(s, x, y, f, c, spacing);
         return w;
@@ -85,8 +85,8 @@ public sealed class Draw2D
         foreach (var ch in s)
         {
             if (!f.TryGlyph(ch, out var g)) continue;
-            if (ch != ' ') Image(at, x, y, g.W, g.H, c, g.X * iw, g.Y * ih, (g.X + g.W) * iw, (g.Y + g.H) * ih);
-            x += g.Advance + spacing;
+            if (ch != ' ') Image(at, x, y, g.W / f.Px, g.H / f.Px, c, g.X * iw, g.Y * ih, (g.X + g.W) * iw, (g.Y + g.H) * ih);
+            x += g.Advance / f.Px + spacing;
         }
     }
     /// <summary>Word-wrapped text; returns the height used.</summary>

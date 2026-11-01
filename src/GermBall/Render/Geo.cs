@@ -106,7 +106,13 @@ public static class Geo
         int[] f = { 0, 2, 4, 0, 4, 3, 0, 3, 5, 0, 5, 2, 1, 2, 5, 1, 5, 3, 1, 3, 4, 1, 4, 2 };
         return Polyhedron(v, f, r, detail);
     }
-    public static Geometry Dodecahedron(float r = 1) => Icosahedron(r, 0);
+    public static Geometry Dodecahedron(float r = 1, int detail = 0)
+    {
+        float t = (1 + MathF.Sqrt(5)) / 2, q = 1 / t;
+        float[] v = { -1, -1, -1, -1, -1, 1, -1, 1, -1, -1, 1, 1, 1, -1, -1, 1, -1, 1, 1, 1, -1, 1, 1, 1, 0, -q, -t, 0, -q, t, 0, q, -t, 0, q, t, -q, -t, 0, -q, t, 0, q, -t, 0, q, t, 0, -t, 0, -q, t, 0, -q, -t, 0, q, t, 0, q };
+        int[] f = { 3, 11, 7, 3, 7, 15, 3, 15, 13, 7, 19, 17, 7, 17, 6, 7, 6, 15, 17, 4, 8, 17, 8, 10, 17, 10, 6, 8, 0, 16, 8, 16, 2, 8, 2, 10, 0, 12, 1, 0, 1, 18, 0, 18, 16, 6, 10, 2, 6, 2, 13, 6, 13, 15, 2, 16, 18, 2, 18, 3, 2, 3, 13, 18, 1, 9, 18, 9, 11, 18, 11, 3, 4, 14, 12, 4, 12, 0, 4, 0, 8, 11, 9, 5, 11, 5, 19, 11, 19, 7, 19, 5, 14, 19, 14, 4, 19, 4, 17, 1, 12, 14, 1, 14, 5, 1, 5, 9 };
+        return Polyhedron(v, f, r, detail);
+    }
 
     public static Geometry Cylinder(float rt = 1, float rb = 1, float h = 1, int radial = 8, int hseg = 1, bool open = false, float thetaStart = 0, float thetaLen = MathF.PI * 2)
     {
@@ -242,12 +248,37 @@ public static class Geo
     /// <summary>A tube along a polyline (Catmull-Rom smoothed), with rotation-minimising frames.</summary>
     public static Geometry Tube(IList<Vector3> path, int tubular = 64, float radius = 1, int radial = 8, bool closed = false, Func<float, float> radiusAt = null)
     {
+        // three.js samples the curve by arc length (getPointAt) and builds Frenet frames the same way as here
+        const int DIV = 200; var len = new float[DIV + 1]; var last = CatmullRom(path, 0, closed);
+        for (int i = 1; i <= DIV; i++) { var c = CatmullRom(path, (float)i / DIV, closed); len[i] = len[i - 1] + Vector3.Distance(c, last); last = c; }
+        float UtoT(float u)
+        {
+            float target = u * len[DIV]; int lo = 0, hi = DIV;
+            while (lo <= hi) { int mid = (lo + hi) / 2; if (len[mid] < target) lo = mid + 1; else if (len[mid] > target) hi = mid - 1; else { hi = mid; break; } }
+            int i = Math.Max(0, hi); if (len[i] == target || i >= DIV) return (float)i / DIV;
+            float seg = len[i + 1] - len[i]; return (i + (seg > 0 ? (target - len[i]) / seg : 0)) / DIV;
+        }
         var pts = new Vector3[tubular + 1]; var tan = new Vector3[tubular + 1];
-        for (int i = 0; i <= tubular; i++) { float t = (float)i / tubular; pts[i] = CatmullRom(path, t, closed); tan[i] = Vector3.Normalize(CatmullRom(path, MathF.Min(1, t + 1e-3f), closed) - CatmullRom(path, MathF.Max(0, t - 1e-3f), closed)); }
+        for (int i = 0; i <= tubular; i++)
+        {
+            float u = (float)i / tubular, t = UtoT(u); pts[i] = CatmullRom(path, t, closed);
+            float t1 = Math.Max(0, t - 1e-4f), t2 = Math.Min(1, t + 1e-4f); tan[i] = Vector3.Normalize(CatmullRom(path, t2, closed) - CatmullRom(path, t1, closed));
+        }
         var nrm = new Vector3[tubular + 1]; var bin = new Vector3[tubular + 1];
-        var up = MathF.Abs(tan[0].Y) < 0.9f ? Vector3.UnitY : Vector3.UnitX;
-        nrm[0] = Vector3.Normalize(Vector3.Cross(tan[0], up)); bin[0] = Vector3.Cross(tan[0], nrm[0]);
-        for (int i = 1; i <= tubular; i++) { var b = Vector3.Cross(tan[i], nrm[i - 1]); nrm[i] = Vector3.Normalize(Vector3.Cross(b, tan[i])); bin[i] = Vector3.Cross(tan[i], nrm[i]); }
+        { float tx = MathF.Abs(tan[0].X), ty = MathF.Abs(tan[0].Y), tz = MathF.Abs(tan[0].Z), mn = float.MaxValue; var nn = Vector3.UnitX;
+          if (tx <= mn) { mn = tx; nn = Vector3.UnitX; } if (ty <= mn) { mn = ty; nn = Vector3.UnitY; } if (tz <= mn) nn = Vector3.UnitZ;
+          var vec = Vector3.Normalize(Vector3.Cross(tan[0], nn)); nrm[0] = Vector3.Cross(tan[0], vec); bin[0] = Vector3.Cross(tan[0], nrm[0]); }
+        for (int i = 1; i <= tubular; i++)
+        {
+            nrm[i] = nrm[i - 1]; bin[i] = bin[i - 1];
+            var vec = Vector3.Cross(tan[i - 1], tan[i]);
+            if (vec.Length() > 1e-7f)
+            {
+                vec = Vector3.Normalize(vec); float th = MathF.Acos(Math.Clamp(Vector3.Dot(tan[i - 1], tan[i]), -1, 1));
+                nrm[i] = Vector3.Transform(nrm[i], Matrix4x4.CreateFromAxisAngle(vec, th));
+            }
+            bin[i] = Vector3.Cross(tan[i], nrm[i]);
+        }
         var p = new List<float>(); var n = new List<float>(); var uv = new List<float>(); var idx = new List<uint>();
         for (int i = 0; i <= tubular; i++)
         {

@@ -16,7 +16,7 @@ namespace GermBall.Render;
 /// linear fog, instancing for everything that repeats, transparent sorting, and a 2D pass for the HUD and menus.
 /// Windows only, by design: no WebGL limits on buffer sizes, texture sizes or draw counts.
 /// </summary>
-public sealed unsafe class Renderer : IDisposable
+public sealed unsafe class Renderer : IDisposable, IRenderer
 {
     public ID3D11Device Device { get; private set; }
     public ID3D11DeviceContext Ctx { get; private set; }
@@ -35,11 +35,11 @@ public sealed unsafe class Renderer : IDisposable
     readonly bool tearing;
     public int Width { get; private set; }
     public int Height { get; private set; }
-    public bool VSync = true;
+    public bool VSync { get; set; } = true;
     public int DrawCalls { get; private set; }
     public int Triangles { get; private set; }
     /// <summary>Render resolution scale (the original's pixelated look rendered small and scaled up; 1 = native).</summary>
-    public float RenderScale = 1;
+    public float RenderScale { get; set; } = 1;
     // low-resolution scene target (the original rendered a few hundred lines and scaled up with nearest filtering)
     ID3D11Texture2D lowTex, lowDepth; ID3D11RenderTargetView lowRtv; ID3D11ShaderResourceView lowSrv; ID3D11DepthStencilView lowDsv; int lowW, lowH;
     void EnsureLow(int w, int h)

@@ -15,6 +15,11 @@ public sealed unsafe class Window
     readonly Win32.WndProc proc;   // keep the delegate alive
     Win32.RECT savedRect; int savedStyle;
 
+    /// <summary>A window that exists only as a size (tools and tests render offscreen).</summary>
+    public static Window Headless(int w, int h) => new Window(w, h);
+    Window(int w, int h) { Width = w; Height = h; }
+    public bool IsHeadless => Handle == IntPtr.Zero;
+
     public Window(string title, int w, int h)
     {
         try { Win32.SetProcessDpiAwarenessContext(Win32.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2); } catch { }
@@ -38,7 +43,7 @@ public sealed unsafe class Window
     void UpdateSize() { Win32.GetClientRect(Handle, out var r); Width = Math.Max(1, r.Right - r.Left); Height = Math.Max(1, r.Bottom - r.Top); }
 
     /// <summary>Pumps the message queue. Returns false once the window has been closed.</summary>
-    public void Close() { Closed = true; Win32.PostQuitMessage(0); }
+    public void Close() { Closed = true; if (!IsHeadless) Win32.PostQuitMessage(0); }
     public bool Pump()
     {
         while (Win32.PeekMessageW(out var m, IntPtr.Zero, 0, 0, Win32.PM_REMOVE))
@@ -49,13 +54,14 @@ public sealed unsafe class Window
         return !Closed;
     }
 
-    public void SetTitle(string t) => Win32.SetWindowTextW(Handle, t);
+    public void SetTitle(string t) { if (!IsHeadless) Win32.SetWindowTextW(Handle, t); }
 
     public void ToggleFullscreen() => SetFullscreen(!Fullscreen);
     public void SetFullscreen(bool on)
     {
         if (on == Fullscreen) return;
         Fullscreen = on;
+        if (IsHeadless) return;
         if (on)
         {
             savedStyle = Win32.GetWindowLongW(Handle, Win32.GWL_STYLE); Win32.GetWindowRect(Handle, out savedRect);

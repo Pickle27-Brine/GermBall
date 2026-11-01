@@ -76,7 +76,7 @@ public sealed class GameScreen : IScreen
 
     public void DrawUI(Draw2D d, float dt)
     {
-        float Wd = app.Renderer.Width, Ht = app.Renderer.Height;
+        float Wd = app.UiW, Ht = app.UiH;
         if (wd_.playing) { wd_.DrawHUD(d, Wd, Ht, wd_.clockT, dt); return; }
         gui.Begin(d, dt);
         if (over) { DrawOver(d, Wd, Ht); return; }

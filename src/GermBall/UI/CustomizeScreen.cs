@@ -119,15 +119,16 @@ public sealed class CustomizeScreen
         m.Matrices[m.Count++] = Matrix4x4.CreateScale(sx, sy, sz) * Matrix4x4.CreateFromQuaternion(new Quaternion(qx, qy, qz, qw)) * Matrix4x4.CreateTranslation(x, y, z);
     }
 
-    float PanelW => Math.Clamp(app.Renderer.Width * 0.36f, 320, 480);
+    float PanelW => Math.Clamp(app.UiW * 0.36f, 320, 480);
 
     public void Update(float dt)
     {
         T += dt;
-        float Wd = app.Renderer.Width, Ht = app.Renderer.Height, pw = PanelW;
+        float Wd = app.UiW, Ht = app.UiH, pw = PanelW;
         // orbit with the mouse over the preview, wheel to zoom
-        bool overPrev = Input.MouseX < Wd - pw;
-        if (Input.Pressed("Mouse0") && overPrev && Input.MouseY < Ht - 60) { dragView = true; lastMx = Input.MouseX; lastMy = Input.MouseY; }
+        float umx = Input.MouseX / app.UI.Scale, umy = Input.MouseY / app.UI.Scale;
+        bool overPrev = umx < Wd - pw;
+        if (Input.Pressed("Mouse0") && overPrev && umy < Ht - 60) { dragView = true; lastMx = Input.MouseX; lastMy = Input.MouseY; }
         if (!Input.Down("Mouse0")) dragView = false;
         if (dragView) { yaw -= (Input.MouseX - lastMx) * 0.01f; pitch = Math.Clamp(pitch + (Input.MouseY - lastMy) * 0.006f, -0.4f, 1.1f); lastMx = Input.MouseX; lastMy = Input.MouseY; }
         if (Input.Wheel != 0 && overPrev) { float d = Math.Clamp((want?.dist ?? dist) * (Input.Wheel < 0 ? 1.1f : 0.9f), 1.4f, 9); want = (d, want?.ty ?? ty); }
@@ -155,7 +156,7 @@ public sealed class CustomizeScreen
     // ---------------------------------------------------------------- the panel
     public void DrawUI(Draw2D d, float dt)
     {
-        float Wd = app.Renderer.Width, Ht = app.Renderer.Height, pw = PanelW, px = Wd - pw;
+        float Wd = app.UiW, Ht = app.UiH, pw = PanelW, px = Wd - pw;
         gui.Begin(d, dt);
         if (gui.Back) { if (colorOpen != null) colorOpen = null; else { Close(); return; } }
         // the name and the preview bar

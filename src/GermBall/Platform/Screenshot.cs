@@ -9,9 +9,9 @@ namespace GermBall.Platform;
 public static class Screenshot
 {
     static bool pending;
-    public static void Take(Renderer r) => pending = true;
+    public static void Take(IRenderer r) => pending = true;
     /// <summary>Called by screens after the 3D pass when a shot is pending.</summary>
-    public static void Flush(Renderer r)
+    public static void Flush(IRenderer r)
     {
         if (!pending) return; pending = false;
         try

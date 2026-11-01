@@ -11,11 +11,14 @@ namespace GermBall.Render;
 public sealed unsafe class UiFont
 {
     public readonly float Size, Ascent, LineHeight;
+    /// <summary>Atlas pixels per logical pixel (fonts are baked oversampled so scaled-up UI stays sharp).</summary>
+    public float Px = 1;
+    public static int Oversample = 2;
     public readonly Texture Atlas;
     readonly Dictionary<char, Glyph> glyphs = new();
     public struct Glyph { public int X, Y, W, H; public float Advance; }
 
-    const string Chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~·—–…←↑→↓°×±éèàüöä▲▼◆●○■□★♪";
+    const string Chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~·—–…←↑→↓°×±éèàüöä▲▼◆●○■□★♪∞♥✓✕•’‘“”⚠";
 
     [DllImport("gdi32", CharSet = CharSet.Unicode)] static extern IntPtr CreateFontW(int h, int w, int esc, int orient, int weight, uint italic, uint underline, uint strike, uint charset, uint outPrec, uint clipPrec, uint quality, uint pitch, string face);
     [DllImport("gdi32")] static extern IntPtr CreateCompatibleDC(IntPtr dc);
@@ -38,14 +41,25 @@ public sealed unsafe class UiFont
     [StructLayout(LayoutKind.Sequential)]
     struct BITMAPINFO { public int biSize, biWidth, biHeight; public short biPlanes, biBitCount; public int biCompression, biSizeImage, biXPelsPerMeter, biYPelsPerMeter, biClrUsed, biClrImportant; public int colors; }
 
-    public UiFont(string face, int px, int weight = 400)
+    /// <summary>Overrides how fonts are made (the headless tools bake with Pillow instead of GDI).</summary>
+    public static Func<string, int, int, UiFont> Factory;
+    public static UiFont Create(string face, int px, int weight = 400) => Factory?.Invoke(face, px, weight) ?? new UiFont(face, px, weight);
+
+    /// <summary>A font from a pre-baked atlas.</summary>
+    public UiFont(float size, float ascent, float lineHeight, Texture atlas, Dictionary<char, Glyph> g, float px = 1)
     {
-        Size = px;
+        Size = size; Ascent = ascent; LineHeight = lineHeight; Atlas = atlas; glyphs = g; Px = px;
+    }
+
+    public UiFont(string face, int logicalPx, int weight = 400)
+    {
+        Px = Oversample; int px = logicalPx * Oversample;
+        Size = logicalPx;
         IntPtr dc = CreateCompatibleDC(IntPtr.Zero);
         IntPtr font = CreateFontW(-px, 0, 0, 0, weight, 0, 0, 0, 1 /*DEFAULT_CHARSET*/, 0, 0, 4 /*ANTIALIASED_QUALITY*/, 0, face);
         SelectObject(dc, font);
         GetTextMetricsW(dc, out var tm);
-        Ascent = tm.tmAscent; LineHeight = tm.tmHeight + tm.tmExternalLeading;
+        Ascent = tm.tmAscent / Px; LineHeight = (tm.tmHeight + tm.tmExternalLeading) / Px;
         int cell = tm.tmHeight + 4, cols = 16, rows = (Chars.Length + cols - 1) / cols;
         int maxW = 0; var adv = new Dictionary<char, int>();
         foreach (var ch in Chars) { GetTextExtentPoint32W(dc, ch.ToString(), 1, out var sz); adv[ch] = sz.cx; maxW = Math.Max(maxW, sz.cx); }
@@ -73,23 +87,26 @@ public sealed unsafe class UiFont
     public bool TryGlyph(char c, out Glyph g) => glyphs.TryGetValue(c, out g) || glyphs.TryGetValue('?', out g);
     public float Measure(string s, float spacing = 0)
     {
-        float w = 0; foreach (var c in s) if (TryGlyph(c, out var g)) w += g.Advance + spacing;
+        float w = 0; foreach (var c in s) if (TryGlyph(c, out var g)) w += g.Advance / Px + spacing;
         return s.Length > 0 ? w - spacing : 0;
     }
 
     /// <summary>Rasterises text into a callback (x, y relative to the top-left of the line, coverage 0..1), for software canvases.</summary>
     public void Raster(string s, Action<int, int, float> put)
     {
-        float x = 0;
+        float x = 0; int k = Math.Max(1, (int)MathF.Round(Px));
         foreach (var c in s)
         {
             if (!TryGlyph(c, out var g)) continue;
-            for (int yy = 0; yy < g.H; yy++) for (int xx = 0; xx < g.W; xx++)
+            int gw = g.W / k, gh = g.H / k;
+            for (int yy = 0; yy < gh; yy++) for (int xx = 0; xx < gw; xx++)
                 {
-                    byte a = Atlas.Pixels[((g.Y + yy) * Atlas.Width + g.X + xx) * 4 + 3];
-                    if (a > 0) put((int)x + xx, yy, a / 255f);
+                    float a = 0;   // box-filter the oversampled atlas down to logical pixels
+                    for (int sy = 0; sy < k; sy++) for (int sx = 0; sx < k; sx++) a += Atlas.Pixels[((g.Y + yy * k + sy) * Atlas.Width + g.X + xx * k + sx) * 4 + 3];
+                    a /= 255f * k * k;
+                    if (a > 0) put((int)x + xx, yy, a);
                 }
-            x += g.Advance;
+            x += g.Advance / Px;
         }
     }
 }

@@ -116,7 +116,7 @@ public sealed class TitleScreen : IScreen
     public void DrawUI(Draw2D d, float dt)
     {
         if (custom != null) { custom.DrawUI(d, dt); return; }
-        float Wd = app.Renderer.Width, Ht = app.Renderer.Height;
+        float Wd = app.UiW, Ht = app.UiH;
         gui.Begin(d, dt);
         // background: spinning blurred rainbow, scanlines, vignette
         d.Rect(0, 0, Wd, Ht, Draw2D.Col(0x12061f));

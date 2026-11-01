@@ -35,7 +35,7 @@ public sealed class Gui
     public void Begin(Draw2D d, float dt)
     {
         D = d; prev.Clear(); prev.AddRange(cur); cur.Clear();
-        Mx = Input.MouseX; My = Input.MouseY; click = Input.Pressed("Mouse0"); MouseDown = Input.Down("Mouse0"); clickConsumed = false;
+        Mx = Input.MouseX / d.Scale; My = Input.MouseY / d.Scale; click = Input.Pressed("Mouse0"); MouseDown = Input.Down("Mouse0"); clickConsumed = false;
         if (!MouseDown) dragId = null;
         if (Input.MouseDX != 0 || Input.MouseDY != 0 || click) NavUsed = false;
         // directional navigation from the pad's stick and D-pad, or the arrow keys
