@@ -97,7 +97,7 @@ public sealed partial class World
         var Vh = new Vehicle { kind = kind, def = D, x = x, y = y, z = z, px = x, py = y, pz = z, yaw = yaw, pyaw = yaw, hp = D.Hp, max = D.Hp, team = team ?? "neutral", home = (x, z, yaw), pieces = D.Pieces.Select(p => new VPieceState { p = p, hp = p.Hp }).ToArray() };
         vehicles.Add(Vh); return Vh;
     }
-    static readonly Dictionary<string, string> VEH_NAME = new() { ["bike"] = "CHOPPER", ["rover"] = "BLOOD CELL", ["chair"] = "VIRUS" };
+    static readonly Dictionary<string, string> VEH_NAME = new() { ["bike"] = "PLATELET", ["rover"] = "BLOOD CELL", ["chair"] = "VIRUS" };
     void Mount(Actor A, Vehicle Vh)
     {
         if (Vh.rider != null || Vh.dead || Vh.kind == "dropship") return;
@@ -207,7 +207,7 @@ public sealed partial class World
         if (A.human) ShowHint("WIPED OUT");
     }
     // ---------- rover: four sprung wheels, grip, a turret and a boost
-    static readonly WeaponDef ROVER_GUN = new() { Id = "rovergun", Name = "ROVER CANNON", Type = "gun", Dmg = 14, Rate = 9, Spread = 0.025f, Speed = 170, Proj = "bullet", Snd = "boomshot" };
+    static readonly WeaponDef ROVER_GUN = new() { Id = "rovergun", Name = "BLOOD CELL CANNON", Type = "gun", Dmg = 14, Rate = 9, Spread = 0.025f, Speed = 170, Proj = "bullet", Snd = "boomshot" };
     // each wheel rides the ground on its own stiff spring, and the chassis floats on the four of them on softer springs,
     // so it sits tall, follows the terrain, and bounces and pitches over bumps
     const float ROVER_OFF = 0.45f, ROVER_WR = 0.55f;
@@ -337,7 +337,7 @@ public sealed partial class World
         }
     }
     // ---------- hover chair: floats, slides any way you push, turns to your aim, two beams
-    static readonly WeaponDef CHAIR_BEAM = new() { Id = "chairbeam", Name = "CHAIR BEAMS", Type = "beam", Dps = 30, Range = 70, Snd = "beam" };
+    static readonly WeaponDef CHAIR_BEAM = new() { Id = "chairbeam", Name = "VIRUS BEAMS", Type = "beam", Dps = 30, Range = 70, Snd = "beam" };
     void ChairStep(Vehicle Vh, float dt, float m, float wx, float wz)
     {
         Vh.ppitch = Vh.pitch; Vh.proll = Vh.roll;
@@ -467,7 +467,7 @@ public sealed partial class World
         if (Vh.kind == "dropship")
         {
             for (int i = 0; i < 4; i++) Boom(Vh.x + (R() - 0.5f) * 8, Vh.y + (R() - 0.5f) * 3, Vh.z + (R() - 0.5f) * 8, 5);
-            if (Vh.squad != null && !Vh.unloaded) { Vh.squad.dropping = false; Vh.squad.ship = null; Vh.squad.respawnT = 60; if (src != null && src.team == "hero") ShowHint("DROPSHIP DOWN"); }
+            if (Vh.squad != null && !Vh.unloaded) { Vh.squad.dropping = false; Vh.squad.ship = null; Vh.squad.respawnT = 60; if (src != null && src.team == "hero") ShowHint("SPORE CARRIER DOWN"); }
         }
         Vh.respawnT = 45;
     }
@@ -530,7 +530,7 @@ public sealed partial class World
         Vh.y = Vh.py = GroundY(lx, lz) + 70; Vh.state = "approach"; Vh.lx = lx; Vh.lz = lz; Vh.squad = S; Vh.comp = comp; Vh.t = 0; Vh.doorOpen = 0; Vh.unloaded = false;
         return Vh;
     }
-    static readonly WeaponDef DROP_GUN = new() { Id = "dropgun", Name = "DROPSHIP GUN", Type = "gun", Dmg = 7, Rate = 6, Spread = 0.06f, Speed = 120, Proj = "bullet", Snd = "eshot2" };
+    static readonly WeaponDef DROP_GUN = new() { Id = "dropgun", Name = "CARRIER GUN", Type = "gun", Dmg = 7, Rate = 6, Spread = 0.06f, Speed = 120, Proj = "bullet", Snd = "eshot2" };
     void StepDropship(Vehicle Vh, float dt)
     {
         Vh.t += dt; Vh.ppitch = Vh.pitch; Vh.proll = Vh.roll;

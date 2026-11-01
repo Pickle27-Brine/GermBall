@@ -153,7 +153,7 @@ public sealed class TitleScreen : IScreen
         d.Text("MEDICINE VS GERMS · ROLL, SHOOT, SQUASH", x, y + 10, d.MonoSmall, Pal.Hud, "left", 3);
         y += 36;
         float bw = colW;
-        if (gui.Big("openCustom", x, y, bw, 42, "Build your hero", Pal.White, new Vector4(1, 60 / 255f, 172 / 255f, 0.55f)) && !busy) { custom = new CustomizeScreen(app, Custom); return; }
+        if (gui.Big("openCustom", x, y, bw, 42, "Build your hero", Draw2D.Col(0xff6ac8), new Vector4(60 / 255f, 10 / 255f, 48 / 255f, 0.85f)) && !busy) { custom = new CustomizeScreen(app, Custom); return; }
         y += 54;
         float modeH = 392, half = (colW - 12) / 2;
         bool two = colW >= 520;

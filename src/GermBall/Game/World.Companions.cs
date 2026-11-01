@@ -20,9 +20,9 @@ public sealed partial class World
     // =====================================================================
     public static readonly Dictionary<string, (string name, string role, uint css, float[] slot)> COMP = new()
     {
-        ["ally"] = ("VOLT", "marksman", 0x7affef, new[] { 2.2f, 3.5f }),
-        ["ally2"] = ("BRICK", "tank", 0xffc93c, new[] { -2.4f, -1.5f }),
-        ["ally3"] = ("WISP", "scout", 0xff7ae6, new[] { -1.5f, 4.5f }),
+        ["ally"] = ("TAB", "marksman", 0x7affef, new[] { 2.2f, 3.5f }),
+        ["ally2"] = ("CAP", "tank", 0xffc93c, new[] { -2.4f, -1.5f }),
+        ["ally3"] = ("JAB", "scout", 0xff7ae6, new[] { -1.5f, 4.5f }),
     };
     public readonly List<Actor> ALLIES = new();
     public void SpawnCompanion(string type = "ally")
@@ -42,9 +42,9 @@ public sealed partial class World
     // ---------- the voice: what each of them says, by situation (spoken aloud, quietly, with optional subtitles)
     static readonly Dictionary<string, Dictionary<string, string[]>> LINES = new()
     {
-        ["hello"] = new() { ["ally"] = new[] { "Volt online. I'll cover you from the back.", "Volt here. Point me at something." }, ["ally2"] = new[] { "Brick. I go first.", "Brick's here. Stay behind me." }, ["ally3"] = new[] { "Wisp! I'll keep an eye on your back.", "Hiya. I'm fast, you're loud. Good team." } },
-        ["back"] = new() { ["ally"] = new[] { "Back up. Membrane resealed.", "Rebuilt. Where were we?" }, ["ally2"] = new[] { "Put back together. Angrier.", "Brick's back." }, ["ally3"] = new[] { "I'm back! Missed me?", "Reassembled. Let's go!" } },
-        ["down"] = new() { ["ally"] = new[] { "Volt down.", "Lost my footing." }, ["ally2"] = new[] { "Ugh. I'm in pieces.", "Brick down!" }, ["ally3"] = new[] { "Ow ow ow.", "I'm scattered!" } },
+        ["hello"] = new() { ["ally"] = new[] { "Tab online. I'll cover you from the back.", "Tab here. Point me at something." }, ["ally2"] = new[] { "Cap. I go first.", "Cap's here. Stay behind me." }, ["ally3"] = new[] { "Jab! I'll keep an eye on your back.", "Hiya. I'm fast, you're loud. Good team." } },
+        ["back"] = new() { ["ally"] = new[] { "Back up. Membrane resealed.", "Rebuilt. Where were we?" }, ["ally2"] = new[] { "Put back together. Angrier.", "Cap's back." }, ["ally3"] = new[] { "I'm back! Missed me?", "Reassembled. Let's go!" } },
+        ["down"] = new() { ["ally"] = new[] { "Tab down.", "Lost my footing." }, ["ally2"] = new[] { "Ugh. I'm in pieces.", "Cap down!" }, ["ally3"] = new[] { "Ow ow ow.", "I'm scattered!" } },
         ["hurt"] = new() { ["ally"] = new[] { "Taking damage. Repositioning.", "I'm hit. Falling back to cover." }, ["ally2"] = new[] { "Hurting. Still standing.", "That one stung." }, ["ally3"] = new[] { "Yikes, I'm hurt! Rolling out!", "Too hot! Pulling back!" } },
         ["mateDown"] = new() { ["ally"] = new[] { "{who} is down. Covering their spot.", "We lost {who}. Stay sharp." }, ["ally2"] = new[] { "{who}'s down! I've got you.", "They got {who}." }, ["ally3"] = new[] { "No, {who}!", "{who} went to pieces!" } },
         ["contact"] = new() { ["ally"] = new[] { "Contact {dir}. {n} hostiles.", "Colony {dir}, {n} of them." }, ["ally2"] = new[] { "Here they come, {dir}.", "{n} of them {dir}. Good." }, ["ally3"] = new[] { "Company {dir}! {n} of them.", "Germs {dir}!" } },
@@ -54,7 +54,7 @@ public sealed partial class World
         ["mech"] = new() { ["ally"] = new[] { "Tardigrade {dir}. Its legs come off. Aim low.", "Water bear {dir}. Stay mobile, it throws boulders." }, ["ally2"] = new[] { "Big one {dir}. Finally, a fair fight.", "Tardigrade! Watch for flying rocks." }, ["ally3"] = new[] { "Giant water bear {dir}! Keep moving!", "Tardigrade! Run circles round it!" } },
         ["dropship"] = new() { ["ally"] = new[] { "Transport inbound {dir}. Shoot it before it unloads.", "Transport {dir}. Rockets bring it down." }, ["ally2"] = new[] { "Flying sack {dir}. More to smash.", "Transport. Let them come." }, ["ally3"] = new[] { "Transport {dir}! Pop it before it lands!", "Incoming!" } },
         ["boss"] = new() { ["ally"] = new[] { "That's a copy of you. It dashes and homes like you do. Don't stand still.", "Dark double {dir}. Same moves as you, and a lot tougher." }, ["ally2"] = new[] { "That thing wears your face. I don't like it.", "A dark copy {dir}. I'll hold it, you hit it." }, ["ally3"] = new[] { "It's you, but evil!? {dir}!", "Shadow copy {dir}! It can spin dash too!" } },
-        ["bossMate"] = new() { ["ally"] = new[] { "It's wearing my shape. Strange.", "That's me in the dark. Shoot it anyway." }, ["ally2"] = new[] { "Someone stole my face.", "That's a bad Brick. Get him." }, ["ally3"] = new[] { "Hey! That's my look!", "Evil Wisp! Rude." } },
+        ["bossMate"] = new() { ["ally"] = new[] { "It's wearing my shape. Strange.", "That's me in the dark. Shoot it anyway." }, ["ally2"] = new[] { "Someone stole my face.", "That's a bad Cap. Get him." }, ["ally3"] = new[] { "Hey! That's my look!", "Evil Jab! Rude." } },
         ["bossDown"] = new() { ["ally"] = new[] { "The double is down. Good shooting.", "Boss eliminated." }, ["ally2"] = new[] { "Shadow's in pieces. Good.", "Boss down." }, ["ally3"] = new[] { "We beat it!", "Bye bye, evil twin!" } },
         ["grabbed"] = new() { ["ally"] = new[] { "You're grabbed. Mash jump to wriggle free!", "Mash jump! I'm shooting the hands." }, ["ally2"] = new[] { "Hold on! Mash jump!", "Let go of them!" }, ["ally3"] = new[] { "Wiggle! Mash jump!", "Shake loose! Tap jump!" } },
         ["lowHealth"] = new() { ["ally"] = new[] { "You're coming apart. Curl up and roll, bullets glance off.", "Your membrane's thin. Find a repair kit in a stash." }, ["ally2"] = new[] { "You're hurt. Get behind me.", "Roll up. Let me take it." }, ["ally3"] = new[] { "You're in bits! Roll, it makes you bulletproof!", "Find a repair kit, quick!" } },
@@ -70,7 +70,7 @@ public sealed partial class World
         ["vehKill"] = new() { ["ally"] = new[] { "Run them over, why not.", "Vehicular. Effective." }, ["ally2"] = new[] { "Roadkill.", "Ha! Flattened by wheels." }, ["ally3"] = new[] { "Beep beep! Splat!", "Drive-by!" } },
         ["throwKill"] = new() { ["ally"] = new[] { "Killed with a thrown {what}. Resourceful.", "Thrown {what}. Effective." }, ["ally2"] = new[] { "Threw a {what} at it. Respect.", "That {what} did the job." }, ["ally3"] = new[] { "You bonked it with a {what}!", "Yeet! Right on target!" } },
         ["meleeKill"] = new() { ["ally"] = new[] { "Up close, as usual.", "Personal." }, ["ally2"] = new[] { "Now that's how you do it.", "Crunch. Lovely." }, ["ally3"] = new[] { "Smack!", "Punchy!" } },
-        ["died"] = new() { ["ally"] = new[] { "That's {n} times you've burst. Try rolling when it gets loud.", "Rebuilt. You keep charging the {cause}. Let me thin them first." }, ["ally2"] = new[] { "Back again. Stay behind me this time.", "You went in alone. Wait for Brick." }, ["ally3"] = new[] { "You popped! It happens. Try dashing out next time!", "Welcome back! Don't let them corner you." } },
+        ["died"] = new() { ["ally"] = new[] { "That's {n} times you've burst. Try rolling when it gets loud.", "Rebuilt. You keep charging the {cause}. Let me thin them first." }, ["ally2"] = new[] { "Back again. Stay behind me this time.", "You went in alone. Wait for Cap." }, ["ally3"] = new[] { "You popped! It happens. Try dashing out next time!", "Welcome back! Don't let them corner you." } },
         ["sRoller"] = new() { ["ally"] = new[] { "You roll everywhere. Fine by me, it's harder to hit you.", "Do you ever walk?" }, ["ally2"] = new[] { "Always rolling. Like a boulder. I like it.", "Rolling again. Good habit." }, ["ally3"] = new[] { "You roll more than I do!", "Roll roll roll. You're my kind of germ." } },
         ["sFlyer"] = new() { ["ally"] = new[] { "You spend half the fight in the air. They can't track you up there.", "Airborne again. Good angles." }, ["ally2"] = new[] { "You jump a lot. I'll hold the ground.", "Get down here and fight! Kidding." }, ["ally3"] = new[] { "You're always up in the air! Teach me!", "Jump jump dash! You're so bouncy." } },
         ["sBrawler"] = new() { ["ally"] = new[] { "You like getting close. I'll pick off whatever turns to face you.", "Melee again. I'll cover your approach." }, ["ally2"] = new[] { "You fight like me. Up close.", "You and me, in their faces." }, ["ally3"] = new[] { "You love punching things, huh?", "Up close and personal, every time!" } },

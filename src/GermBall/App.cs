@@ -32,15 +32,20 @@ public sealed class App : IDisposable
         Window = window;
         Renderer = renderer ?? new Renderer(Window);
         Audio = new Audio();
-        UI.Display = UiFont.Create("Bahnschrift SemiCondensed", 16, 700);
-        UI.DisplayBig = UiFont.Create("Bahnschrift SemiCondensed", 32, 800);
-        UI.DisplayHuge = UiFont.Create("Bahnschrift Condensed", 112, 800);
-        UI.Mono = UiFont.Create("Consolas", 14);
-        UI.MonoSmall = UiFont.Create("Consolas", 12);
-        UI.DisplaySmall = UiFont.Create("Bahnschrift SemiCondensed", 12, 700);
-        UI.DisplayMid = UiFont.Create("Bahnschrift SemiCondensed", 20, 800);
-        UI.DisplayNum = UiFont.Create("Bahnschrift SemiCondensed", 44, 800);
-        UI.DisplayTitle = UiFont.Create("Bahnschrift Condensed", 60, 800);
+        // the game's own type (data/fonts, SIL Open Font License): Saira Extra Condensed for headlines and numbers,
+        // Chakra Petch's cut corners for labels and buttons, Space Mono for body text
+        UiFont.LoadPrivate(System.IO.Path.Combine(Platform.Paths.Data ?? "data", "fonts"));
+        // (face names as GDI sees them: the heavier cuts carry their weight in the family name)
+        const string HEAD = "Saira ExtraCondensed ExtraBold", HEAD9 = "Saira ExtraCondensed Black", LABEL = "Chakra Petch", LABEL6 = "Chakra Petch SemiBold", BODY = "Space Mono";
+        UI.Display = UiFont.Create(LABEL, 16, 700);
+        UI.DisplayBig = UiFont.Create(HEAD, 34, 800);
+        UI.DisplayHuge = UiFont.Create(HEAD9, 118, 900);
+        UI.Mono = UiFont.Create(BODY, 13);
+        UI.MonoSmall = UiFont.Create(BODY, 11);
+        UI.DisplaySmall = UiFont.Create(LABEL6, 12, 600);
+        UI.DisplayMid = UiFont.Create(LABEL, 19, 700);
+        UI.DisplayNum = UiFont.Create(HEAD, 48, 800);
+        UI.DisplayTitle = UiFont.Create(HEAD9, 64, 900);
         Screen = Game.Boot.CreateTitle(this);
     }
 

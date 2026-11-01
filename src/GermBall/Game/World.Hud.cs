@@ -63,7 +63,7 @@ public sealed partial class World
             d.Skew(x, y, w, 14, Pal.HudFaint);
             float fillW = (w - 6) * Clamp(P.shield / 100, 0, 1); var c = P.shield < 35 ? Pal.Warn : hud;
             for (float sx = 0; sx < fillW; sx += 11) d.Skew(x + 3 + sx, y + 2, MathF.Min(9, fillW - sx), 10, c);
-            d.Text(P.alive ? "SHIELD " + MathF.Round(P.shield) : "SHATTERED", Wd - 18, y + 19, d.DisplaySmall, hud, "right", 2);
+            d.Text(P.alive ? "COATING " + MathF.Round(P.shield) : "DISSOLVED", Wd - 18, y + 19, d.DisplaySmall, hud, "right", 2);
         }
         // ---- companions, under the shield
         {
@@ -149,7 +149,7 @@ public sealed partial class World
             float ang = cam.yaw - P.facing, ca = MathF.Cos(ang), sa = MathF.Sin(ang);
             Vector2 Rot(float x, float y) => new(cx + x * ca - y * sa, cy + x * sa + y * ca);
             d.Tri(Rot(0, -6), Rot(4, 4), Rot(-4, 4), Pal.Warn);
-            d.Text("TRACKER · 120 M", cx, oy + 152, d.DisplaySmall, hud, "center", 1.7f);
+            d.Text("SCANNER · 120 M", cx, oy + 152, d.DisplaySmall, hud, "center", 1.7f);
         }
 
         // ---- comms: companion lines, bottom left above the tracker
@@ -173,7 +173,7 @@ public sealed partial class World
             float rx = Wd - 18, y = Ht - 18 - 100;
             d.Text(sp.ToString("0.0"), rx, y, d.DisplayNum, hud, "right");
             d.Text("M/S", rx, y + 42, d.MonoSmall, hud, "right", 2);
-            string state = !P.alive ? "SHATTERED" : P.vehicle != null ? "RIDING" : P.ragdoll != null ? "TUMBLING" : P.grabbed != null ? "GRABBED" : P.flungT > 0 ? "THROWN" : P.stunT > 0 ? "KNOCKED DOWN" : P.pound != 0 ? "GROUND POUND" : P.charging ? "SPIN DASH" : P.homingT > 0 ? "HOMING DASH" : P.dashT > 0 ? "AIR DASH" : P.hover ? "HOVER" : P.hold != null || P.holdA != null ? "CARRYING" : !P.ground ? "AIRBORNE" : P.rolling ? "ROLLING" : P.skid ? "SKIDDING" : sp > TOP * 0.98f ? "TOP SPEED" : sp > 0.3f ? "RUNNING" : "STANDING";
+            string state = !P.alive ? "DISSOLVED" : P.vehicle != null ? "RIDING" : P.ragdoll != null ? "TUMBLING" : P.grabbed != null ? "GRABBED" : P.flungT > 0 ? "THROWN" : P.stunT > 0 ? "KNOCKED DOWN" : P.pound != 0 ? "GROUND POUND" : P.charging ? "SPIN DASH" : P.homingT > 0 ? "HOMING DASH" : P.dashT > 0 ? "AIR DASH" : P.hover ? "HOVER" : P.hold != null || P.holdA != null ? "CARRYING" : !P.ground ? "AIRBORNE" : P.rolling ? "ROLLING" : P.skid ? "SKIDDING" : sp > TOP * 0.98f ? "TOP SPEED" : sp > 0.3f ? "RUNNING" : "STANDING";
             d.Text(state, rx, y + 58, d.DisplaySmall, P.rolling || P.skid ? Pal.Warn : hud, "right", 2.6f);
             float gx = rx - 160, gy = y + 78;
             d.Frame(gx, gy, 160, 6, Pal.HudDim); d.Rect(gx + 1, gy + 1, 158 * MathF.Min(1, sp / ROLL_CAP), 4, hud);
@@ -271,7 +271,7 @@ public sealed partial class World
                 var col = w != null && w.over ? (((int)(clockT * 6.6f) & 1) == 0 ? Pal.Hot : Pal.A(Pal.Hot, 0.4f)) : on ? Pal.Warn : hud;
                 float a = def == null && !on ? 0.55f : on || (w != null && w.over) ? 1 : 0.82f;
                 d.Rect(x, y, sw, 52, new Vector4(10 / 255f, 14 / 255f, 26 / 255f, 0.62f)); d.Frame(x, y, sw, 52, Pal.A(on ? Pal.Warn : w != null && w.over ? Pal.Hot : Pal.HudDim, a));
-                string title = (k + 1) + " · " + (def != null ? def.Name : "PSEUDOPODS");
+                string title = (k + 1) + " · " + (def != null ? def.Name : "BARE HANDS");
                 while (title.Length > 4 && d.DisplaySmall.Measure(title, 1.7f) > sw - 14) title = title[..^2] + "…";
                 d.Text(title, x + 7, y + 4, d.DisplaySmall, Pal.A(col, a), "left", 1.7f);
                 if (def != null)
@@ -307,8 +307,8 @@ public sealed partial class World
             if (near != null)
             {
                 string key = padActive ? "HOLD X" : Platform.Input.Label(BINDS["use"][0]);
-                string txt = near == ME ? "CLIMB OUT" : near is Actor M && M.type == "mecha" ? "PILOT BATTLE MECHA" : near == P.vehicle ? "GET OFF"
-                    : near is Vehicle Vh ? (Vh.kind == "bike" ? "RIDE CHOPPER" : Vh.kind == "rover" ? "DRIVE ROVER" : "BOARD HOVER CHAIR")
+                string txt = near == ME ? "CLIMB OUT" : near is Actor M && M.type == "mecha" ? "PILOT MED-MECH" : near == P.vehicle ? "GET OFF"
+                    : near is Vehicle Vh ? (Vh.kind == "bike" ? "RIDE PLATELET" : Vh.kind == "rover" ? "DRIVE BLOOD CELL" : "BOARD VIRUS")
                     : near is Item it ? (W.slots.Any(w => w != null && w.id == it.wid) ? "TAKE AMMO · " : W.slots.All(w => w != null) ? "SWAP FOR " : "TAKE ") + ItemLabel(it) : "";
                 var f = d.MonoSmall; float kw = f.Measure(key) + 10, tw = f.Measure(txt, 1.4f), w = kw + 6 + tw + 18, x = Wd / 2 - w / 2, y = Ht / 2 + 46;
                 d.Rect(x, y, w, 22, new Vector4(10 / 255f, 22 / 255f, 34 / 255f, 0.6f)); d.Frame(x, y, w, 22, Pal.Warn);

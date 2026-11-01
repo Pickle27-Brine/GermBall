@@ -38,12 +38,12 @@ public sealed partial class World
     public string DebugVehicle(string k)
     {
         var (x, z) = Ahead(k == "rover" || k == "mecha" ? 9 : 5);
-        if (k == "mecha") { SpawnMecha(x, z, P.facing); return "A battle mecha, waiting for a pilot. Walk up to it and press interact."; }
+        if (k == "mecha") { SpawnMecha(x, z, P.facing); return "A Med-Mech, waiting for a pilot. Walk up to it and press interact."; }
         var Vh = MakeVehicle(k, x, z, P.facing, "neutral"); Vh.home = (x, z, P.facing);
         return k switch { "bike" => "A chopper: jump twice to jump-dash, tip it with the stick in the air, and land on its wheels.", "rover" => "A rover: roll button boosts, the trigger fires the turret.", _ => "A hover chair: slides any way you push, the trigger fires the armrest beams." };
     }
 
-    public static readonly (string key, string name)[] DEBUG_OBJECTS = { ("crate", "Spore pod"), ("ball", "Volvox ball"), ("rock", "Calcified nodule"), ("spear", "Stinger"), ("bomb", "Toxin vesicle"), ("block", "Chitin block"), ("steelball", "Pearl"), ("girder", "Bone"), ("ammo", "Ammo"), ("repair", "Repair kit"), ("homing", "Homing dash charges"), ("weapon", "Random weapon") };
+    public static readonly (string key, string name)[] DEBUG_OBJECTS = { ("crate", "Spore pod"), ("ball", "Volvox ball"), ("rock", "Calcified nodule"), ("spear", "Stinger"), ("bomb", "Toxin vesicle"), ("block", "Chitin block"), ("steelball", "Pearl"), ("girder", "Cartilage rod"), ("ammo", "Ammo"), ("repair", "Med kit"), ("homing", "Adrenaline (homing dash)"), ("weapon", "Random weapon") };
     public string DebugObject(string k)
     {
         var (x, z) = Ahead(k == "girder" ? 5 : 4); string name = DEBUG_OBJECTS.First(o => o.key == k).name;

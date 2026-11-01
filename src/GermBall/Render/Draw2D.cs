@@ -48,7 +48,11 @@ public sealed class Draw2D
         => Quad(new(x, y), new(x + w, y), new(x + w, y + h), new(x, y + h), tint ?? Vector4.One, t, u0, v0, u1, v1);
     public void Frame(float x, float y, float w, float h, Vector4 c, float t = 1)
     {
-        Rect(x, y, w, t, c); Rect(x, y + h - t, w, t, c); Rect(x, y + t, t, h - 2 * t, c); Rect(x + w - t, y + t, t, h - 2 * t, c);
+        // lines at least one real pixel thick, snapped to the pixel grid: at UI scales under 1 a thin edge could fall between
+        // pixel centres and vanish (buttons lost their bottom border at 720p)
+        float sc = MathF.Max(0.01f, Scale); t = MathF.Max(t, 1 / sc);
+        float x0 = MathF.Round(x * sc) / sc, y0 = MathF.Round(y * sc) / sc, x1 = MathF.Round((x + w) * sc) / sc, y1 = MathF.Round((y + h) * sc) / sc;
+        Rect(x0, y0, x1 - x0, t, c); Rect(x0, y1 - t, x1 - x0, t, c); Rect(x0, y0 + t, t, y1 - y0 - 2 * t, c); Rect(x1 - t, y0 + t, t, y1 - y0 - 2 * t, c);
     }
     public void Line(Vector2 a, Vector2 b, Vector4 c, float w = 1)
     {

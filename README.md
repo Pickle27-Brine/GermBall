@@ -95,6 +95,16 @@ Guns use magazines. Spare magazines are stored and shown as pips on the weapon s
 - **Title screen.** Pre-rendered overhead views of each map pan and crossfade behind the menu; hovering over a map previews it. Flip George Lopez and he looks up a fresh fun fact online. Without a connection he uses an offline list.
 - **UI scaling.** Fonts and 2D UI scale with window height, and text is rendered at 2× oversampling.
 
+## Round 4 changes
+
+- **Body building.** The torso is three segments: chest, abdomen (merged into the chest until you give it a shape) and waist. New shapes include trapezoid, hex, ribbed, claw, mitt and wedge. Every segment has a taper control and a surface detail (score, rivets, vents, stripe, rings, ridges). The head has visor and antenna options. A Build tab sets height, arm length, leg length and shoulders. The chest, abdomen and waist can be dragged into position like the limbs. Limbs are automatically kept out of the chest and apart from each other.
+- **Armour** is curved shells that wrap each segment at its own radius, with domed caps on the helmet, shoulders and knees. Plates are smooth with a glowing core and trim, Shells are overlapping chitin bands, and Angular adds facets and spikes.
+- **Animation.** Pausing freezes every animation. Poses ease into each other: quickly during swings, instantly after a teleport. No body part goes under the floor. Every family of weapons has its own reload. The shotgun loads one shell at a time, and firing interrupts it once a shell is in. Switching weapons draws the new one up from low.
+- **The host body.** Bones are gone; cysts give cover in the open. Organs and vessels collide where you see them. Villi are spring-simulated: they sway in a current, part around you and ripple from blasts. Acid pools only fill real pits and are wave-simulated. Germs bleed fluid in their own colours, which pools and runs downhill.
+- **Combat.** A jump dash ragdolls small germs. Brutes take two dashes and phage titans four. Each weapon family has its own stick curve, turn speed, scoped-in sensitivity and aim-assist cone, pull, slowdown and range. Heroes are a little smaller.
+- **Maps.** Bloodstream, Host Zero and Belly of the Beast (sandbox); Lymph Node, Neural Cortex, Villus Ridge and The Gullet (waves). Wave arenas end at a visible cell membrane at the foot of the basin.
+- **Menus and names.** Saira Extra Condensed, Chakra Petch and Space Mono are bundled in `data/fonts` under the SIL Open Font License. Buttons and panels are restyled. Controller navigation needs a firmer push and repeats more slowly. Text no longer clips in the pause card. The theme runs through all the names: medical weapons, Tab, Cap and Jab, the Clinic, colonies, biofilms, the coating meter and the scanner.
+
 ## Engine changes for Windows
 
 - **Render resolution is a setting, not a limit.** The original drew a few hundred lines and scaled them up. That look is still the default (480p, nearest-neighbour upscale). 720p, 1080p and native are options too.
@@ -121,7 +131,7 @@ It also contains a software rasteriser that mirrors the D3D11 renderer, so every
 dotnet run --project tools/Smoke -c Release -- data --shots out 1280 720
 ```
 
-The modes are `interior`, `title`, `custom`, `heroes`, `lineup`, `vehicles`, `weapons`, `maps`, `cast`, `sandbox-random`, `waves-bowl`, `sandbox-leviathan` and `game`. Pass one as the last argument to render only that mode. The map stills in `data/ui/maps/` and `data/ui/cast.png` were made this way.
+The modes are `interior`, `fluids`, `title`, `custom`, `heroes`, `lineup`, `vehicles`, `weapons`, `maps`, `cast`, `sandbox-random`, `waves-bowl`, `sandbox-leviathan` and `game`. Pass one as the last argument to render only that mode. The map stills in `data/ui/maps/` and `data/ui/cast.png` were made this way.
 
 ## Layout
 

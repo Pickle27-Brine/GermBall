@@ -65,7 +65,7 @@ public sealed partial class World
         (float, float)? Spot(float R) { for (int k = 0; k < 300; k++) { float x = (r() * 2 - 1) * lim, z = (r() * 2 - 1) * lim; if (Free(x, z, R)) return (x, z); } return null; }
         if (arena)
         {
-            L.Pads.Add(new Pad { X = 0, Z = 40, R = 15, H = 8, Kind = "base", Name = "FIELD STATION", Fall = 12 });
+            L.Pads.Add(new Pad { X = 0, Z = 40, R = 15, H = 8, Kind = "base", Name = "FIELD CLINIC", Fall = 12 });
             L.Craters.Add(new Crater { X = 0, Z = -14, R = 16, D = 7, Acid = true });
             L.Bowl = new Bowl { R = 76, H = 40 }; L.SpireR = 70;
             foreach (var (kind, x, z) in new[] { ("heart", -44f, -30f), ("lung", 46f, -26f), ("liver", -40f, 40f), ("kidney", 42f, 44f) }) L.Organs.Add(MakeOrgan(kind, x, z, r));
@@ -73,9 +73,9 @@ public sealed partial class World
         }
         else
         {
-            L.Pads.Add(new Pad { X = 0, Z = 190, R = 30, H = 8, Kind = "base", Name = "FIELD STATION" });
+            L.Pads.Add(new Pad { X = 0, Z = 190, R = 30, H = 8, Kind = "base", Name = "FIELD CLINIC" });
             var T = new[] { ("MARROW HOLLOW", -150f, 60f), ("LYMPH NODE", 150f, 80f), ("CELL GARDEN", 30f, -40f) };
-            var O = new[] { ("PARASITE NEST", -200f, -170f), ("TUMOR CAMP", 200f, -150f), ("SPLEEN CAMP", -40f, -230f) };
+            var O = new[] { ("PARASITE NEST", -200f, -170f), ("TUMOR BIOFILM", 200f, -150f), ("SPLEEN BIOFILM", -40f, -230f) };
             foreach (var (n, x, z) in T) L.Pads.Add(new Pad { X = x + (r() - 0.5f) * 30, Z = z + (r() - 0.5f) * 30, R = 34 + r() * 8, H = 6, Kind = "town", Name = n, Fall = 26 });
             foreach (var (n, x, z) in O) L.Pads.Add(new Pad { X = x + (r() - 0.5f) * 30, Z = z + (r() - 0.5f) * 30, R = 40, H = 8, Kind = "outpost", Name = n, Fall = 28 });
             L.Craters.Add(new Crater { X = 120, Z = -40, R = 28, D = 9, Acid = true }); L.Craters.Add(new Crater { X = -100, Z = -60, R = 18, D = 7, Acid = true });
@@ -139,9 +139,9 @@ public sealed partial class World
         if (cfg.Map == "leviathan" || cfg.Map == "gut") return OrganicLayout(L, Rng(cfg.Seed * 31 + 7), cfg.Mode != "sandbox");
         if (cfg.Mode == "sandbox" && cfg.Map == "classic")
         {
-            PadA(0, 40, 30, 6, "base", "HOME BASE"); PadA(0, -48, 42, 7, "town", "GLASS TOWN"); PadA(10, -205, 46, 12, "outpost", "NORTH CAMP");
-            PadA(215, -40, 42, 24, "outpost", "MESA CAMP", 34); PadA(-30, 212, 42, 0, "outpost", "CRATER CAMP", 30); PadA(-222, -62, 42, 16, "outpost", "WEST CAMP");
-            PadA(150, 150, 38, 5, "town", "SPORE TOWN"); PadA(-165, -215, 36, 10, "town", "RUST TOWN"); PadA(-140, 95, 30, 6, "town", "BONE TOWN");
+            PadA(0, 40, 30, 6, "base", "CLINIC"); PadA(0, -48, 42, 7, "town", "PLASMA COLONY"); PadA(10, -205, 46, 12, "outpost", "NORTH BIOFILM");
+            PadA(215, -40, 42, 24, "outpost", "MESA BIOFILM", 34); PadA(-30, 212, 42, 0, "outpost", "CRATER BIOFILM", 30); PadA(-222, -62, 42, 16, "outpost", "WEST BIOFILM");
+            PadA(150, 150, 38, 5, "town", "LYMPH COLONY"); PadA(-165, -215, 36, 10, "town", "MARROW COLONY"); PadA(-140, 95, 30, 6, "town", "DERMIS COLONY");
             L.Craters = new() { new() { X = -95, Z = -10, R = 16, D = 6 }, new() { X = 95, Z = -110, R = 20, D = 8 }, new() { X = 70, Z = 255, R = 22, D = 7 }, new() { X = -250, Z = 160, R = 18, D = 7 }, new() { X = 265, Z = 95, R = 16, D = 6 }, new() { X = -95, Z = -130, R = 14, D = 5 } };
             L.Mog = new Mogul { X = 95, Z = 60, R = 40 };
             L.Chans = new() { "canyon", "gully" };
@@ -152,7 +152,7 @@ public sealed partial class World
         L.Ox = r() * 900; L.Oz = r() * 900; L.Fs = 0.8f + r() * 0.5f; L.Amp = 0.75f + r() * 0.7f; L.Hue = r(); L.Sky = (int)MathF.Floor(r() * 4); L.SpireSeed = (int)MathF.Floor(r() * 1e6f);
         for (int i = 0; i < 4; i++) { float a = i / 4f * 6.28f + r(); L.Hills.Add(new[] { MathF.Cos(a) * (250 + r() * 60), MathF.Sin(a) * (250 + r() * 60), 25 + r() * 35, 45 + r() * 25 }); }
         bool Far(float x, float z, float rad) { foreach (var p in L.Pads) if (Hypot(x - p.X, z - p.Z) < p.R + rad + 40) return false; return true; }
-        string[] NAMES = { "GLASS", "SPORE", "RUST", "BONE", "HUSK", "PRISM", "WEEP", "CHROME", "ASH", "LULL", "MOTH", "VEIL" }; var used = new HashSet<string>();
+        string[] NAMES = { "PLASMA", "LYMPH", "MARROW", "DERMIS", "AORTA", "CORTEX", "SINUS", "PLEURA", "SEROUS", "VENULE", "MUCOSA", "HELIX" }; var used = new HashSet<string>();
         string Nm() { string k; do k = NAMES[(int)MathF.Floor(r() * NAMES.Length)]; while (used.Contains(k) && used.Count < NAMES.Length); used.Add(k); return k; }
         void Place(int n, string kind, float rmin, float rmax, float lim, string suffix)
         {
@@ -164,9 +164,9 @@ public sealed partial class World
         }
         if (cfg.Mode == "sandbox")
         {
-            PadA((r() * 2 - 1) * 140, (r() * 2 - 1) * 140, 30, 6 + r() * 8, "base", "HOME BASE");
-            Place(3 + (int)MathF.Floor(r() * 3), "town", 30, 46, 250, " TOWN");
-            Place(3 + (int)MathF.Floor(r() * 3), "outpost", 38, 46, 260, " CAMP");
+            PadA((r() * 2 - 1) * 140, (r() * 2 - 1) * 140, 30, 6 + r() * 8, "base", "CLINIC");
+            Place(3 + (int)MathF.Floor(r() * 3), "town", 30, 46, 250, " COLONY");
+            Place(3 + (int)MathF.Floor(r() * 3), "outpost", 38, 46, 260, " BIOFILM");
             for (int k = 0; k < 60 && L.Craters.Count < 4 + r() * 5; k++) { float x = (r() * 2 - 1) * 290, z = (r() * 2 - 1) * 290, R = 12 + r() * 12; if (Far(x, z, R)) L.Craters.Add(new Crater { X = x, Z = z, R = R, D = 4 + r() * 5 }); }
             for (int k = 0; k < 40; k++) { float x = (r() * 2 - 1) * 240, z = (r() * 2 - 1) * 240; if (Far(x, z, 40)) { L.Mog = new Mogul { X = x, Z = z, R = 30 + r() * 15 }; break; } }
             int nc = (int)MathF.Floor(r() * 3);
@@ -184,7 +184,7 @@ public sealed partial class World
         var m = cfg.Map;
         if (m == "bowl")
         {
-            PadA(0, 0, 17, 8, "base", "HOME BASE", 14);
+            PadA(0, 0, 17, 8, "base", "CLINIC", 14);
             string[] dir = { "NORTH", "EAST", "SOUTH", "WEST" };
             for (int i = 0; i < 4; i++) { float a = i / 4f * 6.28f + 0.6f; PadA(MathF.Cos(a) * 46, MathF.Sin(a) * 46, 19, 7 + i * 0.5f, "town", dir[i] + " CLUSTER", 12); }
             L.Craters = new() { new() { X = 30, Z = -24, R = 7, D = 3 }, new() { X = -32, Z = 26, R = 8, D = 3 } };
@@ -192,13 +192,13 @@ public sealed partial class World
         }
         else if (m == "city")
         {
-            PadA(0, 0, 52, 8, "town", "GLASS CITY", 16); PadA(0, 0, 13, 8, "base", "HOME BASE", 8);
+            PadA(0, 0, 52, 8, "town", "CORTEX", 16); PadA(0, 0, 13, 8, "base", "CLINIC", 8);
             L.Bowl = new Bowl { R = 70, H = 40 }; L.Spires = 0; L.Hue = 0.55f; L.Sky = 2; L.Amp = 0.5f;
         }
         else
         {
-            PadA(0, 0, 16, 10, "base", "HOME BASE", 12);
-            PadA(-46, -22, 24, 11, "outpost", "OLD FORT A", 14); PadA(46, -22, 24, 11, "outpost", "OLD FORT B", 14);
+            PadA(0, 0, 16, 10, "base", "CLINIC", 12);
+            PadA(-46, -22, 24, 11, "outpost", "BIOFILM FORT A", 14); PadA(46, -22, 24, 11, "outpost", "BIOFILM FORT B", 14);
             L.Chans.Add(new ChannelDef { Ctrl = new() { (-90, 52), (-40, 34), (0, 46), (40, 34), (90, 52) }, W = 6, Flat = 2.5f, Wall = 4, Floor = (_, _, _) => 6 });
             L.Bowl = new Bowl { R = 78, H = 38 }; L.Spires = 22; L.SpireR = 72; L.Hue = 0.8f; L.Sky = 3; L.Amp = 0.8f;
         }

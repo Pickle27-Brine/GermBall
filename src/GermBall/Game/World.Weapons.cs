@@ -31,32 +31,32 @@ public sealed partial class World
     static WeaponDef Wd(string id, string name, string type, int cls, Action<WeaponDef> f) { var d = new WeaponDef { Id = id, Name = name, Type = type, Cls = cls }; f(d); return d; }
     public static readonly Dictionary<string, WeaponDef> WPN = new WeaponDef[]
     {
-        Wd("pistol", "SPORE PISTOL", "gun", 0, d => { d.Dmg = 9; d.Rate = 5; d.Ammo = 36; d.Max = 72; d.Clip = 12; d.Reload = 1.3f; d.Spread = 0.02f; d.Speed = 120; d.Proj = "bullet"; d.Snd = "shot"; }),
-        Wd("revolver", "CYST REVOLVER", "gun", 0, d => { d.Dmg = 24; d.Rate = 1.8f; d.Ammo = 18; d.Max = 36; d.Clip = 6; d.Reload = 1.8f; d.Spread = 0.008f; d.Speed = 150; d.Knock = 3; d.Proj = "bullet"; d.Snd = "boomshot"; }),
-        Wd("smg", "CILIA SMG", "gun", 0, d => { d.Auto = true; d.Dmg = 5; d.Rate = 14; d.Ammo = 120; d.Max = 240; d.Clip = 30; d.Reload = 1.5f; d.Spread = 0.07f; d.Speed = 110; d.Proj = "bullet"; d.Snd = "shot"; }),
-        Wd("rifle", "FLAGELLUM RIFLE", "gun", 0, d => { d.Auto = true; d.Dmg = 8; d.Rate = 9; d.Ammo = 90; d.Max = 180; d.Clip = 30; d.Reload = 1.8f; d.Spread = 0.028f; d.Speed = 150; d.Proj = "bullet"; d.Snd = "eshot2"; }),
-        Wd("hunting", "STALK RIFLE", "gun", 0, d => { d.Dmg = 32; d.Rate = 1.1f; d.Ammo = 16; d.Max = 32; d.Clip = 4; d.Reload = 2.2f; d.Spread = 0.004f; d.Speed = 220; d.Zoom = 0.55f; d.Proj = "bullet"; d.Snd = "boomshot"; d.AimTime = 0.9f; }),
-        Wd("sniper", "SPICULE SNIPER", "gun", 0, d => { d.Dmg = 70; d.Rate = 0.6f; d.Ammo = 8; d.Max = 16; d.Clip = 4; d.Reload = 2.6f; d.Spread = 0; d.Speed = 320; d.Zoom = 0.28f; d.Pierce = 2; d.Proj = "bullet"; d.Snd = "boomshot"; d.AimTime = 1.4f; }),
-        Wd("shotgun", "SPORE BURSTER", "gun", 1, d => { d.Dmg = 7; d.Pellets = 9; d.Rate = 1.1f; d.Ammo = 18; d.Max = 36; d.Clip = 6; d.Reload = 2.2f; d.Spread = 0.13f; d.Speed = 90; d.Knock = 2; d.Proj = "pellet"; d.Snd = "boomshot"; d.Range = 14; }),
-        Wd("rocket", "VESICLE LAUNCHER", "gun", 2, d => { d.Dmg = 70; d.Radius = 6; d.Blast = 1500; d.Rate = 0.8f; d.Ammo = 5; d.Max = 10; d.Clip = 1; d.Reload = 2.2f; d.Spread = 0.01f; d.Speed = 40; d.Proj = "rocket"; d.Snd = "missile"; }),
-        Wd("bow", "TENDRIL BOW", "bow", 2, d => { d.Dmg = 16; d.Dmg2 = 50; d.Speed = 26; d.Speed2 = 72; d.Ammo = 20; d.Max = 40; d.Clip = 1; d.Reload = 0.4f; d.Grav = 14; d.ChargeT = 0.8f; d.Proj = "arrow"; d.Snd = "throw"; }),
-        Wd("knives", "TOXIN BARBS", "gun", 2, d => { d.Dmg = 26; d.Rate = 3; d.Ammo = 12; d.Max = 24; d.Clip = 3; d.Reload = 0.9f; d.Spread = 0.01f; d.Speed = 46; d.Grav = 10; d.Proj = "knife"; d.Snd = "throw"; }),
-        Wd("darts", "NEMATOCYST DARTS", "gun", 0, d => { d.Dmg = 11; d.Rate = 4; d.Ammo = 30; d.Max = 60; d.Clip = 3; d.Reload = 1.0f; d.Spread = 0.015f; d.Speed = 85; d.Grav = 3; d.Proj = "dart"; d.Snd = "dart"; }),
-        Wd("needler", "STINGER SWARM", "gun", 1, d => { d.Auto = true; d.Dmg = 4; d.Rate = 9; d.Ammo = 60; d.Max = 120; d.Clip = 20; d.Reload = 2; d.Spread = 0.06f; d.Speed = 45; d.Home = 0.6f; d.Proj = "needle"; d.Snd = "needle"; }),
-        Wd("plasma", "PLASMID PISTOL", "charge", 1, d => { d.Energy = true; d.Heat = 0.07f; d.Dmg = 9; d.Dmg2 = 42; d.Rate = 5; d.Speed = 60; d.Speed2 = 45; d.ChargeT = 1.0f; d.Heat2 = 0.55f; d.Proj = "plasma"; d.Snd = "plasma"; }),
-        Wd("laserpistol", "BIOLUME PISTOL", "gun", 0, d => { d.Energy = true; d.Heat = 0.065f; d.Dmg = 11; d.Rate = 6; d.Spread = 0.008f; d.Speed = 420; d.Proj = "laser"; d.Snd = "laser"; }),
-        Wd("armcannon", "ENZYME BEAM", "beam", 1, d => { d.Energy = true; d.Heat = 0.34f; d.Dps = 55; d.Range = 80; d.Snd = "beam"; }),
-        Wd("chargecannon", "MITOCHONDRIA CANNON", "charge", 2, d => { d.Dmg = 18; d.Dmg2 = 130; d.Ammo = 8; d.Max = 16; d.Clip = 1; d.Reload = 0.6f; d.Speed = 260; d.ChargeT = 1.3f; d.Beam2 = true; d.Pierce = 4; d.Proj = "laser"; d.Snd = "zap"; }),
-        Wd("bat", "BONE CLUB", "melee", 3, d => { d.Dmg = 22; d.Rate = 1.7f; d.Range = 1.9f; d.Arc = 1.4f; d.Knock = 15; d.Up = 6; d.Snd = "bat"; }),
-        Wd("hammer", "SQUASH HAMMER", "melee", 3, d => { d.Dmg = 44; d.Rate = 0.75f; d.Range = 2.1f; d.Arc = 1.2f; d.Knock = 10; d.Up = 9; d.Squash = true; d.Snd = "boing"; }),
-        Wd("sledge", "CALCIUM MAUL", "melee", 3, d => { d.Dmg = 36; d.Rate = 0.9f; d.Range = 2.0f; d.Arc = 1.1f; d.Knock = 12; d.Up = 4; d.Sever = true; d.Snd = "slam"; }),
-        Wd("knife", "CHITIN SHIV", "melee", 3, d => { d.Dmg = 16; d.Rate = 3; d.Range = 1.3f; d.Arc = 1.0f; d.Knock = 2; d.Up = 0; d.Snd = "punch"; }),
-        Wd("hmg", "CILIA GATLING", "gun", 0, d => { d.Auto = true; d.Dmg = 11; d.Rate = 10; d.Ammo = 400; d.Max = 800; d.Clip = 80; d.Reload = 2.4f; d.Spread = 0.055f; d.Speed = 170; d.Knock = 2.5f; d.Proj = "bullet"; d.Snd = "boomshot"; }),
-        Wd("mechmg", "WATER-BEAR CHAINGUN", "gun", 0, d => { d.Auto = true; d.Energy = true; d.Heat = 0.022f; d.Dmg = 11; d.Rate = 15; d.Spread = 0.035f; d.Speed = 200; d.Knock = 2; d.Proj = "bullet"; d.Snd = "eshot2"; }),
-        Wd("mechhoming", "SEEKER SPORES", "gun", 2, d => { d.Auto = true; d.Energy = true; d.Heat = 0.15f; d.Dmg = 50; d.Radius = 4.5f; d.Blast = 1500; d.Rate = 3.2f; d.Spread = 0.18f; d.Speed = 30; d.Home = 1.8f; d.Life = 4; d.Proj = "rocket"; d.Snd = "missile"; }),
-        Wd("mechbomb", "SPORE MORTAR", "gun", 2, d => { d.Auto = true; d.Energy = true; d.Heat = 0.24f; d.Dmg = 70; d.Radius = 6.5f; d.Blast = 2400; d.Rate = 1.3f; d.Spread = 0.02f; d.Speed = 36; d.Grav = 16; d.Life = 5; d.Proj = "rocket"; d.Snd = "boomshot"; }),
+        Wd("pistol", "DOSE PISTOL", "gun", 0, d => { d.Dmg = 9; d.Rate = 5; d.Ammo = 36; d.Max = 72; d.Clip = 12; d.Reload = 1.3f; d.Spread = 0.02f; d.Speed = 120; d.Proj = "bullet"; d.Snd = "shot"; }),
+        Wd("revolver", "SIX-DOSE REVOLVER", "gun", 0, d => { d.Dmg = 24; d.Rate = 1.8f; d.Ammo = 18; d.Max = 36; d.Clip = 6; d.Reload = 1.8f; d.Spread = 0.008f; d.Speed = 150; d.Knock = 3; d.Proj = "bullet"; d.Snd = "boomshot"; }),
+        Wd("smg", "PIPETTE SMG", "gun", 0, d => { d.Auto = true; d.Dmg = 5; d.Rate = 14; d.Ammo = 120; d.Max = 240; d.Clip = 30; d.Reload = 1.5f; d.Spread = 0.07f; d.Speed = 110; d.Proj = "bullet"; d.Snd = "shot"; }),
+        Wd("rifle", "SALINE RIFLE", "gun", 0, d => { d.Auto = true; d.Dmg = 8; d.Rate = 9; d.Ammo = 90; d.Max = 180; d.Clip = 30; d.Reload = 1.8f; d.Spread = 0.028f; d.Speed = 150; d.Proj = "bullet"; d.Snd = "eshot2"; }),
+        Wd("hunting", "LANCET RIFLE", "gun", 0, d => { d.Dmg = 32; d.Rate = 1.1f; d.Ammo = 16; d.Max = 32; d.Clip = 4; d.Reload = 2.2f; d.Spread = 0.004f; d.Speed = 220; d.Zoom = 0.55f; d.Proj = "bullet"; d.Snd = "boomshot"; d.AimTime = 0.9f; }),
+        Wd("sniper", "SCALPEL SNIPER", "gun", 0, d => { d.Dmg = 70; d.Rate = 0.6f; d.Ammo = 8; d.Max = 16; d.Clip = 4; d.Reload = 2.6f; d.Spread = 0; d.Speed = 320; d.Zoom = 0.28f; d.Pierce = 2; d.Proj = "bullet"; d.Snd = "boomshot"; d.AimTime = 1.4f; }),
+        Wd("shotgun", "SCATTERDOSE", "gun", 1, d => { d.Dmg = 7; d.Pellets = 9; d.Rate = 1.1f; d.Ammo = 18; d.Max = 36; d.Clip = 6; d.Reload = 2.2f; d.Spread = 0.13f; d.Speed = 90; d.Knock = 2; d.Proj = "pellet"; d.Snd = "boomshot"; d.Range = 14; }),
+        Wd("rocket", "AMPOULE LAUNCHER", "gun", 2, d => { d.Dmg = 70; d.Radius = 6; d.Blast = 1500; d.Rate = 0.8f; d.Ammo = 5; d.Max = 10; d.Clip = 1; d.Reload = 2.2f; d.Spread = 0.01f; d.Speed = 40; d.Proj = "rocket"; d.Snd = "missile"; }),
+        Wd("bow", "SUTURE BOW", "bow", 2, d => { d.Dmg = 16; d.Dmg2 = 50; d.Speed = 26; d.Speed2 = 72; d.Ammo = 20; d.Max = 40; d.Clip = 1; d.Reload = 0.4f; d.Grav = 14; d.ChargeT = 0.8f; d.Proj = "arrow"; d.Snd = "throw"; }),
+        Wd("knives", "SCALPEL FAN", "gun", 2, d => { d.Dmg = 26; d.Rate = 3; d.Ammo = 12; d.Max = 24; d.Clip = 3; d.Reload = 0.9f; d.Spread = 0.01f; d.Speed = 46; d.Grav = 10; d.Proj = "knife"; d.Snd = "throw"; }),
+        Wd("darts", "SYRINGE DARTS", "gun", 0, d => { d.Dmg = 11; d.Rate = 4; d.Ammo = 30; d.Max = 60; d.Clip = 3; d.Reload = 1.0f; d.Spread = 0.015f; d.Speed = 85; d.Grav = 3; d.Proj = "dart"; d.Snd = "dart"; }),
+        Wd("needler", "NEEDLE STORM", "gun", 1, d => { d.Auto = true; d.Dmg = 4; d.Rate = 9; d.Ammo = 60; d.Max = 120; d.Clip = 20; d.Reload = 2; d.Spread = 0.06f; d.Speed = 45; d.Home = 0.6f; d.Proj = "needle"; d.Snd = "needle"; }),
+        Wd("plasma", "PLASMA INJECTOR", "charge", 1, d => { d.Energy = true; d.Heat = 0.07f; d.Dmg = 9; d.Dmg2 = 42; d.Rate = 5; d.Speed = 60; d.Speed2 = 45; d.ChargeT = 1.0f; d.Heat2 = 0.55f; d.Proj = "plasma"; d.Snd = "plasma"; }),
+        Wd("laserpistol", "UV PENLIGHT", "gun", 0, d => { d.Energy = true; d.Heat = 0.065f; d.Dmg = 11; d.Rate = 6; d.Spread = 0.008f; d.Speed = 420; d.Proj = "laser"; d.Snd = "laser"; }),
+        Wd("armcannon", "DEFIBRILLATOR", "beam", 1, d => { d.Energy = true; d.Heat = 0.34f; d.Dps = 55; d.Range = 80; d.Snd = "beam"; }),
+        Wd("chargecannon", "X-RAY CANNON", "charge", 2, d => { d.Dmg = 18; d.Dmg2 = 130; d.Ammo = 8; d.Max = 16; d.Clip = 1; d.Reload = 0.6f; d.Speed = 260; d.ChargeT = 1.3f; d.Beam2 = true; d.Pierce = 4; d.Proj = "laser"; d.Snd = "zap"; }),
+        Wd("bat", "TONGUE DEPRESSOR", "melee", 3, d => { d.Dmg = 22; d.Rate = 1.7f; d.Range = 1.9f; d.Arc = 1.4f; d.Knock = 15; d.Up = 6; d.Snd = "bat"; }),
+        Wd("hammer", "REFLEX HAMMER", "melee", 3, d => { d.Dmg = 44; d.Rate = 0.75f; d.Range = 2.1f; d.Arc = 1.2f; d.Knock = 10; d.Up = 9; d.Squash = true; d.Snd = "boing"; }),
+        Wd("sledge", "PESTLE MAUL", "melee", 3, d => { d.Dmg = 36; d.Rate = 0.9f; d.Range = 2.0f; d.Arc = 1.1f; d.Knock = 12; d.Up = 4; d.Sever = true; d.Snd = "slam"; }),
+        Wd("knife", "SCALPEL", "melee", 3, d => { d.Dmg = 16; d.Rate = 3; d.Range = 1.3f; d.Arc = 1.0f; d.Knock = 2; d.Up = 0; d.Snd = "punch"; }),
+        Wd("hmg", "IV GATLING", "gun", 0, d => { d.Auto = true; d.Dmg = 11; d.Rate = 10; d.Ammo = 400; d.Max = 800; d.Clip = 80; d.Reload = 2.4f; d.Spread = 0.055f; d.Speed = 170; d.Knock = 2.5f; d.Proj = "bullet"; d.Snd = "boomshot"; }),
+        Wd("mechmg", "MED-MECH CHAINGUN", "gun", 0, d => { d.Auto = true; d.Energy = true; d.Heat = 0.022f; d.Dmg = 11; d.Rate = 15; d.Spread = 0.035f; d.Speed = 200; d.Knock = 2; d.Proj = "bullet"; d.Snd = "eshot2"; }),
+        Wd("mechhoming", "HOMING CAPSULES", "gun", 2, d => { d.Auto = true; d.Energy = true; d.Heat = 0.15f; d.Dmg = 50; d.Radius = 4.5f; d.Blast = 1500; d.Rate = 3.2f; d.Spread = 0.18f; d.Speed = 30; d.Home = 1.8f; d.Life = 4; d.Proj = "rocket"; d.Snd = "missile"; }),
+        Wd("mechbomb", "PILL MORTAR", "gun", 2, d => { d.Auto = true; d.Energy = true; d.Heat = 0.24f; d.Dmg = 70; d.Radius = 6.5f; d.Blast = 2400; d.Rate = 1.3f; d.Spread = 0.02f; d.Speed = 36; d.Grav = 16; d.Life = 5; d.Proj = "rocket"; d.Snd = "boomshot"; }),
         Wd("punch", "PUNCH", "melee", 3, d => { d.Dmg = 15; d.Rate = 3; d.Range = 1.35f; d.Arc = 1.0f; d.Knock = 7; d.Up = 2.5f; d.Snd = "punch"; }),
-        Wd("fists", "PSEUDOPODS", "melee", 3, d => { d.Dmg = 8; d.Rate = 2.4f; d.Range = 1.2f; d.Arc = 1.1f; d.Knock = 5; d.Up = 2; d.Snd = "punch"; }),
+        Wd("fists", "BARE HANDS", "melee", 3, d => { d.Dmg = 8; d.Rate = 2.4f; d.Range = 1.2f; d.Arc = 1.1f; d.Knock = 5; d.Up = 2; d.Snd = "punch"; }),
     }.ToDictionary(d => d.Id);
     public static readonly string[] WPN_IDS = WPN.Keys.Where(k => k != "fists" && k != "punch").ToArray();
     static readonly Dictionary<string, (string, float)[]> LOADOUT = new()
@@ -541,7 +541,7 @@ public sealed partial class World
     {
         var W = A.W; i = ((i % 3) + 3) % 3;
         W.cur = i; W.cd = MathF.Max(W.cd, 0.2f); W.charge = 0; W.reload = 0; W.shell = false; W.switchT = 0.32f;   // the new weapon comes up from low
-        if (A.human) { var w = W.slots[i]; ShowHint(w != null ? WPN[w.id].Name + (float.IsFinite(w.ammo) ? " · " + w.clip + " / " + w.ammo : "") : "PSEUDOPODS"); Sfx("switch", A.P.x, A.P.y, A.P.z, 0.4f); }
+        if (A.human) { var w = W.slots[i]; ShowHint(w != null ? WPN[w.id].Name + (float.IsFinite(w.ammo) ? " · " + w.clip + " / " + w.ammo : "") : "BARE HANDS"); Sfx("switch", A.P.x, A.P.y, A.P.z, 0.4f); }
     }
     public void CycleWeapon(Actor A, int d)
     {

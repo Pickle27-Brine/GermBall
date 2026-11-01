@@ -93,7 +93,7 @@ public sealed partial class World
         M.human = true; M.dormant = false; M.parked = false; M.IN = new InputState(); M.P.prevUse = true;   // the held button mustn't climb straight back out
         pendingMe = M;
         Sfx("powerup", M.P.x, M.P.y + 2, M.P.z, 1); Rumble(0.6f, 0.4f, 200);
-        ShowHint("BATTLE MECHA · CURL TO ROLL · INTERACT TO CLIMB OUT");
+        ShowHint("MED-MECH · CURL TO ROLL · INTERACT TO CLIMB OUT");
         return true;
     }
     public void UnboardMecha(Actor M, bool forced = false)
@@ -107,7 +107,7 @@ public sealed partial class World
         if (forced) { Q.vy = 9; Knockdown(A, 1.2f, rx * 6, 9, rz * 6); }
         else { M.dormant = true; M.parked = true; G.vx = G.vz = G.vy = 0; G.rolling = false; G.charging = false; }
         pendingMe = A;
-        if (A.P.alive) ShowHint(forced ? "EJECTED" : "OUT OF THE MECHA");
+        if (A.P.alive) ShowHint(forced ? "EJECTED" : "OUT OF THE MED-MECH");
     }
     void StepPiloting()
     {

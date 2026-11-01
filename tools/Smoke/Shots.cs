@@ -19,9 +19,17 @@ public static class Shots
     static UiFont Bake(string face, int px, int weight)
     {
         Directory.CreateDirectory(Scratch);
+        // the game's bundled fonts (data/fonts) by their GDI face names; anything else falls back to Liberation
+        string fd = Path.Combine(AppContext.BaseDirectory, "data", "fonts"); if (!Directory.Exists(fd)) fd = Path.GetFullPath("data/fonts");
+        string own = face switch
+        {
+            "Saira ExtraCondensed Black" => "SairaExtraCondensed-Black.ttf", "Saira ExtraCondensed ExtraBold" => "SairaExtraCondensed-ExtraBold.ttf",
+            "Chakra Petch SemiBold" => "ChakraPetch-SemiBold.ttf", "Chakra Petch" => "ChakraPetch-Bold.ttf",
+            "Space Mono" => weight >= 700 ? "SpaceMono-Bold.ttf" : "SpaceMono-Regular.ttf", _ => null,
+        };
         bool mono = face.Contains("Consolas"); bool cond = face.Contains("Condensed") && !face.Contains("Semi");
-        string ttf = mono ? "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf" : weight >= 600 ? "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" : "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf";
-        float xs = mono ? 0.92f : cond ? 0.74f : 0.86f;
+        string ttf = own != null && File.Exists(Path.Combine(fd, own)) ? Path.Combine(fd, own) : mono ? "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf" : weight >= 600 ? "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" : "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf";
+        float xs = own != null ? 1f : mono ? 0.92f : cond ? 0.74f : 0.86f;
         int bpx = px * UiFont.Oversample;
         string key = $"{Path.GetFileNameWithoutExtension(ttf)}-{bpx}-{xs}", png = Path.Combine(Scratch, key + ".png"), js = Path.Combine(Scratch, key + ".json");
         if (!File.Exists(js))

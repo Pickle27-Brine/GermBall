@@ -26,7 +26,7 @@ public sealed class Gui
     public Draw2D D; public float Mx, My; bool click, clickConsumed; public bool MouseDown;
     readonly List<(string id, Rect r)> cur = new(), prev = new();
     public string Focus; string dragId; public bool NavUsed;
-    float navT; string navDir = "";
+    float navT; string navDir = ""; int navHeld;
     public float ScrollY; Rect? clip;
     bool activate; int nudge;
     public bool Back, TabNext, TabPrev;   // B / Esc, RB / LB this frame
@@ -39,15 +39,24 @@ public sealed class Gui
         prevA = p != null && p.B(0); prevB = p != null && p.B(1); prevLb = p != null && p.B(4); prevRb = p != null && p.B(5); prevStart = p != null && p.B(9);
     }
 
+    public float T;
     public void Begin(Draw2D d, float dt)
     {
+        T += dt;
         D = d; prev.Clear(); prev.AddRange(cur); cur.Clear();
         Mx = Input.MouseX / d.Scale; My = Input.MouseY / d.Scale; click = Input.Pressed("Mouse0"); MouseDown = Input.Down("Mouse0"); clickConsumed = false;
         if (!MouseDown) dragId = null;
         if (Input.MouseDX != 0 || Input.MouseDY != 0 || click) NavUsed = false;
         // directional navigation from the pad's stick and D-pad, or the arrow keys
         var p = Gamepad.First; string dir = "";
-        if (p != null) { float lx = p.Axes[0], ly = p.Axes[1]; if (p.B(12) || ly < -0.5f) dir = "up"; else if (p.B(13) || ly > 0.5f) dir = "down"; else if (p.B(14) || lx < -0.5f) dir = "left"; else if (p.B(15) || lx > 0.5f) dir = "right"; }
+        if (p != null)
+        {   // the stick has to be pushed well over (and let back past a lower mark) to count, the dominant axis wins: no drifting
+            // or diagonal double-steps; the D-pad is exact
+            float lx = p.Axes[0], ly = p.Axes[1], on = navDir == "" ? 0.65f : 0.35f;
+            bool vert = MathF.Abs(ly) >= MathF.Abs(lx);
+            if (p.B(12)) dir = "up"; else if (p.B(13)) dir = "down"; else if (p.B(14)) dir = "left"; else if (p.B(15)) dir = "right";
+            else if (vert && ly < -on) dir = "up"; else if (vert && ly > on) dir = "down"; else if (!vert && lx < -on) dir = "left"; else if (!vert && lx > on) dir = "right";
+        }
         bool a = p != null && p.B(0), b = p != null && p.B(1), lb = p != null && p.B(4), rb = p != null && p.B(5), st = p != null && p.B(9);
         activate = (a && !prevA) || Input.Pressed("Enter") || Input.Pressed("NumpadEnter");
         Back = (b && !prevB) || Input.Pressed("Escape"); TabNext = rb && !prevRb; TabPrev = lb && !prevLb; StartHit = st && !prevStart;
@@ -58,7 +67,8 @@ public sealed class Gui
         if (Input.Pressed("Tab")) Nav(Input.Down("ShiftLeft") ? "up" : "down");
         if (dir != "")
         {
-            if (dir != navDir || navT <= 0) { if ((dir == "left" || dir == "right") && Nudge(dir == "left" ? -1 : 1)) { } else Nav(dir); navT = dir == navDir ? 0.12f : 0.35f; }
+            // one step on the push, then a pause before it repeats, then a steady (not frantic) repeat; it speeds up a little when held a long time
+            if (dir != navDir || navT <= 0) { if ((dir == "left" || dir == "right") && Nudge(dir == "left" ? -1 : 1)) { } else Nav(dir); navHeld = dir == navDir ? navHeld + 1 : 0; navT = dir == navDir ? (navHeld > 6 ? 0.13f : 0.2f) : 0.45f; }
             navT -= dt;
         }
         else navT = 0;
@@ -108,12 +118,26 @@ public sealed class Gui
     void FocusRing(string id, float x, float y, float w, float h) { if (IsFocused(id)) D.Frame(x - 3, y - 3, w + 6, h + 6, Pal.White, 2); }
 
     /// <summary>A big call-to-action button (Deploy / Generate / Start waves).</summary>
+    /// <summary>A main button: a cut-corner plate with an accent spine down its left edge, a light sweep across it on
+    /// hover, and the label tracked out. It glows when focused or pressed.</summary>
     public bool Big(string id, float x, float y, float w, float h, string label, Vector4? col = null, Vector4? bg = null)
     {
-        var c = col ?? Pal.Hud; bool hov = Hover(x, y, w, h), hit = Hit(id, x, y, w, h);
-        D.Rect(x, y, w, h, bg ?? (hov ? Pal.A(Pal.BtnHover, 1) : Pal.Btn)); D.Frame(x, y, w, h, c);
+        var c = col ?? Pal.Hud; bool hov = Hover(x, y, w, h), hit = Hit(id, x, y, w, h), foc = Focus == id && NavUsed, hot = hov || foc;
+        float cut = MathF.Min(12, h * 0.32f);
+        var fill = bg ?? (hot ? Pal.A(Pal.BtnHover, 1) : Pal.Btn);
+        if (bg.HasValue && hot) fill = new Vector4(MathF.Min(1, fill.X * 1.15f), MathF.Min(1, fill.Y * 1.15f), MathF.Min(1, fill.Z * 1.15f), MathF.Min(1, fill.W + 0.15f));
+        CutPanel(x, y, w, h, cut, fill, hot ? c : Pal.A(c, 0.75f));
+        D.Rect(x + 3, y + cut * 0.6f, 3, h - cut * 1.2f, c);                                         // the spine
+        if (hot)
+        {   // a soft band of light sweeping across
+            float sw = (T * 0.9f % 1.6f) - 0.3f, bx = x + w * sw;
+            for (int k = 0; k < 6; k++) { float xx = bx + k * 7, ww = 7; if (xx > x + 8 && xx + ww < x + w - cut) D.Rect(xx, y + 2, ww, h - 4, Pal.A(c, 0.05f * (k < 3 ? k + 1 : 6 - k))); }
+        }
+        if (MouseDown && hov) D.Rect(x + 6, y + h - 3, w - 12 - cut, 2, c);                         // pressed: a lit base line
         var f = h >= 36 ? D.DisplayMid : D.Display;
-        D.Text(label.ToUpperInvariant(), x + w / 2, y + (h - f.LineHeight) / 2, f, c, "center", h >= 36 ? 4 : 2.5f);
+        string L = label.ToUpperInvariant(); float sp = h >= 36 ? 4 : 2.5f;
+        while (sp > 0.5f && f.Measure(L, sp) > w - 28) sp -= 0.5f;                                   // never let a label run past its button
+        D.Text(L, x + w / 2 + 2, y + (h - f.LineHeight) / 2, f, c, "center", sp);
         FocusRing(id, x, y, w, h); return hit;
     }
     /// <summary>A small chip button; on = pressed state (aria-pressed).</summary>
@@ -174,9 +198,10 @@ public sealed class Gui
     /// <summary>A tab button underlined when selected.</summary>
     public bool Tab(string id, float x, float y, string label, bool on, out float w)
     {
-        var f = D.Display; w = f.Measure(label.ToUpperInvariant(), 2.5f) + 20; float h = 30; bool hit = Hit(id, x, y, w, h);
-        D.Text(label.ToUpperInvariant(), x + 10, y + 6, f, on ? Pal.Hud : Pal.Mute2, "left", 2.5f);
-        if (on) D.Rect(x, y + h - 2, w, 2, Pal.Hud);
+        var f = D.Display; w = f.Measure(label.ToUpperInvariant(), 2.5f) + 20; float h = 30; bool hov = Hover(x, y, w, h), hit = Hit(id, x, y, w, h);
+        D.Text(label.ToUpperInvariant(), x + 10, y + 6, f, on ? Pal.Hud : hov ? Pal.Text : Pal.Mute2, "left", 2.5f);
+        if (on) { D.Rect(x, y + h - 2, w, 2, Pal.Hud); D.Tri(new Vector2(x + w / 2 - 5, y + h - 2), new Vector2(x + w / 2 + 5, y + h - 2), new Vector2(x + w / 2, y + h - 7), Pal.Hud); }
+        else if (hov) D.Rect(x + 6, y + h - 2, w - 12, 1, Pal.HudDim);
         FocusRing(id, x, y, w, h); return hit;
     }
     /// <summary>A panel with the original's clipped corners (polygon clip-path), drawn as a fill plus border.</summary>
@@ -185,7 +210,17 @@ public sealed class Gui
         var a = new Vector2(x, y); var b = new Vector2(x + w - cut, y); var c = new Vector2(x + w, y + cut); var d = new Vector2(x + w, y + h); var e = new Vector2(x + cut, y + h); var f = new Vector2(x, y + h - cut);
         var m = new Vector2(x + w / 2, y + h / 2);
         D.Tri(m, a, b, fill); D.Tri(m, b, c, fill); D.Tri(m, c, d, fill); D.Tri(m, d, e, fill); D.Tri(m, e, f, fill); D.Tri(m, f, a, fill);
+        // a faint sheen at the top, fading down
+        for (int k = 0; k < 6; k++) { float yy = y + 1 + k * MathF.Min(6, h / 14), hh = MathF.Min(6, h / 14); if (yy + hh > y + h - cut) break; D.Rect(x + 1, yy, w - cut - 2, hh, new Vector4(1, 1, 1, 0.035f * (6 - k) / 6)); }
         D.Line(a, b, border); D.Line(b, c, border); D.Line(c, d, border); D.Line(d, e, border); D.Line(e, f, border); D.Line(f, a, border);
+        if (h > 60 && w > 120)
+        {   // big panels: an inset hairline and bright corner brackets
+            var hl = Pal.A(border, 0.35f); float i = 4;
+            D.Line(new Vector2(x + i, y + i), new Vector2(x + w - cut - i * 0.6f, y + i), hl); D.Line(new Vector2(x + i, y + i), new Vector2(x + i, y + h - cut - i * 0.6f), hl);
+            var br = Pal.A(border, 1.6f); float bl = MathF.Min(22, w * 0.1f);
+            D.Rect(x - 1, y - 1, bl, 2, br); D.Rect(x - 1, y - 1, 2, bl, br);
+            D.Rect(x + w - bl + 1, y + h - 1, bl, 2, br); D.Rect(x + w - 1, y + h - bl + 1, 2, bl, br);
+        }
     }
     /// <summary>Scrolls a clipped panel with the wheel and keeps the focused widget in view.</summary>
     public void ScrollPanel(ref float scroll, float top, float viewH, float contentH)

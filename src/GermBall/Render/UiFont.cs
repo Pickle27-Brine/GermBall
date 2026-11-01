@@ -30,6 +30,8 @@ public sealed unsafe class UiFont
     [DllImport("gdi32", CharSet = CharSet.Unicode)] static extern bool TextOutW(IntPtr dc, int x, int y, string s, int n);
     [DllImport("gdi32", CharSet = CharSet.Unicode)] static extern bool GetTextExtentPoint32W(IntPtr dc, string s, int n, out SIZE sz);
     [DllImport("gdi32", CharSet = CharSet.Unicode)] static extern bool GetTextMetricsW(IntPtr dc, out TEXTMETRIC tm);
+    [DllImport("gdi32", CharSet = CharSet.Unicode)] static extern int AddFontResourceExW(string path, uint fl, IntPtr res);
+    [DllImport("gdi32", CharSet = CharSet.Unicode)] static extern uint GetGlyphIndicesW(IntPtr dc, string s, int n, ushort[] idx, uint flags);
     [DllImport("gdi32")] static extern IntPtr CreateDIBSection(IntPtr dc, ref BITMAPINFO bmi, uint usage, out IntPtr bits, IntPtr section, uint offset);
     [StructLayout(LayoutKind.Sequential)] struct SIZE { public int cx, cy; }
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -43,6 +45,14 @@ public sealed unsafe class UiFont
 
     /// <summary>Overrides how fonts are made (the headless tools bake with Pillow instead of GDI).</summary>
     public static Func<string, int, int, UiFont> Factory;
+    /// <summary>Registers the game's own fonts (data/fonts/*.ttf) for this process only, so they work without being installed.</summary>
+    public static void LoadPrivate(string dir)
+    {
+        if (!OperatingSystem.IsWindows() || !System.IO.Directory.Exists(dir)) return;
+        foreach (var f in System.IO.Directory.GetFiles(dir, "*.ttf")) try { AddFontResourceExW(f, 0x10 /*FR_PRIVATE*/, IntPtr.Zero); } catch { }
+    }
+    /// <summary>Symbols drawn from this font when the chosen face doesn't have them (arrows, hearts, ticks...).</summary>
+    public const string FallbackFace = "Segoe UI Symbol";
     public static UiFont Create(string face, int px, int weight = 400) => Factory?.Invoke(face, px, weight) ?? new UiFont(face, px, weight);
 
     /// <summary>A font from a pre-baked atlas.</summary>
@@ -62,7 +72,16 @@ public sealed unsafe class UiFont
         Ascent = tm.tmAscent / Px; LineHeight = (tm.tmHeight + tm.tmExternalLeading) / Px;
         int cell = tm.tmHeight + 4, cols = 16, rows = (Chars.Length + cols - 1) / cols;
         int maxW = 0; var adv = new Dictionary<char, int>();
-        foreach (var ch in Chars) { GetTextExtentPoint32W(dc, ch.ToString(), 1, out var sz); adv[ch] = sz.cx; maxW = Math.Max(maxW, sz.cx); }
+        // which characters this face lacks: those are measured and drawn with the fallback symbol font
+        var gi = new ushort[Chars.Length]; GetGlyphIndicesW(dc, Chars, Chars.Length, gi, 1 /*GGI_MARK_NONEXISTING_GLYPHS*/);
+        IntPtr fb = CreateFontW(-px, 0, 0, 0, weight, 0, 0, 0, 1, 0, 0, 4, 0, FallbackFace);
+        var missing = new HashSet<char>(); for (int i = 0; i < Chars.Length; i++) if (gi[i] == 0xFFFF && Chars[i] != ' ') missing.Add(Chars[i]);
+        foreach (var ch in Chars)
+        {
+            if (missing.Contains(ch)) SelectObject(dc, fb);
+            GetTextExtentPoint32W(dc, ch.ToString(), 1, out var sz); adv[ch] = sz.cx; maxW = Math.Max(maxW, sz.cx);
+            if (missing.Contains(ch)) SelectObject(dc, font);
+        }
         int cw = maxW + 4, W = NextPow2(cw * cols), H = NextPow2(cell * rows);
         var bmi = new BITMAPINFO { biSize = 40, biWidth = W, biHeight = -H, biPlanes = 1, biBitCount = 32 };
         IntPtr bmp = CreateDIBSection(dc, ref bmi, 0, out var bits, IntPtr.Zero, 0);
@@ -70,7 +89,8 @@ public sealed unsafe class UiFont
         for (int i = 0; i < Chars.Length; i++)
         {
             int x = (i % cols) * cw + 2, y = (i / cols) * cell + 2; char ch = Chars[i];
-            TextOutW(dc, x, y, ch.ToString(), 1);
+            if (missing.Contains(ch)) { SelectObject(dc, fb); TextOutW(dc, x, y, ch.ToString(), 1); SelectObject(dc, font); }
+            else TextOutW(dc, x, y, ch.ToString(), 1);
             glyphs[ch] = new Glyph { X = x, Y = y, W = adv[ch], H = tm.tmHeight, Advance = adv[ch] };
         }
         Atlas = new Texture(W, H) { Nearest = false, Mipmaps = false };
@@ -80,7 +100,7 @@ public sealed unsafe class UiFont
             byte a = Math.Max(src[i * 4], Math.Max(src[i * 4 + 1], src[i * 4 + 2]));
             Atlas.Pixels[i * 4] = Atlas.Pixels[i * 4 + 1] = Atlas.Pixels[i * 4 + 2] = 255; Atlas.Pixels[i * 4 + 3] = a;
         }
-        DeleteObject(bmp); DeleteObject(font); DeleteDC(dc);
+        DeleteObject(bmp); DeleteObject(font); DeleteObject(fb); DeleteDC(dc);
     }
     static int NextPow2(int v) { int p = 64; while (p < v) p *= 2; return p; }
 

@@ -89,7 +89,7 @@ public sealed class GameScreen : IScreen
         d.Rect(0, 0, Wd, Ht, new Vector4(20 / 255f, 2 / 255f, 20 / 255f, 0.7f));
         float cw = Math.Min(420, Wd - 32), x = Wd / 2 - cw / 2, txtH = 60, ch = 24 + 50 + txtH + 18 + 40 + 24, y = Ht / 2 - ch / 2;
         d.Rect(x, y, cw, ch, Pal.Panel); d.Frame(x, y, cw, ch, Pal.Hot);
-        d.Text("SHATTERED", Wd / 2, y + 24, d.DisplayBig, Pal.Hot, "center", 3);
+        d.Text("DISSOLVED", Wd / 2, y + 24, d.DisplayBig, Pal.Hot, "center", 3);
         d.Wrap(wd_.GameOverText ?? "", x + 28, y + 74, cw - 56, d.MonoSmall, Pal.Text2, 1.5f);
         float bw = (cw - 56 - 8) / 2, by = y + ch - 24 - 40;
         if (gui.Big("again", x + 28, by, bw, 40, "Again") || gui.StartHit) { wd_.RestartWaves(); over = false; Deploy(); }
@@ -123,6 +123,10 @@ public sealed class GameScreen : IScreen
         float top = cy; gui.PushClip(ix - 6, top, iw + 12, panelH);
         float contentH = tab switch { 0 => PanelControls(d, ix, top - scroll, iw), 1 => PanelSettings(d, ix, top - scroll, iw), 2 => PanelKeys(d, ix, top - scroll, iw), _ => PanelDebug(d, ix, top - scroll, iw) };
         gui.PopClip();
+        if (contentH - scroll > panelH + 2)
+        {   // more below: fade the last rows out instead of slicing them at the edge
+            for (int k = 0; k < 8; k++) d.Rect(ix - 6, top + panelH - 26 + k * 3.25f, iw + 12, 3.25f, Pal.A(Pal.Panel, (k + 1) / 8f));
+        }
         gui.ScrollPanel(ref scroll, top, panelH, contentH);
         if (contentH > panelH) { float k = panelH / contentH; d.Rect(ix + iw + 4, top + scroll / contentH * panelH, 3, panelH * k, Pal.HudDim); }
         cy = top + panelH + 16;
@@ -162,19 +166,19 @@ public sealed class GameScreen : IScreen
     {
         ("W A S D", "Move. Reverse at speed to skid"), ("Mouse", "Orbit camera (look, in first person)"), ("Space", "Jump. Again in the air: dash. With homing charges the dash locks on, flies fast and bursts small germs outright"),
         ("Left click / F", "Fire or swing. Melee swings chain into a three-hit combo ending in a finisher, and step you in toward the nearest enemy; the squash hammer flattens germs like pancakes. Bows and charge weapons: hold, then release. Energy weapons overheat"),
-        ("1 2 3 / wheel / P", "Switch weapon (three slots; an empty slot is your fists)"), ("G", "Interact: take a weapon (swaps out the one in hand when full), get in or out of a vehicle or the battle mecha"), ("R", "Reload. Guns hold a magazine; spare magazines are stored (shown as pips on the weapon slot)"),
+        ("1 2 3 / wheel / P", "Switch weapon (three slots; an empty slot is your fists)"), ("G", "Interact: take a weapon (swaps out the one in hand when full), get in or out of a vehicle or the Med-Mech"), ("R", "Reload. Guns hold a magazine; spare magazines are stored (shown as pips on the weapon slot)"),
         ("Q / mouse 4", "Punch, whatever you're holding (not while rolling). Curled into a ball in the air: ground pound"),
         ("C / Shift", "Roll. From a standstill, hold to charge a spin dash"),
         ("E / right click", "Pick up the thing or small germ in front of you (any germ below a brute once it has lost both legs). Then hold this, or the fire button, to wind up a throw (watch the meter and the arc) and release to throw at the crosshair"),
         ("Right mouse", "Aim down sights. In the air you hover and can still shoot; dashing ends the hover"),
-        ("Vehicles", "Hand weapons are stowed in the blood cell and the virus (they have their own guns); on the bike only sidearms, the shotgun and melee work. Chopper: Space jumps, Space again in the air jump-dashes, W/S pitch and A/D roll it in the air; land on the wheels or you're thrown off. Rover: Shift boosts (5 s cooldown), the turret follows your aim and fires with the trigger. Hover chair: slides any way you push, Space / E rises and C / Shift sinks (rebind under Keys), fires its armrest beams"),
+        ("Vehicles", "Hand weapons are stowed in the blood cell and the virus (they have their own guns); on the platelet bike only sidearms, the shotgun and melee work. Platelet bike: Space jumps, Space again in the air jump-dashes, W/S pitch and A/D roll it in the air; land on the wheels or you're thrown off. Blood cell: Shift boosts (5 s cooldown), its cannon follows your aim and fires with the trigger. Virus: slides any way you push, Space / E rises and C / Shift sinks (rebind under Keys), fires its spike beams"),
         ("V", "Free camera on/off (also in Debug)"), ("B", "Back to base"), ("M", "Next song"), ("Esc", "Pause"), ("F11 / Alt+Enter", "Fullscreen"), ("F12", "Screenshot (saved under Documents\\My Games\\GermBall\\screenshots)"),
     };
     static readonly (string, string)[] PAD_HELP =
     {
         ("Left stick / D-pad", "Move"), ("Right stick", "Orbit camera. Click it to recenter"), ("A", "Jump. Again in the air to dash"), ("RT / LT", "Fire / aim down sights (hover in the air)"),
-        ("B", "Roll and spin dash"), ("X", "Tap: reload. Hold: interact (take a weapon, get in or out of a vehicle or the battle mecha)"),
-        ("On vehicles", "Chopper: A jumps, A again in the air jump-dashes, the stick pitches and rolls it in the air. Rover: B boosts, RT fires the turret. Hover chair: RB rises, LB sinks, RT fires the beams"),
+        ("B", "Roll and spin dash"), ("X", "Tap: reload. Hold: interact (take a weapon, get in or out of a vehicle or the Med-Mech)"),
+        ("On vehicles", "Platelet bike: A jumps, A again in the air jump-dashes, the stick pitches and rolls it in the air. Blood cell: B boosts, RT fires the cannon. Virus: RB rises, LB sinks, RT fires the beams"),
         ("RB", "Punch. Curled into a ball in the air: ground pound"), ("LB", "Pick up; hold to wind up a throw, release to throw"), ("Y", "Next weapon"), ("View / Menu", "Back to base / pause"),
         ("Free cam", "Left stick fly, right stick look, RT/LT zoom in/out, RB/LB focal in/out, A/X up/down, click the right stick to reset, View to leave"),
         ("In menus", "D-pad or stick to move, left/right on a slider to adjust, A to press, B to resume, LB/RB to switch tabs"),
@@ -266,7 +270,7 @@ public sealed class GameScreen : IScreen
         rowY += 26;
         if (SliderRow(d, "voice", "Companion voices", ref SET.voice, 0, 1, 0.05f, Pct, Speech.Available ? "Windows speech voices" : "No Windows speech voices found; subtitles only")) Save();
         if ((r = SegRow(d, "subs", "Voice subtitles", new[] { "Off", "On" }, SET.subs ? 1 : 0)) >= 0) { SET.subs = r == 1; Save(); }
-        foreach (var (key, type, name, blurb) in new[] { ("companion", "ally", "Volt", "Companion · marksman: hangs back in cover, picks off snipers and whatever you're shooting"), ("companion2", "ally2", "Brick", "Companion · tank: wades in, body-blocks for you, smashes groups, throws heavy things"), ("companion3", "ally3", "Wisp", "Companion · scout: flanks, hunts assassins, watches your back") })
+        foreach (var (key, type, name, blurb) in new[] { ("companion", "ally", "Tab", "Companion · marksman: hangs back in cover, picks off snipers and whatever you're shooting"), ("companion2", "ally2", "Cap", "Companion · tank: wades in, body-blocks for you, smashes groups, throws heavy things"), ("companion3", "ally3", "Jab", "Companion · scout: flanks, hunts assassins, watches your back") })
         {
             bool on = key == "companion" ? SET.companion : key == "companion2" ? SET.companion2 : SET.companion3;
             if ((r = SegRow(d, key, name, new[] { "Off", "On" }, on ? 1 : 0, blurb)) >= 0)
@@ -324,11 +328,11 @@ public sealed class GameScreen : IScreen
         void Sub2(string s) { y += 10; d.Text(s.ToUpperInvariant(), x, y, d.DisplaySmall, Pal.Hud, "left", 2); y += 20; }
         Sub2("Spawn enemy · in front of you");
         string[] ek = { "small", "normal", "assassin", "brute", "mech", "boss", "chairman", "squad", "dropship", "clear", "freeze" };
-        string[] en = { "4 cocci", "Bacillus trooper", "Spirillum assassin", "Amoeba brute", "Tardigrade", "Boss (mimic)", "Hover-chair trooper", "Full squad", "Dropship drop", "Clear all", "Freeze AI: " + (wd_.aiFrozen ? "on" : "off") };
+        string[] en = { "4 cocci", "Bacillus trooper", "Spirillum assassin", "Amoeba brute", "Phage titan", "Boss (mimic)", "Virus rider", "Full squad", "Spore carrier drop", "Clear all", "Freeze AI: " + (wd_.aiFrozen ? "on" : "off") };
         if ((r = gui.Chips("dbgE", x, y, w, en, i => false, out h)) >= 0) note = wd_.DebugEnemy(ek[r]); y += h;
         Sub2("Spawn vehicle · parked in front of you");
         string[] vk = { "bike", "rover", "chair", "mecha" };
-        if ((r = gui.Chips("dbgV", x, y, w, new[] { "Chopper", "Rover", "Hover chair", "Battle mecha" }, i => false, out h)) >= 0) note = wd_.DebugVehicle(vk[r]); y += h;
+        if ((r = gui.Chips("dbgV", x, y, w, new[] { "Platelet bike", "Blood cell", "Virus", "Med-Mech" }, i => false, out h)) >= 0) note = wd_.DebugVehicle(vk[r]); y += h;
         Sub2("Camera");
         if (gui.Chip("freecam", x, y, "Free cam")) { Deploy(); wd_.SetFreeCam(true); }
         y += 30; y += d.Wrap("Free cam: left stick or WASD to fly, right stick or mouse to look, RT / LT (or wheel, + / −) zoom in and out, RB / LB (or ] / [) focal length in and out, A / X (or Space / C) up and down, click the right stick (or R) to reset, Back or V to leave.", x, y, w, d.MonoSmall, Pal.Mute, 1.3f) + 4;

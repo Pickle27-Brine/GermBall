@@ -132,15 +132,15 @@ public sealed partial class World
         {
             ["hero"] = new() { S = 0.93f, F = 1.32f, Km = 1, Hp = 1, Carry = 170, LiftMen = new[] { "small", "assassin" }, Label = "you" },
             // the companions: Volt the marksman (tall and lean), Brick the tank (wide and heavy), Wisp the scout (small and quick)
-            ["ally"] = new() { S = 0.97f, F = 1.1f, Km = 1, Hp = 1, Carry = 170, LiftMen = new[] { "small", "assassin" }, Label = "Volt" },
-            ["ally2"] = new() { S = 1.06f, F = 1.85f, Km = 0.92f, Hp = 1.5f, Carry = 900, LiftMen = new[] { "small", "assassin", "normal" }, Label = "Brick" },
-            ["ally3"] = new() { S = 0.84f, F = 0.92f, Km = 1.14f, Hp = 0.8f, Carry = 120, LiftMen = new[] { "small" }, Label = "Wisp" },
+            ["ally"] = new() { S = 0.97f, F = 1.1f, Km = 1, Hp = 1, Carry = 170, LiftMen = new[] { "small", "assassin" }, Label = "Tab" },
+            ["ally2"] = new() { S = 1.06f, F = 1.85f, Km = 0.92f, Hp = 1.5f, Carry = 900, LiftMen = new[] { "small", "assassin", "normal" }, Label = "Cap" },
+            ["ally3"] = new() { S = 0.84f, F = 0.92f, Km = 1.14f, Hp = 0.8f, Carry = 120, LiftMen = new[] { "small" }, Label = "Jab" },
             ["small"] = new() { S = 0.92f, F = 1.7f, Km = 0.8f, Hp = 0.45f, Carry = 50, LiftMen = Array.Empty<string>(), Label = "coccus" },
             ["normal"] = new() { S = 1.2f, F = 1.36f, Km = 0.74f, Hp = 1, Carry = 170, LiftMen = new[] { "small", "assassin" }, Label = "bacillus trooper" },
             ["brute"] = new() { S = 1.68f, F = 1.55f, Km = 0.62f, Hp = 3.2f, Carry = 2600, LiftMen = all, Label = "amoeba brute" },
             ["assassin"] = new() { S = 1.1f, F = 0.74f, Km = 1.05f, Hp = 0.32f, Carry = 60, LiftMen = Array.Empty<string>(), Label = "spirillum assassin", Fragile = true },
-            ["mech"] = new() { S = 2.7f, F = 1.45f, Km = 0.42f, Hp = 9, Carry = 12000, LiftMen = all, Label = "tardigrade", Big = true },
-            ["mecha"] = new() { S = 2.3f, F = 1.4f, Km = 1.05f, Hp = 7, Carry = 12000, LiftMen = new[] { "small", "normal", "assassin", "brute" }, Label = "battle mecha", Big = true },
+            ["mech"] = new() { S = 2.7f, F = 1.45f, Km = 0.42f, Hp = 9, Carry = 12000, LiftMen = all, Label = "phage titan", Big = true },
+            ["mecha"] = new() { S = 2.3f, F = 1.4f, Km = 1.05f, Hp = 7, Carry = 12000, LiftMen = new[] { "small", "normal", "assassin", "brute" }, Label = "Med-Mech", Big = true },
         };
         // mimics: boss copies of you and your companions, darker, red-eyed, much tougher, fighting the way you do
         foreach (var (m, of) in new[] { ("mhero", "hero"), ("mally", "ally"), ("mally2", "ally2"), ("mally3", "ally3") })

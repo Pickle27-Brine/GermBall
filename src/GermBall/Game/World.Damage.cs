@@ -147,7 +147,7 @@ public sealed partial class World
         for (int i = 0; i < NPART; i++) if (B.has[i]) { BlowPieces(B, i, o, 2); SpawnDebris(B, i, o, 2.2f, true); B.has[i] = false; }
         if (G.ragdoll != null) { foreach (var j in G.ragdoll.joints) joints.Remove(j); G.ragdoll = null; }
         Sfx("shatter", G.x, G.y + 1, G.z); for (int i = 0; i < 10; i++) Puff(G.x, G.y + G.H * 0.5f, G.z, 4, 3, 0.14f);
-        if (B.human) { ShowHint("SHATTERED"); StyleEvent("death", B); Rumble(1, 1, 500); cam.shake = MathF.Max(cam.shake, 0.5f); }
+        if (B.human) { ShowHint("DISSOLVED"); StyleEvent("death", B); Rumble(1, 1, 500); cam.shake = MathF.Max(cam.shake, 0.5f); }
         if (B.team == "enemy") { DropLoot(B); if (B.squad != null) SquadLost(B); CommsKill(B); }
         B.brain?.OnDeath();
     }

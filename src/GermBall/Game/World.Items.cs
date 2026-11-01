@@ -24,7 +24,7 @@ public sealed partial class World
     public readonly List<Item> items = new(); public readonly List<Stash> stashes = new();
     public static readonly Dictionary<string, (uint color, string label)> ITEM = new()
     {
-        ["ammo"] = (0xc6ff4a, "AMMO"), ["repair"] = (0x7dff9c, "REPAIRED"), ["homing"] = (0xff5ce1, "HOMING DASH +3"), ["weapon"] = (0xffe66d, ""),
+        ["ammo"] = (0xc6ff4a, "AMMO"), ["repair"] = (0x7dff9c, "PATCHED UP"), ["homing"] = (0xff5ce1, "HOMING DASH +3"), ["weapon"] = (0xffe66d, ""),
     };
     public Item SpawnItem(string kind, float x, float y, float z, float vy = 4, string wid = null, float? ammo = null, float life = 45, Stash stash = null, bool rack = false, float rot = 0)
     {

@@ -456,7 +456,7 @@ public sealed partial class World
             WAVES.state = "break"; WAVES.t = 14; WAVES.score += WAVES.n * 250;
             foreach (var A in actors) if (A.team == "hero" && A.P.alive) { A.P.shield = 100; foreach (var a in A.armor) a.hp = MathF.Max(a.hp, a.max * 0.5f); }
             foreach (var s in stashes) if (s.item == null) s.t = MathF.Min(s.t, 0.5f);
-            Sfx("powerup", HUMAN.P.x, HUMAN.P.y + 1, HUMAN.P.z, 1); ShowHint("WAVE " + WAVES.n + " CLEARED · SHIELD RESTORED · STASHES RESTOCKED");
+            Sfx("powerup", HUMAN.P.x, HUMAN.P.y + 1, HUMAN.P.z, 1); ShowHint("WAVE " + WAVES.n + " CLEARED · COATING RESTORED · STASHES RESTOCKED");
             var sp = ALLIES.FirstOrDefault(a => a.P.alive); if (sp != null) AllySay(sp, "waveClear", 5);
         }
     }
