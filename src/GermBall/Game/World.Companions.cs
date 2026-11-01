@@ -308,7 +308,8 @@ public sealed partial class World
         if (G.stunT > 0 || G.ragdoll != null) return;
         if (G.vehicle != null) { I.use = !I.use; return; }   // companions don't drive: hop off
         float dH = Hypot(H.x - G.x, H.z - G.z);
-        if (H.alive && (dH > 55 || (H.y - G.y > 14 && dH < 30))) { RespawnActor(A); return; }
+        // no teleporting: a companion that has fallen behind retraces your trail at a run (curling up to roll on the flat)
+        B.regroupT = H.alive && (dH > 18 || (MathF.Abs(H.y - G.y) > 2.5f && dH < 40)) ? B.regroupT + dt : 0;
         B.dashCD -= dt; B.think -= dt; B.throwCD -= dt; B.poundCD -= dt; B.coverT -= dt;
         float hp = HealthOf(A);
         if (hp < 0.35f && !A.saidHurt) { A.saidHurt = true; AllySay(A, "hurt", 20); } else if (hp > 0.6f) A.saidHurt = false;
@@ -437,6 +438,13 @@ public sealed partial class World
             // keep up with you when you're rolling fast: roll too
             if (Hypot(H.vx, H.vz) > TOP * 1.2f && dH > 8) I.roll = true;
         }
+        // fallen behind: follow your trail (round the obstacles and up the stairs you took), running, rolling on long flats
+        if (B.regroupT > 0.4f && (B.tgtA == null || dH > 30))
+        {
+            var cg = CrumbGoal(A);
+            if (cg is var (cx, cz)) { gx = cx; gz = cz; speed = 1; A.brainState = "CATCHING UP"; if (dH > 30 && G.ground && B.seq == null) I.roll = true; }
+        }
+        else B.crumbI = -1;
         var v = Steer(A, gx, gz, speed, dt); I.mx = v.Item1; I.mz = -v.Item2;
         RunSeq(A, dt);
         if (!I.roll) Uncurl(A, dt, 0.9f);

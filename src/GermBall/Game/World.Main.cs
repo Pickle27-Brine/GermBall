@@ -633,7 +633,7 @@ public sealed partial class World
         foreach (var A in actors) { var G = A.P; G.px = G.x; G.py = G.y; G.pz = G.z; G.pBallQ.Copy(G.ballQ); }
         foreach (var b in bodies) { b.Pp.Copy(b.Pos); b.Pq.Copy(b.Q); }
         BuildBodyGrid();
-        StepSquads(DT); StepWaves(DT); CommsTick(DT); StepBosses(DT);
+        StepSquads(DT); StepWaves(DT); CommsTick(DT); StepBosses(DT); StepCrumbs();
         ReadHumanInput();
         StepVehicles(DT);
         for (int i = actors.Count - 1; i >= 0; i--)

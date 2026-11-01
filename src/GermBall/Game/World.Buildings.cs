@@ -133,7 +133,7 @@ public sealed partial class World
     void DestroyChunk(Chunk c, float fx, float fy, float fz)
     {
         if (!c.alive) return;
-        c.alive = false; RemoveStatic(c.o);
+        c.alive = false; RemoveStatic(c.o); NavInvalidate();
         if (c.flight != null && c.flight.Count(o => o.alive) < c.flight.Count / 2f) { RemoveStatic(c.ramp); foreach (var o in c.flight.ToArray()) if (o.alive) DestroyChunk(o, 0, -1, 0); }
         if (CH_MESH.TryGetValue(c.mat, out var m) && c.idx >= 0) { m.Matrices[c.idx] = new Matrix4x4(); chunkDirty.Add(c.mat); }
         // rubble: a few broken pieces of it

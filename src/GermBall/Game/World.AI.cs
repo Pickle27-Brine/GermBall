@@ -8,7 +8,7 @@ namespace GermBall.Game;
 
 public sealed class SquadComp { public int small, normal, assassin, brute, mech, bikes, chairs; public SquadComp Clone() => (SquadComp)MemberwiseClone(); }
 public sealed class Knowledge { public Actor A; public float x, z, y, t; }
-public sealed class Squad
+public sealed partial class Squad
 {
     public int id; public Place home; public string kind; public List<(float x, float z)> route; public SquadComp comp; public int wpi; public List<Actor> members = new();
     public float x, z, heading; public string state = "patrol"; public Knowledge know; public (float x, float z)? investigate; public float searchT, engageT0, respawnT, wait; public bool dormant;
@@ -16,7 +16,7 @@ public sealed class Squad
 }
 
 /// <summary>An AI's working memory (the original's brain object).</summary>
-public sealed class Brain
+public sealed partial class Brain
 {
     public string mode = "fight"; public float think; public Actor seeA; public CoverPt cover; public float coverT, coverIn, peek = 1; public Actor tgtA; public bool aiming; public float alertT, hurtT, retreatT; public bool retreated, lastStand;
     public float stuckT, sideT, side, avoid, avoidT, strafe = 1, strafeT; public string seq; public float seqT, rollT, poundCD, dashCD, throwCD, punchCD;
@@ -71,7 +71,8 @@ public sealed partial class World
         else SpawnSquadMembers(S);
         return S;
     }
-    static (float, float) SlotFor(Squad S, Actor A, int i, int n)
+    static (float, float) SlotFor(Squad S, Actor A, int i, int n) => FormationSlot(S, A, i, n, SlotBasic(S, A, i, n));
+    static (float, float) SlotBasic(Squad S, Actor A, int i, int n)
     {   // formation offsets in the squad frame: +z forward
         if (A.type == "small") { const int per = 5; int r = i / per, c = i % per, w = Math.Min(per, n - r * per); return ((c - (w - 1) / 2f) * 2.6f, 6.5f - r * 2.2f); }
         if (A.type == "normal") return ((i - (n - 1) / 2f) * 3.0f, 0.5f);
@@ -103,6 +104,7 @@ public sealed partial class World
                 A.P.x = ok ? x : S.x + (R() - 0.5f) * 3; A.P.z = ok ? z : S.z + (R() - 0.5f) * 3; A.P.y = GroundY(A.P.x, A.P.z) + 0.02f; A.P.px = A.P.x; A.P.py = A.P.y; A.P.pz = A.P.z;
                 S.members.Add(A);
             }
+        AssignRanks(S);
         // roaming squads often bring a motorbike for one of the troopers
         int nb = S.comp != null ? S.comp.bikes : S.kind != "garrison" && R() < 0.55f ? 1 : 0;
         for (int bi = 0; bi < nb; bi++)
@@ -219,8 +221,10 @@ public sealed partial class World
     (float, float) Steer(Actor A, float gx, float gz, float speed, float dt)
     {
         var G = A.P; var B = A.brain;
+        float fgx = gx, fgz = gz;
+        if (speed > 0.05f) (gx, gz) = NavGoal(A, gx, gz, dt);   // round obstacles by a planned route when the way is blocked
         float dx = gx - G.x, dz = gz - G.z, dl = Hypot(dx, dz);
-        if (dl < 0.4f) return (0, 0);
+        if (dl < 0.4f) { if (Hypot(fgx - G.x, fgz - G.z) < 0.4f) return (0, 0); dx = fgx - G.x; dz = fgz - G.z; dl = Hypot(dx, dz); }
         dx /= dl; dz /= dl;
         // probe ahead; swing to the side that is free
         float probe = MathF.Min(dl, 2.2f + Hypot(G.vx, G.vz) * 0.25f), pad = G.R + 0.15f;

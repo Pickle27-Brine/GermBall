@@ -289,6 +289,7 @@ public sealed partial class World
             }
         }
         if (B.seq == "dash" || B.seq == "roll") { gx = t.x; gz = t.z; speed = 1; }
+        ApplyOrders(A, T, ref gx, ref gz, ref speed);
         var v = Steer(A, gx, gz, speed, dt); I.mx = v.Item1; I.mz = -v.Item2;
         // the trigger: shooting needs a turn (a squad token) unless they're cornered, plus a moment to react
         if (seeIt) { if (B.seenT <= 0) B.reactT = (A.type == "small" ? 0.8f : 0.5f) + R() * 0.7f; B.seenT = 1.5f; } else B.seenT -= dt;
@@ -334,6 +335,7 @@ public sealed partial class World
                 }
                 continue;
             }
+            StepRanks(S, dt);
             float near = 1e9f; foreach (var A in S.members) near = MathF.Min(near, NearestHeroDist(A.P));
             S.dormant = S.kind != "wave" && near > 135 && S.state != "combat";
             foreach (var A in S.members) { A.dormant = S.dormant; A.lod = near > 70 && S.state != "combat" ? 1 : 0; }

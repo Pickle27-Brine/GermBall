@@ -400,7 +400,7 @@ public sealed partial class World
             if (A.human && SET.fp) { if (A.dormant) continue; PoseActor(A, alpha, fdt); continue; }
             if ((A.dormant || (d > 110 && (frameNo + A.uid) % 3 != 0)) && A.poseT >= 0) { /* frozen or far away: reuse the last pose */ } else PoseActor(A, alpha, fdt);
             int lod = d < 16 * MathF.Max(1, G.s * 0.7f) || A.human ? 2 : d < 55 ? 1 : 0;
-            DrawGermActor(A, lod, fdt, alpha); DrawExtras(A);
+            DrawGermActor(A, lod, fdt, alpha); DrawExtras(A); DrawRank(A);
         }
         DrawVehicles(alpha);
         foreach (var b in CHIPS)
