@@ -105,6 +105,11 @@ Guns use magazines. Spare magazines are stored and shown as pips on the weapon s
 - **Maps.** Bloodstream, Host Zero and Belly of the Beast (sandbox); Lymph Node, Neural Cortex, Villus Ridge and The Gullet (waves). Wave arenas end at a visible cell membrane at the foot of the basin.
 - **Menus and names.** Saira Extra Condensed, Chakra Petch and Space Mono are bundled in `data/fonts` under the SIL Open Font License. Buttons and panels are restyled. Controller navigation needs a firmer push and repeats more slowly. Text no longer clips in the pause card. The theme runs through all the names: medical weapons, Tab, Cap and Jab, the Clinic, colonies, biofilms, the coating meter and the scanner.
 
+## Models (FBX)
+
+- **Export:** in the customizer, **Export FBX** writes your hero, armour and attachments included, as a binary FBX 7.4 file in `Documents\My Games\GermBall\models\`. Each colour is its own mesh and material, in metres with Y up, so it opens in Blender, Maya, 3ds Max or Unity.
+- **Import:** put any `.fbx` (binary or ASCII) into `data\models\` or `Documents\My Games\GermBall\models\`. Every mesh in the file is merged, centred and fitted to a segment's size, then offered as `model:<file name>` among the shapes for every segment and attachment. It's attached rigidly to that body part and takes the colour you pick. Animated or skinned rigs aren't used; the heroes stay segment-based.
+
 ## Engine changes for Windows
 
 - **Render resolution is a setting, not a limit.** The original drew a few hundred lines and scaled them up. That look is still the default (480p, nearest-neighbour upscale). 720p, 1080p and native are options too.
@@ -131,7 +136,7 @@ It also contains a software rasteriser that mirrors the D3D11 renderer, so every
 dotnet run --project tools/Smoke -c Release -- data --shots out 1280 720
 ```
 
-The modes are `interior`, `fluids`, `title`, `custom`, `heroes`, `lineup`, `vehicles`, `weapons`, `maps`, `cast`, `sandbox-random`, `waves-bowl`, `sandbox-leviathan` and `game`. Pass one as the last argument to render only that mode. The map stills in `data/ui/maps/` and `data/ui/cast.png` were made this way.
+The modes are `collide` (the collision audit), `villi`, `fbx`, `interior`, `fluids`, `title`, `custom`, `heroes`, `lineup`, `vehicles`, `weapons`, `maps`, `cast`, `sandbox-random`, `waves-bowl`, `sandbox-leviathan` and `game`. Pass one as the last argument to render only that mode. The map stills in `data/ui/maps/` and `data/ui/cast.png` were made this way.
 
 ## Layout
 

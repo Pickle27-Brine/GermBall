@@ -216,6 +216,15 @@ public static class Shots
             Frame(gs, name: "fluids-close");
             world.SetFreeCam(false);
         }
+        if (Want("fbx"))
+        {   // round trip: export a hero as FBX, read it back, and load it as a model shape on a fresh hero's head and chest
+            var c = new CustomizeScreen(app, GermDraw.DefaultCustom()); Frame(new Wrap(c));
+            var parts = c.FbxParts(); string fdir = Path.Combine(dir, "models"); Directory.CreateDirectory(fdir); string f = Path.Combine(fdir, "roundtrip.fbx");
+            Fbx.Save(f, parts);
+            var (pos, idx) = Fbx.Load(f);
+            Console.WriteLine($"fbx: wrote {parts.Count} parts, {parts.Sum(p => p.Pos.Count / 3)} vertices, {new FileInfo(f).Length} bytes; read back {pos.Length / 3} vertices, {idx.Length / 3} triangles");
+            ModelLibrary.Load(fdir); Console.WriteLine("fbx: model shapes " + string.Join(", ", ModelLibrary.Names) + (ModelLibrary.Errors.Count > 0 ? " errors " + string.Join("; ", ModelLibrary.Errors) : ""));
+        }
         if (Want("villi"))
         {   // a villi patch up close, after it has swayed a while and someone has walked through it
             var world = new World(new BootConfig { Mode = "waves", Map = "bowl", Seed = 7, Custom = GermDraw.DefaultCustom() }, new Settings { res = 0, density = 1 }, World.DefaultBinds());

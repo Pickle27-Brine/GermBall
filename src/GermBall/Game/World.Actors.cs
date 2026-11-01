@@ -42,7 +42,7 @@ public sealed partial class PState
 
 public sealed class InputState { public float mx, mz, yaw, aimYaw; public bool jump, roll, pound, ads, fire, grab, use, up, down, punch, reload; public V3 throwAt; }
 public sealed class AimState { public float px, py, pz, fx, fy, fz = -1; public bool ok; }
-public sealed class Anim { public float phase, lean, down, aimK, holdK, throwT, punchT, hurtT, twist, hop, yawRate, swingT, squashT, upYaw; }
+public sealed class Anim { public float stride = 1, phase, lean, down, aimK, holdK, throwT, punchT, hurtT, twist, hop, yawRate, swingT, squashT, upYaw; }
 
 public sealed partial class Actor
 {

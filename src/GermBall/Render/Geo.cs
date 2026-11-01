@@ -98,11 +98,13 @@ public static class Geo
         return Make(p, n, uv, idx);
     }
 
-    /// <summary>The shared shape set for heroes and germs, by emit letter.</summary>
+    static Dictionary<char, Geometry> WithModels(this Dictionary<char, Geometry> d) { foreach (var (k, g) in ModelLibrary.Shapes) d[k] = g; return d; }
+
+    /// <summary>The shared shape set for heroes and germs, by emit letter (plus the player's own FBX models).</summary>
     public static Dictionary<char, Geometry> PartShapes(bool fine)
     {
         int s = fine ? 18 : 16, c = fine ? 16 : 12;
-        return new()
+        return new Dictionary<char, Geometry>()
         {
             ['Z'] = Sphere(1, s, fine ? 12 : 11), ['I'] = Icosahedron(1, 1), ['B'] = Box(1, 1, 1), ['P'] = Cone(1, 1, fine ? 12 : 9), ['C'] = Cylinder(1, 1, 1, c),
             ['T'] = Torus(1, 0.18f, fine ? 8 : 7, fine ? 24 : 22).RotateX(MathF.PI / 2),
@@ -112,7 +114,7 @@ public static class Geo
             // armour: curved plates hugging a limb (front-centred), a conical one for tapered chests, a faceted one, a near-full band, a domed cap
             ['U'] = CurvedPlate(150, 1, 0.12f, 14), ['A'] = CurvedPlate(150, 0.78f, 0.12f, 14), ['J'] = CurvedPlate(150, 1, 0.14f, 4), ['V'] = CurvedPlate(70, 1, 0.16f, 6),
             ['O'] = CurvedPlate(320, 1, 0.12f, 20), ['S'] = CapShell(62, 0.12f, fine ? 18 : 14, 6),
-        };
+        }.WithModels();
     }
 
     public static Geometry Box(float w = 1, float h = 1, float d = 1)

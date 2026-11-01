@@ -174,11 +174,13 @@ public sealed partial class World
         if (snap) { for (int i = 0; i < n; i++) { int k = i * 13; sm[k] = ps[k] - rx; sm[k + 1] = ps[k + 1] - ry; sm[k + 2] = ps[k + 2] - rz; for (int j = 3; j < 7; j++) sm[k + j] = ps[k + j]; } A.poseSOk = true; }
         else if (fdt > 0)
         {   // ease toward the new pose; fast moves (swings, punches, recoil, rolling) ease much quicker so they keep their snap
-            bool quick = A.W.swingT > 0 || A.W.punchQ > 0 || G.rolling || G.dashT > 0 || A.W.since < 0.08f;
-            float k = 1 - MathF.Exp(-fdt * (quick ? 70 : 24));
+            // legs are never eased (a planted foot that lags slides), arms aren't while aiming or fighting (a gun that trails the aim
+            // feels sloppy); the torso, head and relaxed arms ease quickly, which is enough to take the snap out of pose changes
+            bool quick = A.W.swingT > 0 || A.W.punchQ > 0 || G.rolling || G.dashT > 0 || A.W.since < 0.25f || A.anim.aimK > 0.3f;
+            float kBody = 1 - MathF.Exp(-fdt * (quick ? 80 : 36)), kArm = quick ? 1 : kBody;
             for (int i = 0; i < n; i++)
             {
-                int b = i * 13;
+                int b = i * 13; float k = i >= 9 ? 1 : i >= 3 ? kArm : kBody;
                 sm[b] += (ps[b] - rx - sm[b]) * k; sm[b + 1] += (ps[b + 1] - ry - sm[b + 1]) * k; sm[b + 2] += (ps[b + 2] - rz - sm[b + 2]) * k;
                 float dot = sm[b + 3] * ps[b + 3] + sm[b + 4] * ps[b + 4] + sm[b + 5] * ps[b + 5] + sm[b + 6] * ps[b + 6], sg = dot < 0 ? -1 : 1, l = 0;
                 for (int j = 3; j < 7; j++) { sm[b + j] += (ps[b + j] * sg - sm[b + j]) * k; l += sm[b + j] * sm[b + j]; }
@@ -221,7 +223,7 @@ public sealed partial class World
             if (an.throwT > 0) an.throwT -= fdt; if (an.punchT > 0) an.punchT -= fdt; if (an.hurtT > 0) an.hurtT -= fdt; if (an.swingT > 0) an.swingT -= fdt; if (an.squashT > 0) an.squashT -= fdt;
             G.squash += (0 - G.squash) * MathF.Min(1, fdt * 10);
             float stride = s * Clamp(0.62f + 0.085f * hs, 0.62f, 1.9f) * (A.type == "small" ? 0.75f : A.type == "brute" ? 1.15f : A.type == "mech" ? 1.25f : A.type == "mecha" ? 2.4f : 1) * (HS?.Stride ?? 1);
-            float before = MathF.Sin(an.phase);
+            an.stride = stride; float before = MathF.Sin(an.phase);
             if (G.ground && !G.rolling) an.phase += hs * fdt / stride * PI;
             else if (!G.ground) an.phase += fdt * 6;
             if ((A.type == "brute" || A.type == "mech") && G.ground && hs > 1 && MathF.Sign(before) != MathF.Sign(MathF.Sin(an.phase)))
@@ -306,7 +308,10 @@ public sealed partial class World
         float sway = (A.type == "small" ? 0.1f + 0.04f * fear : A.type == "brute" ? 0.04f : 0.02f) * s * MathF.Sin(ph) * walkK + trA;
         ToW(sway, hipY, 0, J["hipC"]);
         // feet: stride targets in local space
-        float strideL = s * Clamp(0.26f + 0.04f * hs, 0.26f, 0.6f) * (A.type == "small" ? 0.7f : 1) * (HS?.Stride ?? 1), lift = s * Clamp(0.1f + 0.03f * hs, 0.1f, 0.36f) * (HS?.Lift ?? 1);
+        // the planted foot must travel back exactly as far as the body moves while it's down (half a cycle = one stride), or it
+        // slides: so its reach is half the stride. Heroes' legs are scaled after posing (leg length, height), so divide that back out.
+        float legK = 1; if (MED.TryGetValue(A.type, out var medP)) legK = MathF.Max(0.5f, medP.LegLen * medP.Height);
+        float strideL = an.stride * 0.5f / legK, lift = s * Clamp(0.1f + 0.03f * hs, 0.1f, 0.36f) * (HS?.Lift ?? 1);
         for (int side = -1; side <= 1; side += 2)
         {
             string L = side < 0 ? "L" : "R"; float p = ph + (side < 0 ? 0 : PI); var hip = J["hip" + L]; var knee = J["knee" + L]; var ankle = J["ank" + L]; var toe = J["toe" + L];
@@ -315,7 +320,14 @@ public sealed partial class World
             if (seat != null) { lx = side * seat.Foot[0]; ly = seat.Foot[1]; lz = -seat.Foot[2] - seat.Hip[1]; }
             else if (airborne) { lz = (side < 0 ? 0.25f : -0.12f) * s; ly = hipY - (L1 + L2) * (side < 0 ? 0.62f : 0.78f); }
             else if (legs == 1) { lx = 0; lz = -MathF.Cos(ph * 2) * strideL * 0.4f * walkK; ly = ank + MathF.Max(0, MathF.Sin(ph * 2)) * lift * walkK; }
-            else { lz = -MathF.Cos(p) * strideL * walkK; ly = ank + MathF.Max(0, MathF.Sin(p)) * lift * walkK + runK * MathF.Max(0, MathF.Cos(p)) * MathF.Max(0, MathF.Sin(p) + 0.6f) * 0.3f * s; }
+            else
+            {   // swing (first half of the cycle): the foot lifts and eases forward; stance (second half): it moves back at exactly the
+                // body's speed (linear in phase), so a planted foot stays put on the ground
+                float pm = p % TAU; if (pm < 0) pm += TAU;
+                if (pm < PI) { float u = pm / PI, e = u * u * (3 - 2 * u); lz = (-1 + 2 * e) * strideL * walkK; }
+                else { float u = (pm - PI) / PI; lz = (1 - 2 * u) * strideL * walkK; }
+                ly = ank + MathF.Max(0, MathF.Sin(p)) * lift * walkK + runK * MathF.Max(0, MathF.Cos(p)) * MathF.Max(0, MathF.Sin(p) + 0.6f) * 0.3f * s;
+            }
             ToW(lx, ly, lz, ankle);
             if (G.ground && down < 0.5f && legs > 0)
             {   // keep planted feet on the slope

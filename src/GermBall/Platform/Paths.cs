@@ -21,6 +21,8 @@ public static class Paths
     public static string Data { get; private set; }
     public static string Saves { get; private set; }
     public static string Germs => Dir(Path.Combine(Saves, "germs"));
+    /// <summary>The player's own FBX models (loaded as shapes) and the heroes exported as FBX.</summary>
+    public static string Models => Dir(Path.Combine(Saves, "models"));
     public static string Screenshots => Dir(Path.Combine(Saves, "screenshots"));
     public static string Logs => Dir(Path.Combine(Saves, "logs"));
 

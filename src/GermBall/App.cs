@@ -34,6 +34,9 @@ public sealed class App : IDisposable
         Audio = new Audio();
         // the game's own type (data/fonts, SIL Open Font License): Saira Extra Condensed for headlines and numbers,
         // Chakra Petch's cut corners for labels and buttons, Space Mono for body text
+        // the player's own FBX models become shapes for segments and attachments (data/models and the saves' models folder)
+        ModelLibrary.Load(System.IO.Path.Combine(Platform.Paths.Data ?? "data", "models"), Platform.Paths.Saves != null ? Platform.Paths.Models : null);
+        foreach (var e in ModelLibrary.Errors) Log.Warn("model: " + e);
         UiFont.LoadPrivate(System.IO.Path.Combine(Platform.Paths.Data ?? "data", "fonts"));
         // (face names as GDI sees them: the heavier cuts carry their weight in the family name)
         const string HEAD = "Saira ExtraCondensed ExtraBold", HEAD9 = "Saira ExtraCondensed Black", LABEL = "Chakra Petch", LABEL6 = "Chakra Petch SemiBold", BODY = "Space Mono";

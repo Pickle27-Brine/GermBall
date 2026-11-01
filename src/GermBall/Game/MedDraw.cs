@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GermBall.Core;
+using GermBall.Render;
 using static GermBall.Core.M;
 
 namespace GermBall.Game;
@@ -185,7 +186,10 @@ public static class MedDraw
     public static readonly string[] DETAILS = { "none", "score", "rivets", "vents", "stripe", "rings", "ridges" };
     public static readonly string[] VISORS = { "default", "slit", "wrap", "dual", "mono", "none" };
     public static readonly string[] ANTENNAS = { "none", "stub", "spike", "dish", "twin" };
-    public static string[] ShapesFor(int i) => i == 0 ? HEAD_SHAPES : i is 5 or 8 ? HAND_SHAPES : i is 11 or 14 ? FOOT_SHAPES : i is 1 or 2 ? CORE_SHAPES : i == 15 ? ABDOMEN_SHAPES : SHAPES;
+    public static string[] ShapesFor(int i) => WithModels(i == 0 ? HEAD_SHAPES : i is 5 or 8 ? HAND_SHAPES : i is 11 or 14 ? FOOT_SHAPES : i is 1 or 2 ? CORE_SHAPES : i == 15 ? ABDOMEN_SHAPES : SHAPES);
+    /// <summary>The list plus the player's own FBX models (as "model:name").</summary>
+    public static string[] WithModels(string[] a) => ModelLibrary.Names.Count == 0 ? a : a.Concat(ModelLibrary.Names.Select(n => "model:" + n)).ToArray();
+    static bool Model(string shape, out char key) { key = '\0'; return shape != null && shape.StartsWith("model:") && ModelLibrary.Keys.TryGetValue(shape[6..], out key); }
     public static readonly string[] ATTACH_SHAPES = { "sphere", "capsule", "cone", "box", "ring", "disc", "cylinder", "pauldron", "fin", "needle", "cross" };
     public static readonly string[] ARMOR_STYLES = { "plate", "shell", "angular", "ring", "studs", "none" };
     public static readonly string[] PART_NAMES = { "Head", "Chest", "Waist", "Left upper arm", "Left forearm", "Left hand", "Right upper arm", "Right forearm", "Right hand", "Left thigh", "Left shin", "Left foot", "Right thigh", "Right shin", "Right foot", "Abdomen" };
@@ -430,7 +434,10 @@ public static class MedDraw
                     break;
                 }
             case "mitt": Put('Z', a, 0, 0, 0, r * 1.15f, r * 0.85f, r * 1.3f); Put('Z', b, -r * 0.75f, r * 0.1f, -r * 0.2f, r * 0.35f, r * 0.5f, r * 0.35f); break;
-            default: Capsule(a, b, r, L, false, te); break;
+            default:
+                if (Model(st.Shape, out char mk)) Put(mk, a, 0, 0, 0, r * 1.05f, L, r * 1.05f);   // the player's own model, fitted to the segment
+                else Capsule(a, b, r, L, false, te);
+                break;
         }
         float fd = FrontDepth(st.Shape, r, L);
         switch (st.Detail)
@@ -563,7 +570,10 @@ public static class MedDraw
             case "fin": Put('B', at.Tone, lx, ly, lz, sx, sy, sz, AQ); break;
             case "needle": Put('C', at.Tone, lx, ly, lz, sx * 0.5f, sy * 0.55f, sz * 0.5f, AQ); QRot(AQ, 0, -sy * 0.75f, 0, TV); Put('P', 'k', lx + TV.x, ly + TV.y, lz + TV.z, sx * 0.18f, sy * 0.9f, sz * 0.18f, QMul(AQ, QAxis(1, 0, 0, PI, TQ), TQ)); break;
             case "cross": Put('B', at.Tone, lx, ly, lz, sx, sy * 0.33f, sz, AQ); Put('B', at.Tone, lx, ly, lz, sx * 0.33f, sy, sz, AQ); break;
-            default: Put('Z', at.Tone, lx, ly, lz, sx, sy, sz, AQ); break;
+            default:
+                if (Model(at.Shape, out char mk)) Put(mk, at.Tone, lx, ly, lz, sx, sy, sz, AQ);
+                else Put('Z', at.Tone, lx, ly, lz, sx, sy, sz, AQ);
+                break;
         }
     }
 

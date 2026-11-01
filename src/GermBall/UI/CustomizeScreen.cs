@@ -240,7 +240,8 @@ public sealed class CustomizeScreen
         if (gui.Chip("random", fx, fy, "Randomize")) Randomize(); fx += gui.lastW + 5;
         if (gui.Chip("reset", fx, fy, "Reset", false, Draw2D.Col(0xff9ae8))) { C = new GermCustom { Preset = C.Preset }; att = -1; Changed(); } fx += gui.lastW + 5;
         if (gui.Chip("export", fx, fy, "Export…")) Export(); fx += gui.lastW + 5;
-        if (gui.Chip("import", fx, fy, "Import…")) Import();
+        if (gui.Chip("import", fx, fy, "Import…")) Import(); fx += gui.lastW + 5;
+        if (gui.Chip("fbx", fx, fy, "Export FBX")) ExportFbx();
         if (gui.Big("done", ix, fy + 32, iw, 40, "Save and back")) Close();
         if (gui.Focus == null && gui.NavUsed) gui.Focus = "ct:" + tab;
     }
@@ -250,6 +251,37 @@ public sealed class CustomizeScreen
         var path = FileDialogs.Save(app.Window.Handle, "Export hero", "Hero (*.germ.json)|*.germ.json", Paths.Germs, (C.Preset ?? "hero") + ".germ.json");
         if (path == null) return;
         Paths.Save(path, C); status = "Saved " + System.IO.Path.GetFileName(path);
+    }
+    /// <summary>Writes the hero, as it stands on the pedestal (armour and attachments included), as a binary FBX: one mesh per
+    /// colour, each with its material, in metres, Y up. Opens in Blender, Maya, 3ds Max, Unity.</summary>
+    void ExportFbx()
+    {
+        string name = (C.Preset ?? "hero") + "-hero-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".fbx";
+        var path = FileDialogs.Save(app.Window.Handle, "Export hero as FBX", "FBX model (*.fbx)|*.fbx", Paths.Models, name);
+        if (path == null) return;
+        try { Fbx.Save(path, FbxParts()); status = "Exported " + System.IO.Path.GetFileName(path); }
+        catch (Exception e) { status = "Couldn't write the FBX: " + e.Message; }
+    }
+    /// <summary>The hero as FBX parts (one per colour), posed at rest.</summary>
+    internal List<Fbx.Part> FbxParts()
+    {
+        var parts = new Dictionary<char, Fbx.Part>(); var geo = Geo.PartShapes(true);
+        void Cap(char sh, char tone, float x, float y, float z, float qx, float qy, float qz, float qw, float sx, float sy, float sz)
+        {
+            if (!geo.TryGetValue(sh, out var g)) return;
+            if (tone == 'f') tone = 'a';
+            if (!parts.TryGetValue(tone, out var pt)) parts[tone] = pt = new Fbx.Part { Name = "hero_" + (tone switch { 'a' => "body", 'b' => "second", 'c' => "glow", 'd' => "armor", 'e' => "visor", _ => "dark" }), Color = Material.Hex(ToneCol(tone)) };
+            var M = Matrix4x4.CreateScale(sx, sy, sz) * Matrix4x4.CreateFromQuaternion(new Quaternion(qx, qy, qz, qw)) * Matrix4x4.CreateTranslation(x, y, z);
+            int b = pt.Pos.Count / 3;
+            for (int i = 0; i < g.VertexCount; i++) { var v = Vector3.Transform(new Vector3(g.Position[i * 3], g.Position[i * 3 + 1], g.Position[i * 3 + 2]), M); pt.Pos.Add(v.X); pt.Pos.Add(v.Y); pt.Pos.Add(v.Z); }
+            var ix = g.Index;
+            if (ix != null) for (int t = 0; t + 2 < ix.Length; t += 3) { pt.Poly.Add(b + (int)ix[t]); pt.Poly.Add(b + (int)ix[t + 1]); pt.Poly.Add(-(b + (int)ix[t + 2]) - 1); }
+            else for (int t = 0; t + 2 < g.VertexCount; t += 3) { pt.Poly.Add(b + t); pt.Poly.Add(b + t + 1); pt.Poly.Add(-(b + t + 2) - 1); }
+        }
+        var rest = GermDraw.RestPose(1, 0);
+        MedDraw.Draw(SP, rest, opt, Cap);
+        foreach (var p in GermDraw.HERO_ARMOR) MedDraw.Armor(SP, rest, p.Part, p.Y0, p.Y1, p.Phi, SP.ArmorStyle, 'd', Cap);
+        return parts.Values.ToList();
     }
     void Import()
     {
@@ -410,9 +442,9 @@ public sealed class CustomizeScreen
     {
         float y0 = y, h; int r;
         y += Csub(d, "Add to " + MedDraw.PART_NAMES[seg].ToLowerInvariant(), x, y);
-        if ((r = gui.Chips("addatt", x, y, w, MedDraw.ATTACH_SHAPES, i => false, out h)) >= 0)
+        if ((r = gui.Chips("addatt", x, y, w, MedDraw.WithModels(MedDraw.ATTACH_SHAPES), i => false, out h)) >= 0)
         {
-            var a = new Attach { Part = seg, Shape = MedDraw.ATTACH_SHAPES[r], Y = 0.3f, Z = -1.1f, Sx = 0.5f, Sy = 0.5f, Sz = 0.5f, Tone = 'c' };
+            var a = new Attach { Part = seg, Shape = MedDraw.WithModels(MedDraw.ATTACH_SHAPES)[r], Y = 0.3f, Z = -1.1f, Sx = 0.5f, Sy = 0.5f, Sz = 0.5f, Tone = 'c' };
             if (a.Shape is "needle" or "cone" or "capsule") { a.Sy = 1.6f; a.Sx = a.Sz = 0.4f; } else if (a.Shape is "fin") { a.Sx = 0.15f; a.Sy = 0.9f; a.Sz = 1.0f; a.Z = 0.6f; a.Y = 0.8f; } else if (a.Shape is "disc" or "ring") a.Sy = 0.25f;
             Atts.Add(a); att = Atts.Count - 1; Changed();
         }
