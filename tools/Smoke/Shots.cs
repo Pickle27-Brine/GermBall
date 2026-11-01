@@ -83,6 +83,13 @@ public static class Shots
             for (int i = 0; i < 240; i++) { Input.KeyEvent("KeyW", i % 120 < 60); Frame(gs); }
             Input.KeyEvent("KeyW", false);
             Frame(gs, name: tag + "-fight");
+            Diagnose(world);
+            {   // the same frame without additive effects, and without opaque meshes, to find stray geometry
+                var hidden = new List<Node>();
+                void Hide(Node n, bool additive) { if (n is Mesh m && m.Mat != null && (m.Mat.Blending == Blend.Additive || m.Mat.Transparent) == additive && n.Visible) { n.Visible = false; hidden.Add(n); } if (n is Lines l && additive && n.Visible) { n.Visible = false; hidden.Add(n); } foreach (var c in n.Children) Hide(c, additive); }
+                Hide(world.scene, true); sr.Render(world.scene, world.camera); { var px = sr.Capture(out int ww, out int hh); File.WriteAllBytes(Path.Combine(outDir, tag + "-fight-noadd.png"), Screenshot.Png(px, ww, hh)); }
+                foreach (var n in hidden) n.Visible = true;
+            }
             // close-up of the hero and an overhead
             world.SetFreeCam(true); world.FREECAM.x = world.HUMAN.P.x + 3; world.FREECAM.y = world.HUMAN.P.y + 2; world.FREECAM.z = world.HUMAN.P.z + 3; world.FREECAM.yaw = MathF.PI / 4; world.FREECAM.pitch = -0.3f; world.FREECAM.fov = 50;
             for (int i = 0; i < 10; i++) Frame(gs);
@@ -92,6 +99,25 @@ public static class Shots
             Frame(gs, name: tag + "-overhead");
             world.SetFreeCam(false);
         }
+    }
+    /// <summary>Lists instances with absurd transforms (huge, NaN) and names the draw list they came from.</summary>
+    static void Diagnose(World w)
+    {
+        var names = w.IM as System.Collections.IDictionary;
+        var byMesh = new Dictionary<object, string>();
+        if (names != null) foreach (System.Collections.DictionaryEntry e in names) { var v = e.Value; var f = v.GetType().GetField("m") ?? v.GetType().GetField("im") ?? v.GetType().GetField("Mesh"); var mesh = f?.GetValue(v) ?? v; byMesh[mesh] = (string)e.Key; }
+        void Walk(Node n)
+        {
+            if (n is InstancedMesh im)
+                for (int i = 0; i < Math.Min(im.Count, im.Capacity); i++)
+                {
+                    var m = im.Matrices[i]; float sx = new System.Numerics.Vector3(m.M11, m.M12, m.M13).Length(), sy = new System.Numerics.Vector3(m.M21, m.M22, m.M23).Length(), sz = new System.Numerics.Vector3(m.M31, m.M32, m.M33).Length();
+                    bool bad = !float.IsFinite(sx + sy + sz + m.M41 + m.M42 + m.M43) || MathF.Max(sx, MathF.Max(sy, sz)) > 60;
+                    if (bad) { Console.WriteLine($"  BAD instance in '{(byMesh.TryGetValue(im, out var nm) ? nm : im.Mat?.Color.ToString())}' #{i}: scale {sx:0.0},{sy:0.0},{sz:0.0} at {m.M41:0.0},{m.M42:0.0},{m.M43:0.0}"); break; }
+                }
+            foreach (var c in n.Children) Walk(c);
+        }
+        Walk(w.scene);
     }
     sealed class Wrap : IScreen
     {

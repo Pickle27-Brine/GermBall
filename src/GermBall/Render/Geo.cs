@@ -106,6 +106,20 @@ public static class Geo
         int[] f = { 0, 2, 4, 0, 4, 3, 0, 3, 5, 0, 5, 2, 1, 2, 5, 1, 5, 3, 1, 3, 4, 1, 4, 2 };
         return Polyhedron(v, f, r, detail);
     }
+    /// <summary>A unit "pillow": a cube with its edges and corners rounded off (a superellipsoid), spanning -0.5..0.5.
+    /// Packed side by side these read as plant cells or cell-wall tiles rather than bricks.</summary>
+    public static Geometry Pillow(float roundness = 0.35f, int ws = 14, int hs = 10)
+    {
+        var g = Sphere(1, ws, hs); float e = Math.Clamp(roundness, 0.05f, 1f);
+        for (int i = 0; i < g.VertexCount; i++)
+        {
+            float x = g.Position[i * 3], y = g.Position[i * 3 + 1], z = g.Position[i * 3 + 2];
+            static float F(float v, float e) => MathF.Sign(v) * MathF.Pow(MathF.Abs(v), e);
+            g.Position[i * 3] = F(x, e) * 0.5f; g.Position[i * 3 + 1] = F(y, e) * 0.5f; g.Position[i * 3 + 2] = F(z, e) * 0.5f;
+        }
+        g.ComputeNormals(); g.BoundRadius = -1; return g;
+    }
+
     public static Geometry Dodecahedron(float r = 1, int detail = 0)
     {
         float t = (1 + MathF.Sqrt(5)) / 2, q = 1 / t;

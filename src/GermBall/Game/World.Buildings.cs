@@ -110,13 +110,15 @@ public sealed partial class World
     }
     // one instanced mesh per material holds every chunk; a smashed chunk's instance is zeroed
     readonly Dictionary<string, InstancedMesh> CH_MESH = new();
-    static readonly Geometry boxGeo = Geo.Box(1, 1, 1);
+    static readonly Geometry boxGeo = Geo.Box(1, 1, 1), pillowGeo = Geo.Pillow(0.32f);
     void FlushChunks()
     {
         foreach (var (mat, list) in CH_BY_MAT)
         {
-            var m = new InstancedMesh(boxGeo, SMAT[mat], list.Count) { CastShadow = true, ReceiveShadow = true };
-            for (int i = 0; i < list.Count; i++) { var c = list[i]; c.idx = i; m.Matrices[i] = Matrix4x4.CreateScale(c.sx, c.sy, c.sz) * Matrix4x4.CreateTranslation(c.x, c.y, c.z); }
+            // walls are packed cells (rounded tiles that bulge slightly into each other); floors and stairs stay flat underfoot
+            bool cells = mat != "dark";
+            var m = new InstancedMesh(cells ? pillowGeo : boxGeo, SMAT[mat], list.Count) { CastShadow = true, ReceiveShadow = true };
+            for (int i = 0; i < list.Count; i++) { var c = list[i]; c.idx = i; float k = cells ? 1.12f : 1; m.Matrices[i] = Matrix4x4.CreateScale(c.sx * k, c.sy * (cells ? 1.06f : 1), c.sz * k) * Matrix4x4.CreateTranslation(c.x, c.y, c.z); }
             m.Touch(); scene.Add(m); CH_MESH[mat] = m;
         }
     }

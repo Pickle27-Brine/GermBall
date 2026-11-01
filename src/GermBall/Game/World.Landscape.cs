@@ -181,8 +181,9 @@ public sealed partial class World
         }, false);
         SMAT = new()
         {
-            ["wallA"] = Lam(0x9fe8c8, texPanel), ["wallB"] = Lam(0xf2a8c0, texPanel), ["wallC"] = Lam(0xffdca8, texPanel),
-            ["tower"] = Lam(0xffffff, texWindows), ["dark"] = Lam(0x5a2440), ["trim"] = BasicM(0x7affef), ["trimHot"] = BasicM(0xff4fd8),
+            // cell walls: plant-cell green, cytoplasm pink, lavender membrane; towers are neuron bodies
+            ["wallA"] = Lam(0xb8e8a0, texPanel), ["wallB"] = Lam(0xf5b4cc, texPanel), ["wallC"] = Lam(0xd4c0f6, texPanel),
+            ["tower"] = Lam(0xb89cff, texWindows), ["dark"] = Lam(0x5a2440), ["trim"] = BasicM(0x7affef), ["trimHot"] = BasicM(0xff4fd8),
             ["cover"] = Lam(0xf0e0c8, texHazard), ["crate"] = Lam(0xd8f0a0, texCrate), ["stash"] = new Material { Kind = MatKind.Phong, Color = C(0x6dffb0), Emissive = C(0x1e8a55), Shininess = 80 },
             ["fence"] = Lam(0x8a4a48),
         };

@@ -26,10 +26,10 @@ public sealed partial class World
         InitTuning(); ApplyTuning();
         InitScene(); InitStructureMats(); BuildTerrainMesh(); Mark("terrain mesh");
         InitPropMats();
-        BuildLayout(); Mark("buildings");
+        BuildLayout(); BuildNerves(); Mark("buildings");
         PlaceProps();
         BuildLeviathan(); Mark("leviathan");
-        InitSprites(); InitSpores();
+        InitSprites();
         InitWaves();
         BuildGerms(); InitDrawLists(); InitReticles(); Mark("germs");
 

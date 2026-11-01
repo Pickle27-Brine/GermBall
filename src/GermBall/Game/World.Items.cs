@@ -10,6 +10,8 @@ public sealed class Item
 {
     public string kind, wid; public float x, y, z, vy, t, life, rot; public float? ammo; public Stash stash; public bool rack;
     public object vis;
+    /// <summary>Loose pickups are real rigid bodies: they drop, tumble and come to rest instead of hovering and spinning.</summary>
+    public Body body;
 }
 public sealed class Stash { public float x, y, z, t, every, rot; public string[] kinds; public (string, float)[] pool; public Item item; public bool rack; }
 
@@ -27,11 +29,21 @@ public sealed partial class World
     public Item SpawnItem(string kind, float x, float y, float z, float vy = 4, string wid = null, float? ammo = null, float life = 45, Stash stash = null, bool rack = false, float rot = 0)
     {
         var it = new Item { kind = kind, x = x, y = y, z = z, vy = vy, t = R() * 6, life = life, stash = stash, wid = wid, ammo = ammo, rack = rack, rot = rot };
+        if (stash == null && !rack)
+        {
+            Body b = kind == "weapon" ? MakeBody(BOXB, x, y, z, 8, new V3(0.11f, 0.09f, 0.42f), e: 0.15f, mu: 0.7f, yaw: R() * TAU)
+                : kind == "ammo" ? MakeBody(BOXB, x, y, z, 6, new V3(0.25f, 0.18f, 0.25f), e: 0.15f, mu: 0.8f, yaw: R() * TAU)
+                : MakeBody(SPH, x, y, z, 4, r: 0.3f, e: 0.3f, mu: 0.6f, roll: 1.2f);
+            b.Vel.Set((R() - 0.5f) * 2, vy, (R() - 0.5f) * 2); b.W.Set((R() - 0.5f) * 6, (R() - 0.5f) * 6, (R() - 0.5f) * 6);
+            b.Prop = new Prop { kind = "item" }; b.Tag = it; it.body = b;
+        }
+        else if (stash != null) it.y = stash.y + 0.35f;   // sitting on its stash, not hovering over it
         items.Add(it); return it;
     }
     void RemoveItem(Item it)
     {
         if (it.stash != null) { it.stash.item = null; it.stash.t = it.stash.every; }
+        if (it.body != null) RemoveBody(it.body);
         items.Remove(it);
     }
     void DropLoot(Actor B)
@@ -112,8 +124,8 @@ public sealed partial class World
                 if (s.t <= 0)
                 {
                     var k = s.kinds[(int)MathF.Floor(R() * s.kinds.Length)];
-                    s.item = k == "weapon" ? SpawnItem("weapon", s.x, s.y + 0.6f, s.z, vy: 0, life: float.PositiveInfinity, stash: s, wid: s.pool != null ? PickW(s.pool) : WPN_IDS[(int)MathF.Floor(R() * WPN_IDS.Length)], rack: s.rack, rot: s.rot)
-                        : SpawnItem(k, s.x, s.y + 0.6f, s.z, vy: 0, life: float.PositiveInfinity, stash: s);
+                    s.item = k == "weapon" ? SpawnItem("weapon", s.x, s.y, s.z, vy: 0, life: float.PositiveInfinity, stash: s, wid: s.pool != null ? PickW(s.pool) : WPN_IDS[(int)MathF.Floor(R() * WPN_IDS.Length)], rack: s.rack, rot: s.rot)
+                        : SpawnItem(k, s.x, s.y, s.z, vy: 0, life: float.PositiveInfinity, stash: s);
                 }
             }
         for (int i = items.Count - 1; i >= 0; i--)
@@ -121,11 +133,12 @@ public sealed partial class World
             if (i >= items.Count) continue;
             var it = items[i]; it.t += dt; it.life -= dt;
             if (it.life <= 0) { RemoveItem(it); continue; }
-            if (it.stash == null)
+            if (it.body != null)
             {
-                it.vy -= PGRAV * dt; it.y += it.vy * dt;
-                float g = GroundAt(it.x, it.z, it.y + 0.5f, true).h + 0.35f; if (it.y < g) { it.y = g; it.vy = 0; }
+                if (it.body.Removed || it.body.Pos.y < -200) { it.body = null; RemoveItem(it); continue; }
+                it.x = it.body.Pos.x; it.y = it.body.Pos.y; it.z = it.body.Pos.z;
             }
+            if (it.body?.Held != null) continue;   // someone is carrying it to throw
             foreach (var A in actors)
             {
                 if (!A.P.alive || A.dormant) continue;

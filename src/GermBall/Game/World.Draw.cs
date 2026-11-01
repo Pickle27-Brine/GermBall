@@ -366,18 +366,20 @@ public sealed partial class World
         foreach (var it in items)
         {
             if (MathF.Abs(it.x - cx) > 200 || MathF.Abs(it.z - cz) > 200) continue;
-            float yaw = it.rack ? it.rot : it.t * 1.6f, bobY = it.rack ? 0 : MathF.Sin(it.t * 2.2f) * 0.12f;
-            var q = new Q4(); QAxis(0, 1, 0, yaw, q);
+            // loose pickups lie where physics left them; stash and rack items sit still
+            float bobY = 0; var q = new Q4();
+            if (it.body != null) QNlerp(it.body.Pq, it.body.Q, alpha, q); else QAxis(0, 1, 0, it.rack ? it.rot : it.stash?.rot ?? 0, q);
+            float ix = it.body != null ? Lerp(it.body.Pp.x, it.body.Pos.x, alpha) : it.x, iy = it.body != null ? Lerp(it.body.Pp.y, it.body.Pos.y, alpha) : it.y, iz = it.body != null ? Lerp(it.body.Pp.z, it.body.Pos.z, alpha) : it.z;
             if (it.kind == "weapon")
             {
                 if (it.rack) { var q2 = new Q4(); QAxis(1, 0, 0, -PI / 2, q2); QMul(q, q2, q); }
                 foreach (var pc in WLOOK.TryGetValue(it.wid, out var l) ? l : WLOOK["pistol"])
                 {
                     XV.x = pc.x * 1.5f; XV.y = pc.y * 1.5f; XV.z = pc.z * 1.5f; QRot(q, XV, XO); var qq = pc.q != null ? QMul(q, pc.q, XQW) : q;
-                    InstAdd(pc.key, it.x + XO.x, it.y + bobY + XO.y, it.z + XO.z, qq.x, qq.y, qq.z, qq.w, pc.sx * 1.5f, pc.sy * 1.5f, pc.sz * 1.5f);
+                    InstAdd(pc.key, ix + XO.x, iy + bobY + XO.y, iz + XO.z, qq.x, qq.y, qq.z, qq.w, pc.sx * 1.5f, pc.sy * 1.5f, pc.sz * 1.5f);
                 }
             }
-            else InstAdd("it_" + it.kind, it.x, it.y + bobY, it.z, q.x, q.y, q.z, q.w, 1, 1, 1);
+            else InstAdd("it_" + it.kind, ix, iy + bobY, iz, q.x, q.y, q.z, q.w, 1, 1, 1);
         }
         InstEnd();
     }

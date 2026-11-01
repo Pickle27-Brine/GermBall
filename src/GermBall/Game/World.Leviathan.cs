@@ -236,46 +236,13 @@ public sealed partial class World
             var im = new InstancedMesh(geo, mat, n) { CastShadow = false }; scene.Add(im);
             var L = new List<Floater>(); for (int i = 0; i < n; i++) L.Add(mk(i)); ORG.floaters.Add(new FloaterSet { im = im, L = L }); return L;
         }
-        // red blood cells: dimpled discs (a torus with a thin centre), flowing along streams, tumbling
-        var rbcGeo = MergeGeo((Geo.Torus(0.75f, 0.42f, 8, 18), Mtx(0, 0, 0, 1, 1, 1)), (Geo.Cylinder(0.8f, 0.8f, 0.22f, 16), Mtx(0, 0, 0, 1, 1, 1, PI / 2, 0, 0)));
-        var streams = new List<Stream>(); for (int s = 0; s < (arena ? 3 : 7); s++) streams.Add(new Stream { a = r() * 6.28f, y = 3 + r() * (arena ? 20 : 45), off = (r() * 2 - 1) * LIM * 0.6f, sp = 4 + r() * 5 });
-        Fl(rbcGeo, Wet(0xd0182a, 90), arena ? 120 : 340, i => new Floater { kind = "rbc", S = streams[i % streams.Count], u = r() * LIM * 2, w = (r() - 0.5f) * 18, h = (r() - 0.5f) * 10, s = 0.9f + r() * 0.5f, sp = r() * 6.28f, spin = 0.5f + r() * 1.5f, ax = r() * 6.28f });
-        // white cells: lumpy translucent blobs with a dark lobed nucleus, crawling and hunting slowly
-        var wbcGeo = Geo.Icosahedron(1, 2);
-        for (int i = 0; i < wbcGeo.VertexCount; i++) { float x = wbcGeo.Position[i * 3], y = wbcGeo.Position[i * 3 + 1], z = wbcGeo.Position[i * 3 + 2], k = 0.85f + 0.3f * VNoise(x * 2.3f + 5, y * 2.1f + z * 1.7f); wbcGeo.Position[i * 3] = x * k; wbcGeo.Position[i * 3 + 1] = y * k; wbcGeo.Position[i * 3 + 2] = z * k; }
-        wbcGeo.ComputeNormals();
-        var wbcMat = Toon(Phong(0xe8f0ff, 100), 4); wbcMat.Transparent = true; wbcMat.Opacity = 0.7f; wbcMat.DepthWrite = false;
-        var wbcList = Fl(wbcGeo, wbcMat, arena ? 8 : 26, _ => { float x = (r() * 2 - 1) * LIM * 0.8f, z = (r() * 2 - 1) * LIM * 0.8f; return new Floater { kind = "wbc", x = x, z = z, y = 3 + r() * 6, a = r() * 6.28f, s = 2.2f + r() * 1.6f, ph = r() * 6.28f }; });
-        var nucGeo = MergeGeo((Geo.Sphere(1, 10, 8), Mtx(-0.35f, 0, 0, 0.45f, 0.4f, 0.4f)), (Geo.Sphere(1, 10, 8), Mtx(0.25f, 0.15f, 0, 0.4f, 0.35f, 0.38f)), (Geo.Sphere(1, 10, 8), Mtx(0.1f, -0.25f, 0.2f, 0.35f, 0.3f, 0.33f)));
-        Fl(nucGeo, Matte(0x6a2aa8), wbcList.Count, i => new Floater { kind = "nuc", of = wbcList[i] });
-        // platelets: small jagged plates
-        Fl(Geo.Icosahedron(0.35f, 0), Matte(0xc890ff), arena ? 40 : 140, i => new Floater { kind = "rbc", S = streams[i % streams.Count], u = r() * LIM * 2, w = (r() - 0.5f) * 22, h = (r() - 0.5f) * 12, s = 0.6f + r() * 0.6f, sp = r() * 6.28f, spin = 2 + r() * 3, ax = r() * 6.28f, flat = 0.4f });
+        // (the browser build filled the air with drifting red cells, white cells, platelets, viruses, phages and antibodies;
+        //  floating decor is gone now: only things on the floor or attached to the walls remain)
         // bacteria: rods with whipping tails, in colonies crawling over the floor
         var bacGeo = MergeGeo((Geo.Sphere(1, 12, 8), Mtx(0, 0, 0, 0.45f, 0.45f, 1.3f)), (Geo.Cone(0.12f, 1.6f, 4), Mtx(0, 0, 2.0f, 1, 1, 1, -PI / 2, 0, 0)), (Geo.Cone(0.08f, 1.2f, 4), Mtx(0.2f, 0.1f, 1.8f, 1, 1, 1, -PI / 2, 0.4f, 0)));
         var colonies = new List<(float, float)>(); for (int c = 0; c < (arena ? 4 : 14); c++) colonies.Add(((r() * 2 - 1) * LIM * 0.85f, (r() * 2 - 1) * LIM * 0.85f));
         Fl(bacGeo, Matte(0x9ae03a), arena ? 50 : 220, i => { var (cx, cz) = colonies[i % colonies.Count]; return new Floater { kind = "bac", cx = cx, cz = cz, a = r() * 6.28f, d = r() * 10, ph = r() * 6.28f, s = 0.6f + r() * 0.7f, sp = 0.4f + r() * 0.6f }; });
         Fl(bacGeo, Matte(0xffb63a), arena ? 20 : 80, i => { var (cx, cz) = colonies[(i * 3 + 1) % colonies.Count]; return new Floater { kind = "bac", cx = cx, cz = cz, a = r() * 6.28f, d = r() * 12, ph = r() * 6.28f, s = 0.5f + r() * 0.5f, sp = 0.6f + r() * 0.6f }; });
-        // viruses: a ball studded with knobbed spikes, drifting and turning
-        var vparts = new List<(Geometry, Matrix4x4)> { (Geo.Icosahedron(1, 1), Matrix4x4.Identity) }; var ico = Geo.Icosahedron(1, 0);
-        var spikeG = Geo.Cylinder(0.06f, 0.08f, 0.7f, 5); var knobG = Geo.Sphere(0.17f, 6, 4); var tq = new Q4();
-        for (int i = 0; i < ico.VertexCount; i += 3)
-        {
-            var v = Vector3.Normalize(ico.P(i)); QFromY(v.X, v.Y, v.Z, tq); var q = new Quaternion(tq.x, tq.y, tq.z, tq.w);
-            vparts.Add((spikeG, Matrix4x4.CreateFromQuaternion(q) * Matrix4x4.CreateTranslation(v * 1.3f)));
-            vparts.Add((knobG, Matrix4x4.CreateFromQuaternion(q) * Matrix4x4.CreateTranslation(v * 1.7f)));
-        }
-        var virGeo = MergeGeo(vparts.ToArray());
-        Floater Virus(int i) => new() { kind = "vir", x = (r() * 2 - 1) * LIM, z = (r() * 2 - 1) * LIM, y = 4 + r() * 30, vx = (r() - 0.5f) * 2, vz = (r() - 0.5f) * 2, s = 0.8f + r() * 1.4f, rx = r() * 6, ry = r() * 6, ph = r() * 6.28f };
-        Fl(virGeo, Matte(0xff5a3a), arena ? 18 : 60, Virus);
-        Fl(virGeo, Matte(0x3affc0), arena ? 10 : 34, Virus);
-        // bacteriophages: a crystal head on a stalk with spider legs, landing on bacteria and lifting off again
-        var phParts = new List<(Geometry, Matrix4x4)> { (Geo.Icosahedron(0.6f, 0), Mtx(0, 1.6f, 0, 1, 1.3f, 1)), (Geo.Cylinder(0.12f, 0.12f, 1.2f, 6), Mtx(0, 0.6f, 0, 1, 1, 1)) };
-        var legG = Geo.Cylinder(0.04f, 0.04f, 1, 4);
-        for (int k = 0; k < 6; k++) { float a = k / 6f * 6.28f; phParts.Add((legG, Mtx(MathF.Cos(a) * 0.4f, -0.05f, MathF.Sin(a) * 0.4f, 1, 1, 1, MathF.Sin(a) * 0.9f, 0, -MathF.Cos(a) * 0.9f))); }
-        Fl(MergeGeo(phParts.ToArray()), Matte(0xb8e6ff), arena ? 10 : 40, _ => { var (cx, cz) = colonies[(int)MathF.Floor(r() * colonies.Count)]; return new Floater { kind = "phage", cx = cx, cz = cz, a = r() * 6.28f, d = r() * 8, ph = r() * 6.28f, s = 0.9f + r() * 0.5f }; });
-        // antibodies: little Ys tumbling through the streams
-        Fl(MergeGeo((Geo.Cylinder(0.08f, 0.08f, 0.8f, 5), Mtx(0, -0.4f, 0, 1, 1, 1)), (Geo.Cylinder(0.07f, 0.07f, 0.7f, 5), Mtx(0.22f, 0.22f, 0, 1, 1, 1, 0, 0, -0.7f)), (Geo.Cylinder(0.07f, 0.07f, 0.7f, 5), Mtx(-0.22f, 0.22f, 0, 1, 1, 1, 0, 0, 0.7f))),
-            Matte(0xfff2a0), arena ? 30 : 120, i => new Floater { kind = "rbc", S = streams[(i + 2) % streams.Count], u = r() * LIM * 2, w = (r() - 0.5f) * 24, h = (r() - 0.5f) * 14, s = 0.9f + r() * 0.5f, sp = r() * 6.28f, spin = 2 + r() * 2, ax = r() * 6.28f });
         ORG.LIM = LIM;
     }
     /// <summary>Rotation that turns an object's +Z toward the target (three.js Object3D.lookAt for non-cameras).</summary>
