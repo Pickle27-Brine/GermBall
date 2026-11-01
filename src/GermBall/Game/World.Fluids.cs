@@ -98,7 +98,7 @@ public sealed partial class World
             int n = P.n; var u = P.u; var v = P.v; var wet = P.wet;
             // a little life on the surface: a bubble here and there
             if (R() < dt * 5) { int i = (int)(R() * n * n); if (wet[i]) v[i] += 0.6f + R(); }
-            const float C2 = 60, DAMP = 0.6f;
+            const float C2 = 22, DAMP = 1.1f;   // thick acid: slow, heavy, rounded waves
             for (int iz = 1; iz < n - 1; iz++)
                 for (int ix = 1; ix < n - 1; ix++)
                 {
@@ -144,101 +144,140 @@ public sealed partial class World
         }
     }
 
-    // ------------------------------------------------------------------ drops and puddles
-    struct Drop { public float x, y, z, vx, vy, vz, s; public Vector3 col; }
-    sealed class Puddle { public float x, y, z, vol, vx, vz, age; public Vector3 col; public bool onTerrain; }
-    readonly List<Drop> DROPS = new(); readonly List<Puddle> PUDDLES = new();
-    InstancedMesh dropMesh, puddleMesh;
-    const int MAX_DROPS = 700, MAX_PUDDLES = 320;
+    // ------------------------------------------------------------------ gel
+    // Germ fluid is a gel: it comes out in soft globs that stretch as they fly, splat and jiggle when they land, settle into
+    // glossy domes, slump into neighbours they touch (merging into bigger blobs), stay joined to close neighbours by thin
+    // strands, creep slowly downhill, wobble when stepped in, and eventually dry up.
+    sealed class Gel
+    {
+        public float x, y, z, vx, vy, vz, vol, sq, sqv, age, wob; public Vector3 col; public bool down, onTerrain;
+        public float R => 0.07f + MathF.Pow(vol, 1 / 3f) * 0.5f;
+    }
+    readonly List<Gel> GELS = new();
+    InstancedMesh gelMesh, strandMesh;
+    const int MAX_GELS = 420;
 
     static readonly Dictionary<string, uint> FLUID_COL = new() { ["small"] = 0xc8e83a, ["normal"] = 0x5ad04a, ["assassin"] = 0xa04aff, ["brute"] = 0xff8a2a, ["mech"] = 0x3ab0ff };
     Vector3 FluidOf(Actor B) => C(FLUID_COL.TryGetValue(TYPES[B.type].Mimic ?? B.type, out var c) ? c : 0x8ad03au);
 
-    /// <summary>Spray n drops of a germ's fluid from a point, thrown roughly along (dx, dz) and up.</summary>
+    /// <summary>A germ is hit: n globs of its gel (a few big, more small) thrown roughly along (dx, dz) and up.</summary>
     public void Bleed(Actor B, float x, float y, float z, int n, float dx = 0, float dz = 0, float force = 3)
     {
         if (B == null || B.team == "hero") return;   // the medicine doesn't bleed: the germs do
         var col = FluidOf(B); float l = Hypot(dx, dz); if (l > 0) { dx /= l; dz /= l; }
-        for (int i = 0; i < n && DROPS.Count < MAX_DROPS; i++)
+        int globs = Math.Max(1, (n + 2) / 3);
+        for (int i = 0; i < globs; i++)
         {
-            float a = R() * TAU, sp = force * (0.4f + R());
-            DROPS.Add(new Drop { x = x, y = y, z = z, vx = MathF.Cos(a) * sp * 0.6f + dx * sp, vy = 1.5f + R() * force, vz = MathF.Sin(a) * sp * 0.6f + dz * sp, s = 0.05f + R() * 0.07f, col = col });
+            if (GELS.Count >= MAX_GELS) GELS.RemoveAt(0);
+            float a = R() * TAU, sp = force * (0.3f + R() * 0.8f), big = i == 0 ? 0.03f + R() * 0.03f : 0.004f + R() * 0.012f;
+            GELS.Add(new Gel { x = x, y = y, z = z, vx = MathF.Cos(a) * sp * 0.5f + dx * sp, vy = 1.2f + R() * force * 0.8f, vz = MathF.Sin(a) * sp * 0.5f + dz * sp, vol = big, col = col * (0.85f + R() * 0.3f), wob = R() * 6 });
         }
     }
-
-    void AddPuddle(float x, float y, float z, float vol, Vector3 col)
-    {
-        foreach (var p in PUDDLES)
-        {   // merge into a puddle it lands in (the colours mix)
-            float r = PuddleR(p.vol);
-            if (MathF.Abs(p.x - x) < r && MathF.Abs(p.z - z) < r && MathF.Abs(p.y - y) < 0.4f) { p.col = Vector3.Lerp(p.col, col, vol / (p.vol + vol)); p.vol = MathF.Min(p.vol + vol, 6); p.age = MathF.Min(p.age, 4); return; }
-        }
-        if (PUDDLES.Count >= MAX_PUDDLES) PUDDLES.RemoveAt(0);
-        PUDDLES.Add(new Puddle { x = x, y = y, z = z, vol = vol, col = col, onTerrain = MathF.Abs(TerrainH(x, z) - y) < 0.15f });
-    }
-    static float PuddleR(float vol) => 0.18f + MathF.Sqrt(vol) * 0.55f;
 
     void StepFluids(float dt)
     {
         StepPools(dt);
-        for (int i = DROPS.Count - 1; i >= 0; i--)
+        for (int i = GELS.Count - 1; i >= 0; i--)
         {
-            var d = DROPS[i];
-            d.vy -= 18 * dt; d.vx *= 1 - 0.4f * dt; d.vz *= 1 - 0.4f * dt;
-            d.x += d.vx * dt; d.y += d.vy * dt; d.z += d.vz * dt;
-            float g = GroundAt(d.x, d.z, d.y + 0.5f, true).h;
-            if (d.y <= g)
+            var g = GELS[i]; g.age += dt;
+            // the jiggle: a springy squash that rings down
+            g.sqv += (-g.sq * 90 - g.sqv * 7) * dt; g.sq += g.sqv * dt; g.sq = Clamp(g.sq, -0.6f, 0.8f);
+            if (!g.down)
             {
-                if (PoolAt(d.x, d.z, d.y, 0.3f) != null) Splash(d.x, d.z, d.y, 0.8f, 0.6f);
-                else AddPuddle(d.x, g + 0.015f, d.z, d.s * d.s * 18, d.col);
-                DROPS.RemoveAt(i); continue;
+                g.vy -= 16 * dt; g.vx *= 1 - 0.6f * dt; g.vz *= 1 - 0.6f * dt;
+                g.x += g.vx * dt; g.y += g.vy * dt; g.z += g.vz * dt;
+                float gr = GroundAt(g.x, g.z, g.y + 0.5f, true).h;
+                if (g.y - g.R * 0.3f <= gr)
+                {
+                    if (PoolAt(g.x, g.z, g.y, 0.3f) != null) { Splash(g.x, g.z, g.y, 0.6f + g.vol * 20, 0.8f); GELS.RemoveAt(i); continue; }
+                    // splat: squash flat on impact (harder hits squash more), then settle as a dome
+                    g.down = true; g.y = gr; g.sqv -= MathF.Min(6, -g.vy * 0.6f); g.vx *= 0.15f; g.vz *= 0.15f; g.vy = 0;
+                    g.onTerrain = MathF.Abs(TerrainH(g.x, g.z) - gr) < 0.15f;
+                    // landing on another blob: it slumps into it
+                    foreach (var o in GELS) if (o != g && o.down && Hypot(o.x - g.x, o.z - g.z) < (o.R + g.R) * 0.75f && MathF.Abs(o.y - g.y) < 0.4f) { Merge(o, g); GELS.RemoveAt(i); goto next; }
+                }
             }
-            DROPS[i] = d;
+            else
+            {
+                if (g.onTerrain)
+                {   // a thick gel creeps downhill (heavier blobs a bit faster) and stops on the flat
+                    var ts = TerrainSample(g.x, g.z); float slope = Hypot(ts.gx, ts.gz);
+                    float k = slope > 0.12f ? 1.8f * MathF.Min(1, g.vol * 12) : 0;
+                    g.vx += -ts.gx * k * dt; g.vz += -ts.gz * k * dt; g.vx *= MathF.Max(0, 1 - 3 * dt); g.vz *= MathF.Max(0, 1 - 3 * dt);
+                    g.x += g.vx * dt; g.z += g.vz * dt; g.y = TerrainH(g.x, g.z);
+                    if (PoolAt(g.x, g.z, g.y, 0.2f) != null) { Splash(g.x, g.z, g.y, 0.5f); GELS.RemoveAt(i); continue; }
+                }
+                // stepped in: a squash and a shove
+                foreach (var A in actors)
+                {
+                    var G = A.P; if (!G.alive || A.dormant) continue;
+                    float dx = g.x - G.x, dz = g.z - G.z, rr = G.R + g.R; if (MathF.Abs(dx) > rr || MathF.Abs(dz) > rr || MathF.Abs(G.y - g.y) > 1) continue;
+                    float d = MathF.Sqrt(dx * dx + dz * dz); if (d > rr) continue;
+                    float sp = Hypot(G.vx, G.vz); if (sp > 0.5f && g.sq > -0.3f) g.sqv -= sp * 0.4f;
+                    if (d > 0.01f && g.onTerrain) { g.vx += dx / d * sp * 0.3f * dt * 10; g.vz += dz / d * sp * 0.3f * dt * 10; }
+                }
+                if (g.age > 40) g.vol -= dt * 0.0012f;   // drying up
+                if (g.vol <= 0.0015f) { GELS.RemoveAt(i); continue; }
+            }
+            next:;
         }
-        for (int i = PUDDLES.Count - 1; i >= 0; i--)
+        // settled neighbours that touch slump together into one bigger blob (a few checks a step)
+        for (int n = 0, tries = 0; tries < 40 && GELS.Count > 1; tries++)
         {
-            var p = PUDDLES[i]; p.age += dt;
-            if (p.onTerrain && p.vol > 0.05f)
-            {   // on a slope a puddle creeps downhill (bigger ones run faster), leaving a little behind as it goes
-                var ts = TerrainSample(p.x, p.z); float slope = Hypot(ts.gx, ts.gz);
-                p.vx += -ts.gx * 9 * dt * MathF.Min(1, p.vol * 2); p.vz += -ts.gz * 9 * dt * MathF.Min(1, p.vol * 2);
-                float fr = slope < 0.08f ? 6 : 2.5f; p.vx *= MathF.Max(0, 1 - fr * dt); p.vz *= MathF.Max(0, 1 - fr * dt);
-                p.x += p.vx * dt; p.z += p.vz * dt; p.y = TerrainH(p.x, p.z) + 0.015f;
-                float mv = Hypot(p.vx, p.vz); if (mv > 0.2f) p.vol = MathF.Max(0.02f, p.vol - mv * dt * 0.02f);
-                var pool = PoolAt(p.x, p.z, p.y, 0.2f); if (pool != null) { Splash(p.x, p.z, p.y, 0.5f); PUDDLES.RemoveAt(i); continue; }
-            }
-            if (p.age > 35) p.vol -= dt * 0.03f;   // drying up
-            if (p.vol <= 0.01f) PUDDLES.RemoveAt(i);
+            var a = GELS[(int)(R() * GELS.Count)]; if (!a.down) continue;
+            foreach (var b in GELS)
+                if (b != a && b.down && Hypot(b.x - a.x, b.z - a.z) < (a.R + b.R) * 0.6f && MathF.Abs(b.y - a.y) < 0.3f) { Merge(a, b); GELS.Remove(b); n++; break; }
+            if (n > 3) break;
         }
+    }
+    void Merge(Gel into, Gel g)
+    {
+        float t = g.vol / (into.vol + g.vol);
+        into.x += (g.x - into.x) * t; into.z += (g.z - into.z) * t; into.col = Vector3.Lerp(into.col, g.col, t);
+        into.vol = MathF.Min(into.vol + g.vol, 0.5f); into.sqv -= 2.5f; into.age = MathF.Min(into.age, 10);
     }
 
     void UpdateFluidMeshes(float t)
     {
-        if (dropMesh == null)
+        if (gelMesh == null)
+        {   // glossy and a little translucent, lit from inside by its own colour
+            var gel = new Material { Kind = MatKind.Phong, Color = Vector3.One, Shininess = 160, Specular = new Vector3(0.9f), Emissive = new Vector3(0.12f), Transparent = true, Opacity = 0.86f, DepthWrite = true };
+            gelMesh = scene.Add(new InstancedMesh(Geo.Sphere(1, 14, 10), gel, MAX_GELS) { Count = 0, RenderOrder = 1 });
+            strandMesh = scene.Add(new InstancedMesh(Geo.Cylinder(1, 1, 1, 8), gel, 200) { Count = 0, RenderOrder = 1 });
+        }
+        int ng = 0, ns = 0;
+        for (int i = 0; i < GELS.Count; i++)
         {
-            var glossy = new Material { Kind = MatKind.Phong, Color = Vector3.One, Shininess = 120, Specular = new Vector3(0.6f) };
-            dropMesh = scene.Add(new InstancedMesh(Geo.Sphere(1, 6, 5), glossy, MAX_DROPS) { Count = 0 });
-            puddleMesh = scene.Add(new InstancedMesh(Geo.Cylinder(1, 1, 1, 14), new Material { Kind = MatKind.Phong, Color = Vector3.One, Shininess = 140, Specular = new Vector3(0.7f), Transparent = true, Opacity = 0.85f, DepthWrite = false }, MAX_PUDDLES) { Count = 0, RenderOrder = 1 });
+            var g = GELS[i]; float r = g.R, wob = 1 + 0.05f * MathF.Sin(t * 5 + g.wob) * MathF.Min(1, MathF.Abs(g.sq) * 4 + 0.2f);
+            Matrix4x4 M;
+            if (!g.down)
+            {   // a flying glob stretches along its path and wobbles
+                var vel = new Vector3(g.vx, g.vy, g.vz); float sp = vel.Length(); var q = sp > 0.5f ? QuatFromTo(Vector3.UnitY, vel / sp) : Quaternion.Identity;
+                float st = 1 + MathF.Min(1.2f, sp * 0.08f);
+                M = Matrix4x4.CreateScale(r / MathF.Sqrt(st) * wob, r * st * (1 + g.sq * 0.5f), r / MathF.Sqrt(st) / wob) * Matrix4x4.CreateFromQuaternion(q) * Matrix4x4.CreateTranslation(g.x, g.y, g.z);
+            }
+            else
+            {   // a settled dome: squash spreads it wider as it flattens
+                float h = MathF.Max(0.15f, 0.55f + g.sq * 0.6f), spread = 1 + (0.55f - h) * 0.5f;
+                float yaw = MathF.Atan2(g.vx, g.vz);
+                M = Matrix4x4.CreateScale(r * spread * wob, r * h, r * spread / wob) * Matrix4x4.CreateRotationY(yaw) * Matrix4x4.CreateTranslation(g.x, g.y - r * h * 0.25f, g.z);
+            }
+            gelMesh.Matrices[ng] = M; gelMesh.SetColor(ng, g.col); ng++;
+            // strands to close settled neighbours: thin bridges of gel, thinner the further apart
+            if (g.down && ns < 200)
+                for (int j = i + 1; j < GELS.Count && ns < 200; j++)
+                {
+                    var o = GELS[j]; if (!o.down) continue;
+                    float dx = o.x - g.x, dz = o.z - g.z, d = MathF.Sqrt(dx * dx + dz * dz), reach = (g.R + o.R) * 1.7f;
+                    if (d > reach || d < 0.05f || MathF.Abs(o.y - g.y) > 0.5f) continue;
+                    float th = MathF.Min(g.R, o.R) * 0.35f * (1 - d / reach) + 0.01f;
+                    var a = new Vector3(g.x, g.y + g.R * 0.12f, g.z); var b = new Vector3(o.x, o.y + o.R * 0.12f, o.z); var dir = b - a; float len = dir.Length();
+                    var q = QuatFromTo(Vector3.UnitY, dir / len);
+                    strandMesh.Matrices[ns] = Matrix4x4.CreateScale(th, len, th * 0.6f) * Matrix4x4.CreateFromQuaternion(q) * Matrix4x4.CreateTranslation((a + b) * 0.5f);
+                    strandMesh.SetColor(ns, Vector3.Lerp(g.col, o.col, 0.5f)); ns++;
+                }
         }
-        int nd = 0;
-        foreach (var d in DROPS)
-        {   // stretched along its flight
-            var vel = new Vector3(d.vx, d.vy, d.vz); float sp = vel.Length();
-            var q = sp > 0.5f ? QuatFromTo(Vector3.UnitY, vel / sp) : Quaternion.Identity;
-            dropMesh.Matrices[nd] = Matrix4x4.CreateScale(d.s, d.s * (1 + MathF.Min(2.5f, sp * 0.12f)), d.s) * Matrix4x4.CreateFromQuaternion(q) * Matrix4x4.CreateTranslation(d.x, d.y, d.z);
-            dropMesh.SetColor(nd, d.col); nd++;
-        }
-        dropMesh.Count = nd; dropMesh.Touch();
-        int np = 0;
-        foreach (var p in PUDDLES)
-        {
-            float r = PuddleR(p.vol), wob = 1 + 0.03f * MathF.Sin(t * 3 + p.x);
-            float sx = r * wob * (1 + MathF.Min(0.8f, Hypot(p.vx, p.vz) * 0.4f)), sz = r / wob;
-            float yaw = MathF.Atan2(p.vx, p.vz);
-            puddleMesh.Matrices[np] = Matrix4x4.CreateScale(sz, 0.02f, sx) * Matrix4x4.CreateRotationY(yaw) * Matrix4x4.CreateTranslation(p.x, p.y, p.z);
-            puddleMesh.SetColor(np, p.col * 0.8f); np++;
-        }
-        puddleMesh.Count = np; puddleMesh.Touch();
+        gelMesh.Count = ng; gelMesh.Touch(); strandMesh.Count = ns; strandMesh.Touch();
     }
     static Quaternion QuatFromTo(Vector3 a, Vector3 b)
     {

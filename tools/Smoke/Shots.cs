@@ -210,6 +210,10 @@ public static class Shots
             world.SetFreeCam(true); world.FREECAM.x = px + 22; world.FREECAM.z = pz + 22; world.FREECAM.y = gy + 12; world.FREECAM.yaw = MathF.Atan2(22, 22); world.FREECAM.pitch = -0.45f; world.FREECAM.fov = 60;
             for (int i = 0; i < 6; i++) Frame(gs);
             Frame(gs, name: "fluids");
+            float cxg = px + 16, czg = pz + 6, cyg = world.TerrainH(cxg, czg);
+            world.FREECAM.x = cxg + 4; world.FREECAM.z = czg + 4; world.FREECAM.y = cyg + 2.2f; world.FREECAM.yaw = MathF.Atan2(4, 4); world.FREECAM.pitch = -0.35f; world.FREECAM.fov = 55;
+            for (int i = 0; i < 4; i++) Frame(gs);
+            Frame(gs, name: "fluids-close");
             world.SetFreeCam(false);
         }
         if (Want("villi"))
