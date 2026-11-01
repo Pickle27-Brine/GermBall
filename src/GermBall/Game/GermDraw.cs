@@ -60,11 +60,13 @@ public sealed class GermCustom
 {
     public string Preset = "gelcap";
     public Dictionary<string, uint> Col;   // overrides for a/b/c/e, or null
-    /// <summary>Per-segment overrides (0..14, the skeleton's parts); missing segments use the preset's.</summary>
+    /// <summary>Per-segment overrides (0..14 the skeleton's parts, 15 the abdomen); missing segments use the preset's.</summary>
     public Dictionary<int, SegStyle> Seg = new();
     /// <summary>Extra shapes; null means "use the preset's".</summary>
     public List<Attach> Att;
     public float Bulk;
+    /// <summary>Proportions: overall height, arm length, leg length (1 = the preset's).</summary>
+    public float Height = 1, ArmLen = 1, LegLen = 1;
     public string Armor = "plate";
     public uint ArmorCol = 0xdfe6ee;
     public GermCustom Clone()

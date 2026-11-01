@@ -68,6 +68,25 @@ public static class Shots
                 c0.C.Seg[1] = new SegStyle { Shape = "cylinder", Tone = 'b' }; typeof(CustomizeScreen).GetMethod("Changed", fl).Invoke(c0, null);
                 for (int i = 0; i < 6; i++) Frame(new Wrap(c0)); Frame(new Wrap(c0), name: "custom-changed");
             }
+            {   // the body system: a split torso with new shapes, taper, details, visor and antenna, and proportions
+                var fl = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                foreach (var (nm, setup) in new (string, Action<GermCustom>)[] {
+                    ("body-a", c => { c.Seg[1] = new SegStyle { Shape = "trapezoid", Thick = 1.0f, Tone = 'a', Tone2 = 'c', Detail = "vents" }; c.Seg[15] = new SegStyle { Shape = "ribbed", Thick = 0.95f, Tone = 'b', Tone2 = 'a' }; c.Seg[2] = new SegStyle { Shape = "trapezoid", Thick = 1.0f, Taper = -0.3f, Tone = 'a', Tone2 = 'b' };
+                        c.Seg[0] = new SegStyle { Shape = "hex", Visor = "mono", Antenna = "dish", Tone = 'b' }; c.Height = 1.1f; c.LegLen = 1.2f; c.ArmLen = 0.95f; c.Att = new(); }),
+                    ("body-b", c => { c.Seg[1] = new SegStyle { Shape = "capsule", Taper = 0.5f, Tone = 'a', Detail = "stripe" }; c.Seg[15] = new SegStyle { Shape = "hex", Thick = 0.8f, Tone = 'b' }; c.Seg[0] = new SegStyle { Shape = "helmet", Visor = "dual", Antenna = "twin", Tone = 'a', Tone2 = 'b', TwoTone = true };
+                        foreach (int i in new[] { 3, 6 }) c.Seg[i] = new SegStyle { Shape = "cylinder", Taper = 0.4f, Detail = "rings", Tone = 'a', Tone2 = 'b' }; foreach (int i in new[] { 5, 8 }) c.Seg[i] = new SegStyle { Shape = "claw", Tone = 'b', Tone2 = 'd' }; foreach (int i in new[] { 11, 14 }) c.Seg[i] = new SegStyle { Shape = "wedge", Tone = 'a', Tone2 = 'k' };
+                        c.Height = 0.85f; c.ArmLen = 1.25f; c.LegLen = 0.85f; c.Bulk = 1.5f; c.Att = new(); }),
+                })
+                {
+                    var cc = GermDraw.DefaultCustom(); setup(cc);
+                    var cb = new CustomizeScreen(app, cc); typeof(CustomizeScreen).GetMethod("Changed", fl).Invoke(cb, null); typeof(CustomizeScreen).GetField("spin", fl).SetValue(cb, false); typeof(CustomizeScreen).GetField("tab", fl).SetValue(cb, "build");
+                    foreach (var (yaw, v) in new[] { (MathF.PI + 0.35f, "front"), (MathF.PI * 0.5f, "side") })
+                    {
+                        typeof(CustomizeScreen).GetField("yaw", fl).SetValue(cb, yaw);
+                        for (int i = 0; i < 8; i++) Frame(new Wrap(cb)); Frame(new Wrap(cb), name: $"{nm}-{v}");
+                    }
+                }
+            }
             foreach (var style in MedDraw.ARMOR_STYLES)
             {   // every armor style, front and back
                 var ca = new CustomizeScreen(app, GermDraw.DefaultCustom()); ca.C.Armor = style;

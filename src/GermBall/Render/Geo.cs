@@ -10,6 +10,111 @@ public static class Geo
     static Geometry Make(List<float> p, List<float> n, List<float> uv, List<uint> idx)
         => new() { Position = p.ToArray(), Normal = n.ToArray(), Uv = uv?.ToArray(), Index = idx?.ToArray() };
 
+    /// <summary>A closed, flat-shaded prism or frustum standing on Y (height 1, centred), its outline a regular polygon.
+    /// With 4 sides and start 45° it is a unit box across its faces; top &lt; 1 tapers the top end (a trapezoid block).</summary>
+    public static Geometry Prism(int sides, float top = 1, float bottom = 1, float start = 0)
+    {
+        var p = new List<float>(); var n = new List<float>(); var uv = new List<float>(); var idx = new List<uint>();
+        float R = 0.5f / MathF.Cos(MathF.PI / sides);   // vertex radius so the faces sit 0.5 from the axis
+        Vector3 V(int i, float y, float k) { float a = start * MathF.PI / 180 + i * MathF.PI * 2 / sides; return new Vector3(MathF.Cos(a) * R * k, y, -MathF.Sin(a) * R * k); }
+        void Tri(Vector3 a, Vector3 b, Vector3 c, Vector2 ua, Vector2 ub, Vector2 uc)
+        {
+            var nn = Vector3.Normalize(Vector3.Cross(b - a, c - a)); uint o = (uint)(p.Count / 3);
+            foreach (var (q, t) in new[] { (a, ua), (b, ub), (c, uc) }) { p.Add(q.X); p.Add(q.Y); p.Add(q.Z); n.Add(nn.X); n.Add(nn.Y); n.Add(nn.Z); uv.Add(t.X); uv.Add(t.Y); }
+            idx.Add(o); idx.Add(o + 1); idx.Add(o + 2);
+        }
+        for (int i = 0; i < sides; i++)
+        {
+            var b0 = V(i, -0.5f, bottom); var b1 = V(i + 1, -0.5f, bottom); var t0 = V(i, 0.5f, top); var t1 = V(i + 1, 0.5f, top);
+            Tri(b0, b1, t1, new(0, 0), new(1, 0), new(1, 1)); Tri(b0, t1, t0, new(0, 0), new(1, 1), new(0, 1));   // the side, facing out (CCW)
+            Tri(new Vector3(0, 0.5f, 0), t0, t1, new(0.5f, 0.5f), new(0, 1), new(1, 1));                           // top cap, facing up
+            Tri(new Vector3(0, -0.5f, 0), b1, b0, new(0.5f, 0.5f), new(1, 0), new(0, 0));                          // bottom cap, facing down
+        }
+        return Make(p, n, uv, idx);
+    }
+
+    /// <summary>A closed curved armour plate: a slice of a (conical) tube wall, centred on -Z, arc in degrees, height 1 on Y.
+    /// Outer radius 1 at the top and <paramref name="bottom"/> at the bottom, wall thickness <paramref name="thick"/> (fraction).
+    /// Few segments give a faceted plate.</summary>
+    public static Geometry CurvedPlate(float arcDeg, float bottom = 1, float thick = 0.12f, int segs = 12)
+    {
+        var p = new List<float>(); var n = new List<float>(); var uv = new List<float>(); var idx = new List<uint>();
+        float arc = arcDeg * MathF.PI / 180, a0 = -arc / 2;
+        Vector3 P(float a, float y, bool outer) { float rr = (y > 0 ? 1 : bottom) * (outer ? 1 : 1 - thick); return new Vector3(MathF.Sin(a) * rr, y, -MathF.Cos(a) * rr); }
+        void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3? na = null, Vector3? nb = null)
+        {   // optional smooth normals for the left (a,d) and right (b,c) edges
+            // (the corners are listed clockwise seen from outside, so the triangles are wound the other way round)
+            var f = -Vector3.Normalize(Vector3.Cross(b - a, d - a)); uint o = (uint)(p.Count / 3);
+            foreach (var (q, nn, t) in new[] { (a, na ?? f, new Vector2(0, 0)), (b, nb ?? f, new Vector2(1, 0)), (c, nb ?? f, new Vector2(1, 1)), (d, na ?? f, new Vector2(0, 1)) })
+            { p.Add(q.X); p.Add(q.Y); p.Add(q.Z); n.Add(nn.X); n.Add(nn.Y); n.Add(nn.Z); uv.Add(t.X); uv.Add(t.Y); }
+            idx.Add(o); idx.Add(o + 2); idx.Add(o + 1); idx.Add(o); idx.Add(o + 3); idx.Add(o + 2);
+        }
+        bool smooth = segs >= 8;
+        for (int i = 0; i < segs; i++)
+        {
+            float a = a0 + arc * i / segs, b = a0 + arc * (i + 1) / segs;
+            Vector3 Na(float t) => new(MathF.Sin(t), 0, -MathF.Cos(t));
+            Quad(P(a, -0.5f, true), P(b, -0.5f, true), P(b, 0.5f, true), P(a, 0.5f, true), smooth ? Na(a) : null, smooth ? Na(b) : null);          // outer face
+            Quad(P(b, -0.5f, false), P(a, -0.5f, false), P(a, 0.5f, false), P(b, 0.5f, false), smooth ? -Na(b) : null, smooth ? -Na(a) : null);     // inner face
+            Quad(P(a, 0.5f, true), P(b, 0.5f, true), P(b, 0.5f, false), P(a, 0.5f, false));                                                        // top rim
+            Quad(P(b, -0.5f, true), P(a, -0.5f, true), P(a, -0.5f, false), P(b, -0.5f, false));                                                    // bottom rim
+        }
+        Quad(P(a0, -0.5f, false), P(a0, -0.5f, true), P(a0, 0.5f, true), P(a0, 0.5f, false));                                                      // the two end faces
+        Quad(P(a0 + arc, -0.5f, true), P(a0 + arc, -0.5f, false), P(a0 + arc, 0.5f, false), P(a0 + arc, 0.5f, true));
+        return Make(p, n, uv, idx);
+    }
+
+    /// <summary>A closed domed cap: the top of a sphere shell from the pole down to <paramref name="polarDeg"/>, outer radius 1.</summary>
+    public static Geometry CapShell(float polarDeg = 65, float thick = 0.12f, int ring = 16, int rows = 6)
+    {
+        var p = new List<float>(); var n = new List<float>(); var uv = new List<float>(); var idx = new List<uint>();
+        float tmax = polarDeg * MathF.PI / 180;
+        Vector3 S(float th, float ph, float rr) => new(MathF.Sin(th) * MathF.Cos(ph) * rr, MathF.Cos(th) * rr, -MathF.Sin(th) * MathF.Sin(ph) * rr);
+        void Tri(Vector3 a, Vector3 b, Vector3 c, Vector3 na, Vector3 nb, Vector3 nc)
+        {
+            uint o = (uint)(p.Count / 3);
+            foreach (var (q, nn) in new[] { (a, na), (b, nb), (c, nc) }) { p.Add(q.X); p.Add(q.Y); p.Add(q.Z); n.Add(nn.X); n.Add(nn.Y); n.Add(nn.Z); uv.Add(0); uv.Add(0); }
+            idx.Add(o); idx.Add(o + 1); idx.Add(o + 2);
+        }
+        for (int j = 0; j < rows; j++)
+            for (int i = 0; i < ring; i++)
+            {
+                float t0 = tmax * j / rows, t1 = tmax * (j + 1) / rows, p0 = MathF.PI * 2 * i / ring, p1 = MathF.PI * 2 * (i + 1) / ring;
+                foreach (var (rr, sg) in new[] { (1f, 1f), (1 - thick, -1f) })
+                {
+                    Vector3 a = S(t0, p0, rr), b = S(t1, p0, rr), c = S(t1, p1, rr), d = S(t0, p1, rr);
+                    Vector3 na = Vector3.Normalize(a) * sg, nb = Vector3.Normalize(b) * sg, nc = Vector3.Normalize(c) * sg, nd = Vector3.Normalize(d) * sg;
+                    if (sg > 0) { Tri(a, b, c, na, nb, nc); if (j > 0) Tri(a, c, d, na, nc, nd); }
+                    else { Tri(a, c, b, na, nc, nb); if (j > 0) Tri(a, d, c, na, nd, nc); }
+                }
+            }
+        for (int i = 0; i < ring; i++)
+        {   // the rim joining the outer and inner shells
+            float p0 = MathF.PI * 2 * i / ring, p1 = MathF.PI * 2 * (i + 1) / ring;
+            Vector3 a = S(tmax, p0, 1), b = S(tmax, p0, 1 - thick), c = S(tmax, p1, 1 - thick), d = S(tmax, p1, 1);
+            var f = Vector3.Normalize(Vector3.Cross(b - a, d - a)); if (f.Y > 0) f = -f;
+            Tri(a, b, c, f, f, f); Tri(a, c, d, f, f, f);
+        }
+        return Make(p, n, uv, idx);
+    }
+
+    /// <summary>The shared shape set for heroes and germs, by emit letter.</summary>
+    public static Dictionary<char, Geometry> PartShapes(bool fine)
+    {
+        int s = fine ? 18 : 16, c = fine ? 16 : 12;
+        return new()
+        {
+            ['Z'] = Sphere(1, s, fine ? 12 : 11), ['I'] = Icosahedron(1, 1), ['B'] = Box(1, 1, 1), ['P'] = Cone(1, 1, fine ? 12 : 9), ['C'] = Cylinder(1, 1, 1, c),
+            ['T'] = Torus(1, 0.18f, fine ? 8 : 7, fine ? 24 : 22).RotateX(MathF.PI / 2),
+            ['F'] = Cylinder(1, 0.72f, 1, c), ['G'] = Cylinder(1, 0.5f, 1, c), ['H'] = Cylinder(1, 0.86f, 1, c),   // frustums: top radius 1, bottom 0.72 / 0.5 / 0.86
+            ['K'] = Prism(4, 1, 0.62f, 45), ['Q'] = Prism(4, 1, 0.82f, 45),                                          // trapezoid blocks, wide at the top
+            ['X'] = Prism(6, 1, 1, 0), ['W'] = Prism(6, 1, 0.72f, 0),                                                // hex prisms, straight and tapered
+            // armour: curved plates hugging a limb (front-centred), a conical one for tapered chests, a faceted one, a near-full band, a domed cap
+            ['U'] = CurvedPlate(150, 1, 0.12f, 14), ['A'] = CurvedPlate(150, 0.78f, 0.12f, 14), ['J'] = CurvedPlate(150, 1, 0.14f, 4), ['V'] = CurvedPlate(70, 1, 0.16f, 6),
+            ['O'] = CurvedPlate(320, 1, 0.12f, 20), ['S'] = CapShell(62, 0.12f, fine ? 18 : 14, 6),
+        };
+    }
+
     public static Geometry Box(float w = 1, float h = 1, float d = 1)
     {
         var p = new List<float>(); var n = new List<float>(); var uv = new List<float>(); var idx = new List<uint>();

@@ -15,6 +15,12 @@ public sealed class SegStyle
     /// <summary>Main tone and second tone (a body, b second colour, c glow, d armor colour, e visor/eye, k dark).</summary>
     public char Tone = 'a', Tone2 = 'b';
     public bool TwoTone;
+    /// <summary>-0.6..0.6: positive makes the top end wider than the bottom (a heroic V), negative the reverse.</summary>
+    public float Taper;
+    /// <summary>Surface detail: none, score, rivets, vents, stripe, rings, ridges.</summary>
+    public string Detail = "none";
+    /// <summary>Heads only: the visor (default = the shape's own, slit, wrap, dual, mono, none) and what's on top (none, stub, spike, dish, twin).</summary>
+    public string Visor = "default", Antenna = "none";
     /// <summary>Anchor offset for a limb root (head, upper arms, thighs): moves the whole limb, in units of the torso's radius,
     /// in the body frame (x right, y up, z back).</summary>
     public float OX, OY, OZ;
@@ -35,7 +41,10 @@ public sealed class MedSpec
 {
     public string Key, Name, Blurb;
     public SpeciesColors Col = new();
-    public SegStyle[] Seg = new SegStyle[15];
+    /// <summary>16 segments: the skeleton's 15 parts plus the abdomen (index 15), drawn from the torso bone below the chest.</summary>
+    public SegStyle[] Seg = new SegStyle[16];
+    /// <summary>Proportions: overall height and arm/leg length multipliers.</summary>
+    public float Height = 1, ArmLen = 1, LegLen = 1;
     public List<Attach> Att = new();
     public string ArmorStyle = "plate";
     /// <summary>Chest/shoulder width multiplier: heroes are drawn broad-shouldered and narrow-waisted.</summary>
@@ -57,7 +66,7 @@ public static class MedDraw
     static SegStyle S(string shape, float thick = 1, float len = 1, char tone = 'a', char tone2 = 'b', bool two = false) => new() { Shape = shape, Thick = thick, Len = len, Tone = tone, Tone2 = tone2, TwoTone = two };
     static Attach At(int part, string shape, float x, float y, float z, float sx, float sy, float sz, char tone, float rx = 0, float ry = 0, float rz = 0) => new() { Part = part, Shape = shape, X = x, Y = y, Z = z, Sx = sx, Sy = sy, Sz = sz, Tone = tone, Rx = rx, Ry = ry, Rz = rz };
     static SegStyle[] Body(SegStyle head, SegStyle torso, SegStyle pelvis, SegStyle uarm, SegStyle farm, SegStyle hand, SegStyle thigh, SegStyle shin, SegStyle foot)
-        => new[] { head, torso, pelvis, uarm, farm, hand, uarm.Clone(), farm.Clone(), hand.Clone(), thigh, shin, foot, thigh.Clone(), shin.Clone(), foot.Clone() };
+        => new[] { head, torso, pelvis, uarm, farm, hand, uarm.Clone(), farm.Clone(), hand.Clone(), thigh, shin, foot, thigh.Clone(), shin.Clone(), foot.Clone(), new SegStyle { Shape = "none", Thick = 0.92f, Tone = torso.Tone2, Tone2 = torso.Tone } };
     static List<Attach> Mirror(params Attach[] a)
     {   // attachments on a left part get a mirrored twin on the right part
         var o = new List<Attach>();
@@ -145,91 +154,95 @@ public static class MedDraw
     };
     /// <summary>The presets offered for the player (the companions' and the mecha's looks aren't in the customizer list twice).</summary>
     public static readonly string[] PLAYER_PRESETS = { "gelcap", "tablet", "bottle", "syringe", "caplet", "lozenge", "gummy" };
-    public static readonly string[] SHAPES = { "capsule", "pill", "tablet", "disc", "cylinder", "box", "sphere", "cone", "vial", "bottle" };
-    public static readonly string[] HEAD_SHAPES = { "helmet", "tablethead", "cap", "plunger", "sphere", "capsule", "box", "cone" };
-    public static readonly string[] HAND_SHAPES = { "sphere", "capsule", "box", "cylinder" };
-    public static readonly string[] FOOT_SHAPES = { "boot", "capsule", "box", "sphere", "cylinder" };
+    public static readonly string[] SHAPES = { "capsule", "pill", "cylinder", "box", "hex", "sphere", "cone", "disc", "tablet", "vial", "bottle" };
+    public static readonly string[] CORE_SHAPES = { "capsule", "pill", "trapezoid", "cylinder", "box", "hex", "sphere", "disc", "tablet", "vial", "bottle" };
+    public static readonly string[] ABDOMEN_SHAPES = { "none", "capsule", "pill", "trapezoid", "cylinder", "box", "hex", "sphere", "ribbed" };
+    public static readonly string[] HEAD_SHAPES = { "helmet", "tablethead", "cap", "plunger", "sphere", "capsule", "box", "hex", "trapezoid", "cone" };
+    public static readonly string[] HAND_SHAPES = { "sphere", "capsule", "box", "cylinder", "claw", "mitt" };
+    public static readonly string[] FOOT_SHAPES = { "boot", "capsule", "box", "sphere", "cylinder", "wedge" };
+    public static readonly string[] DETAILS = { "none", "score", "rivets", "vents", "stripe", "rings", "ridges" };
+    public static readonly string[] VISORS = { "default", "slit", "wrap", "dual", "mono", "none" };
+    public static readonly string[] ANTENNAS = { "none", "stub", "spike", "dish", "twin" };
+    public static string[] ShapesFor(int i) => i == 0 ? HEAD_SHAPES : i is 5 or 8 ? HAND_SHAPES : i is 11 or 14 ? FOOT_SHAPES : i is 1 or 2 ? CORE_SHAPES : i == 15 ? ABDOMEN_SHAPES : SHAPES;
     public static readonly string[] ATTACH_SHAPES = { "sphere", "capsule", "cone", "box", "ring", "disc", "cylinder", "pauldron", "fin", "needle", "cross" };
     public static readonly string[] ARMOR_STYLES = { "plate", "shell", "angular", "ring", "studs", "none" };
-    public static readonly string[] PART_NAMES = { "Head", "Torso", "Pelvis", "Left upper arm", "Left forearm", "Left hand", "Right upper arm", "Right forearm", "Right hand", "Left thigh", "Left shin", "Left foot", "Right thigh", "Right shin", "Right foot" };
+    public static readonly string[] PART_NAMES = { "Head", "Chest", "Waist", "Left upper arm", "Left forearm", "Left hand", "Right upper arm", "Right forearm", "Right hand", "Left thigh", "Left shin", "Left foot", "Right thigh", "Right shin", "Right foot", "Abdomen" };
     public static int MirrorPart(int p) => p switch { 3 => 6, 4 => 7, 5 => 8, 6 => 3, 7 => 4, 8 => 5, 9 => 12, 10 => 13, 11 => 14, 12 => 9, 13 => 10, 14 => 11, _ => p };
 
     // ------------------------------------------------------------------ drawing
-    static readonly Q4 PQ = new(), LQ = new(), WQ = new(), TQ = new();
+    static readonly Q4 PQ = new(), LQ = new(), WQ = new(), TQ = new(), FQ = new();
     static readonly V3 TV = new();
     static float[] ps; static int pk; static Emit em; static char flashTone;
+    static MedSpec cur;
+    /// <summary>Offset of the current virtual segment inside its bone (the chest and abdomen share the torso bone), in the bone's frame.</summary>
+    static float sox, soy, soz;
 
-    static void Part(int i) { pk = i * 13; PQ.Set(ps[pk + 3], ps[pk + 4], ps[pk + 5], ps[pk + 6]); }
-    /// <summary>Emits a shape positioned in the current part's local frame, optionally with a local rotation.</summary>
+    // the chest takes the top 58% of the torso bone and the abdomen the rest, unless the abdomen is merged into the chest
+    const float CHEST_C = 0.42f, CHEST_H = 0.58f, ABD_C = -0.58f, ABD_H = 0.42f;
+    public static bool Merged(MedSpec sp) => sp.Seg.Length < 16 || sp.Seg[15] == null || sp.Seg[15].Shape == "none";
+    /// <summary>The skeleton bone a segment is drawn from (the abdomen rides on the torso bone).</summary>
+    public static int Bone(int i) => i == 15 ? 1 : i;
+
+    static void Part(int i)
+    {
+        int b = Bone(i); pk = b * 13; PQ.Set(ps[pk + 3], ps[pk + 4], ps[pk + 5], ps[pk + 6]); sox = soy = soz = 0;
+        if (cur != null && (i == 1 || i == 15) && !Merged(cur))
+        {
+            float Lt = ps[13 + 8] * (cur.Seg[1]?.Len ?? 1); soy = (i == 1 ? CHEST_C : ABD_C) * Lt;
+            if (i == 15) { var a = cur.Seg[15]; float tr = (ps[13 + 7] + ps[13 + 9]) * 0.5f * (cur.Seg[1]?.Thick ?? 1) * cur.Bulk; sox = a.OX * tr; soy += a.OY * tr; soz = a.OZ * tr; }
+        }
+    }
+    /// <summary>Emits a shape positioned in the current segment's local frame, optionally with a local rotation.</summary>
     static void Put(char sh, char tone, float lx, float ly, float lz, float sx, float sy, float sz, Q4 local = null)
     {
-        QRot(PQ, lx, ly, lz, TV);
+        QRot(PQ, lx + sox, ly + soy, lz + soz, TV);
         var q = local != null ? QMul(PQ, local, WQ) : PQ;
         em(sh, flashTone != 0 ? flashTone : tone, ps[pk] + TV.x, ps[pk + 1] + TV.y, ps[pk + 2] + TV.z, q.x, q.y, q.z, q.w, sx, sy, sz);
     }
     static Q4 Rx90 => QAxis(1, 0, 0, PI / 2, LQ);
+    static Q4 Flip => QAxis(1, 0, 0, PI, FQ);
 
-    /// <summary>A tapered capsule (wide at the top, narrow at the bottom): the heroic V of a chest. 'F' is a frustum, top radius 1, bottom 0.72.</summary>
-    static void Taper(char tA, char tB, float r, float L, bool two)
+    /// <summary>A frustum (or cylinder) from radius rt at the top to rb at the bottom: picks the nearest of the shared frustum
+    /// shapes (ratios 1, 0.86, 0.72, 0.5) and turns it over when the bottom is the wider end.</summary>
+    static void Frustum(char tone, float ly, float rt, float rb, float h)
     {
-        float rt = r * 1.12f, rb = rt * 0.72f, core = MathF.Max(0, L - (rt + rb) * 0.5f);
-        if (two)
-        {   // the top half is the frustum's upper part, the bottom half its lower: drawn as two frustums meeting at the seam
-            float rm = (rt + rb) * 0.5f;
-            Put('F', tA, 0, core * 0.5f, 0, rt, core, rt * 1.0f); Put('F', tB, 0, -core * 0.5f, 0, rm, core, rm);
-            Put('Z', tA, 0, core, 0, rt, rt * 0.9f, rt * 0.85f); Put('Z', tB, 0, -core, 0, rb, rb, rb);
-            Put('T', 'c', 0, 0, 0, rm * 1.04f, rm * 0.9f, rm * 1.04f);
-        }
-        else { Put('F', tA, 0, 0, 0, rt, core * 2, rt); Put('Z', tA, 0, core, 0, rt, rt * 0.9f, rt * 0.85f); Put('Z', tA, 0, -core, 0, rb, rb, rb); }
+        bool flip = rb > rt; float big = MathF.Max(rt, rb), q = MathF.Min(rt, rb) / MathF.Max(1e-4f, big);
+        char sh = q > 0.93f ? 'C' : q > 0.79f ? 'H' : q > 0.61f ? 'F' : 'G';
+        if (sh == 'C') { Put('C', tone, 0, ly, 0, big, h, big); return; }
+        Put(sh, tone, 0, ly, 0, big, h, big, flip ? Flip : null);
+    }
+    /// <summary>A block that narrows from wTop to wBot (width), depth d: a trapezoid when they differ.</summary>
+    static void Block(char tone, float ly, float wTop, float wBot, float h, float d)
+    {
+        bool flip = wBot > wTop; float big = MathF.Max(wTop, wBot), q = MathF.Min(wTop, wBot) / MathF.Max(1e-4f, big);
+        char sh = q > 0.92f ? 'B' : q > 0.72f ? 'Q' : 'K';
+        Put(sh, tone, 0, ly, 0, big, h, d, flip ? Flip : null);
     }
 
-    static void Capsule(char tA, char tB, float r, float L, bool two, float ly = 0)
+    /// <summary>A capsule whose ends can differ (taper), squashing into an ellipsoid when it's shorter than it is wide.</summary>
+    static void Capsule(char tA, char tB, float r, float L, bool two, float taper = 0, float ly = 0)
     {
-        float core = MathF.Max(0, L - r);
+        float rt = r * (1 + taper * 0.5f), rb = r * (1 - taper * 0.5f), core = MathF.Max(0, L - (rt + rb) * 0.5f);
+        if (core <= 0.001f) { Put('Z', tA, 0, ly, 0, (rt + rb) * 0.5f, L, (rt + rb) * 0.5f); if (two) Put('T', 'c', 0, ly, 0, (rt + rb) * 0.51f, L * 0.4f, (rt + rb) * 0.51f); return; }
+        float ht = MathF.Min(rt, L), hb = MathF.Min(rb, L);
         if (two)
         {
-            if (core > 0) { Put('C', tA, 0, ly + core / 2, 0, r, core, r); Put('C', tB, 0, ly - core / 2, 0, r, core, r); }
-            Put('Z', tA, 0, ly + core, 0, r, r, r); Put('Z', tB, 0, ly - core, 0, r, r, r);
-            Put('T', 'c', 0, ly, 0, r * 1.02f, r * 0.9f, r * 1.02f);   // the seam where the halves join
+            float rm = (rt + rb) * 0.5f;
+            Frustum(tA, ly + core * 0.5f, rt, rm, core); Frustum(tB, ly - core * 0.5f, rm, rb, core);
+            Put('Z', tA, 0, ly + core, 0, rt, ht, rt); Put('Z', tB, 0, ly - core, 0, rb, hb, rb);
+            Put('T', 'c', 0, ly, 0, rm * 1.03f, rm * 0.9f, rm * 1.03f);   // the seam where the halves join
         }
         else
         {
-            if (core > 0) Put('C', tA, 0, ly, 0, r, core * 2, r);
-            Put('Z', tA, 0, ly + core, 0, r, r, r); Put('Z', tA, 0, ly - core, 0, r, r, r);
+            Frustum(tA, ly, rt, rb, core * 2);
+            Put('Z', tA, 0, ly + core, 0, rt, ht, rt); Put('Z', tA, 0, ly - core, 0, rb, hb, rb);
         }
     }
 
-    /// <summary>The chain each limb root carries with it when its anchor moves.</summary>
-    public static readonly int[][] CHAINS = { new[] { 0 }, new[] { 3, 4, 5 }, new[] { 6, 7, 8 }, new[] { 9, 10, 11 }, new[] { 12, 13, 14 } };
-    public static bool IsRoot(int i) => i is 0 or 3 or 6 or 9 or 12;
-    /// <summary>The root segment whose anchor moves part i (or -1 for the torso and pelvis).</summary>
-    public static int RootOf(int i) => i switch { 0 => 0, 3 or 4 or 5 => 3, 6 or 7 or 8 => 6, 9 or 10 or 11 => 9, 12 or 13 or 14 => 12, _ => -1 };
-    static float[] anch = new float[15 * 13];
-    /// <summary>The pose with limb anchors applied (the input pose when no anchor is moved). The result is shared scratch.</summary>
-    public static float[] Anchored(MedSpec sp, float[] pose)
-    {
-        bool any = false;
-        foreach (var c in CHAINS) { var st = sp.Seg[c[0]]; if (st != null && (st.OX != 0 || st.OY != 0 || st.OZ != 0)) { any = true; break; } }
-        if (!any || pose.Length < 15 * 13) return pose;
-        if (anch.Length < pose.Length) anch = new float[pose.Length];
-        Array.Copy(pose, anch, pose.Length);
-        float tr = (pose[13 + 7] + pose[13 + 9]) * 0.5f * (sp.Seg[1]?.Thick ?? 1) * sp.Bulk;
-        foreach (var c in CHAINS)
-        {
-            var st = sp.Seg[c[0]]; if (st == null || (st.OX == 0 && st.OY == 0 && st.OZ == 0)) continue;
-            int bk = (c[0] >= 9 ? 2 : 1) * 13;   // legs follow the pelvis frame, arms and head the torso
-            PQ.Set(pose[bk + 3], pose[bk + 4], pose[bk + 5], pose[bk + 6]);
-            QRot(PQ, st.OX * tr, st.OY * tr, st.OZ * tr, TV);
-            foreach (int i in c) { int k = i * 13; anch[k] += TV.x; anch[k + 1] += TV.y; anch[k + 2] += TV.z; }
-        }
-        return anch;
-    }
-
-    /// <param name="anchored">True when the pose already has the limb anchors applied (the game does that when posing).</param>
     public static void Draw(MedSpec sp, float[] pose, DrawOpts o, Emit emit, bool anchored = false)
     {
         if (!anchored) pose = Anchored(sp, pose);
-        ps = pose; em = emit; var has = o.Has; var fl = o.Flash;
+        ps = pose; em = emit; cur = sp; var has = o.Has; var fl = o.Flash;
         if (o.Curl > 0.6f && o.HasBall)
         {   // curled up: one pill-shaped ball, two-toned, the seam rolling with it
             var q = o.BallQ; float br = o.BallR;
@@ -240,37 +253,78 @@ public static class MedDraw
             QRot(q, 0, 0, -br * 0.97f, TV); emit('Z', 'e', o.BallX + TV.x, o.BallY + TV.y, o.BallZ + TV.z, q.x, q.y, q.z, q.w, br * 0.18f, br * 0.18f, br * 0.08f);
             return;
         }
-        for (int i = 0; i < 15; i++)
+        for (int i = 0; i < 16; i++)
         {
-            if (!has[i]) continue;
-            flashTone = fl != null && fl[i] > 0 ? 'f' : '\0';
+            int b = Bone(i); if (!has[b] || (i == 15 && Merged(sp))) continue;
+            flashTone = fl != null && fl[b] > 0 ? 'f' : '\0';
             DrawSeg(sp, i, sp.Seg[i] ?? new SegStyle());
         }
         flashTone = '\0';
-        foreach (var a in sp.Att) if (a.Part >= 0 && a.Part < 15 && has[a.Part]) { flashTone = fl != null && fl[a.Part] > 0 ? 'f' : '\0'; DrawAttach(a, sp); }
+        foreach (var a in sp.Att) { int b = Bone(a.Part); if (a.Part >= 0 && a.Part < 16 && has[b] && !(a.Part == 15 && Merged(sp))) { flashTone = fl != null && fl[b] > 0 ? 'f' : '\0'; DrawAttach(a, sp); } }
         flashTone = '\0';
     }
 
     /// <summary>The visible radius and half-length of a segment (also used to place armor and attachments).</summary>
     public static (float r, float L) Dims(float[] pose, int i, SegStyle st, MedSpec sp)
     {
-        int k = i * 13; float r = (pose[k + 7] + pose[k + 9]) * 0.5f * st.Thick, L = pose[k + 8] * st.Len;
-        if (i == 1) r *= sp.Bulk;
+        int k = Bone(i) * 13; float avg = (pose[k + 7] + pose[k + 9]) * 0.5f;
+        if (i == 1 || i == 15)
+        {
+            float Lt = pose[k + 8] * (sp.Seg[1]?.Len ?? 1);
+            if (i == 1 && Merged(sp)) return (avg * st.Thick * sp.Bulk, MathF.Max(Lt, avg * st.Thick * sp.Bulk));
+            if (i == 1) return (avg * st.Thick * sp.Bulk, Lt * CHEST_H);
+            return (avg * st.Thick * sp.Bulk * 0.85f, Lt * ABD_H * st.Len);
+        }
+        float r = avg * st.Thick, L = pose[k + 8] * st.Len;
         return (r, MathF.Max(L, r));
     }
+
+    /// <summary>World position and orientation of a segment's centre (the abdomen and the split chest sit inside the torso bone).</summary>
+    public static void SegFrame(MedSpec sp, float[] pose, int i, out float x, out float y, out float z, out float qx, out float qy, out float qz, out float qw)
+    {
+        var ops = ps; var oc = cur; ps = pose; cur = sp; Part(i);
+        QRot(PQ, sox, soy, soz, TV); x = pose[pk] + TV.x; y = pose[pk + 1] + TV.y; z = pose[pk + 2] + TV.z; qx = PQ.x; qy = PQ.y; qz = PQ.z; qw = PQ.w;
+        ps = ops; cur = oc;
+    }
+
+    /// <summary>How far the front surface of a shape is from its axis (details and visors sit on it).</summary>
+    static float FrontDepth(string shape, float r, float L) => shape switch
+    {
+        "tablet" or "tablethead" => r * 0.58f, "box" or "trapezoid" or "mitt" => r * 0.78f, "hex" => r * 1.0f, "sphere" => r * 1.05f, "bottle" or "cap" => r * 1.1f, "disc" => MathF.Max(r, L) * 1.1f, _ => r,
+    };
 
     static void DrawSeg(MedSpec sp, int i, SegStyle st)
     {
         Part(i); var (r, L) = Dims(ps, i, st, sp); char a = st.Tone, b = st.Tone2;
+        bool core = i is 1 or 2 or 15;
+        float te = Math.Clamp(st.Taper + (i == 1 && st.Shape is "capsule" or "pill" ? 0.35f : 0), -0.8f, 0.8f);   // the chest has a built-in heroic V
+        float rt = r * (1 + te * 0.5f), rb = r * (1 - te * 0.5f);
+        bool ownVisor = st.Visor == "default";
         switch (st.Shape)
         {
-            case "capsule": if (i == 1) Taper(a, b, r, L * 1.05f, st.TwoTone); else Capsule(a, b, r, L, st.TwoTone); break;
-            case "pill": if (i == 1) Taper(a, b, r * 0.95f, L * 1.05f, false); else Capsule(a, b, r * 0.92f, L * 1.02f, false); break;
-            case "sphere": Put('Z', a, 0, 0, 0, r * 1.05f, MathF.Max(r, L * 0.8f), r * 1.05f); break;
-            case "cylinder": Put('C', a, 0, 0, 0, r, L * 2, r); Put('T', b, 0, L * 0.92f, 0, r * 1.02f, r * 0.5f, r * 1.02f); Put('T', b, 0, -L * 0.92f, 0, r * 1.02f, r * 0.5f, r * 1.02f); break;
-            case "box": Put('B', a, 0, 0, 0, r * 1.8f, L * 2, r * 1.6f); break;
-            case "cone": Put('P', a, 0, 0, 0, r * 1.2f, L * 2, r * 1.2f); break;
+            case "capsule": Capsule(a, b, r, L * (i == 1 ? 1.05f : 1), st.TwoTone, te); break;
+            case "pill": Capsule(a, b, r * 0.94f, L * 1.02f, false, te); break;
+            case "sphere": Put('Z', a, 0, 0, 0, r * 1.05f, core ? L * 1.05f : MathF.Max(r, L * 0.8f), r * 1.05f); break;
+            case "cylinder":
+                Frustum(a, 0, rt, rb, L * 2);
+                Put('T', b, 0, L * 0.92f, 0, rt * 1.03f, r * 0.5f, rt * 1.03f); Put('T', b, 0, -L * 0.92f, 0, rb * 1.03f, r * 0.5f, rb * 1.03f); break;
+            case "box": Block(a, 0, r * 1.8f * (1 + te * 0.5f), r * 1.8f * (1 - te * 0.5f), L * 2, r * 1.6f); break;
+            case "trapezoid":
+                {   // a block wide at the top and narrow at the bottom (the taper control pushes it further), with a trim along the top edge
+                    float wt = r * 2.1f * (1 + MathF.Max(0, te) * 0.3f), wb = r * 1.3f * (1 - MathF.Min(0, te) * 0.6f);
+                    Block(a, 0, wt, wb, L * 2, r * 1.5f);
+                    Put('B', b, 0, L * 0.88f, -r * 0.76f, wt * 0.92f, L * 0.16f, r * 0.06f);
+                    break;
+                }
+            case "hex": Put(MathF.Abs(te) > 0.2f ? 'W' : 'X', a, 0, 0, 0, r * 2.05f, L * 2, r * 2.05f, te < -0.2f ? Flip : null); Put('X', b, 0, L * 0.96f, 0, r * 1.7f, r * 0.12f, r * 1.7f); break;
+            case "cone": Put('P', a, 0, 0, 0, r * 1.2f, L * 2, r * 1.2f, te < 0 ? Flip : null); break;
             case "disc": Put('C', a, 0, 0, 0, MathF.Max(r, L) * 1.1f, r * 0.9f, MathF.Max(r, L) * 1.1f); Put('T', b, 0, 0, 0, MathF.Max(r, L) * 1.12f, r * 0.6f, MathF.Max(r, L) * 1.12f); break;
+            case "ribbed":
+                {   // an armoured gut: a core with three bands stacked down it
+                    Frustum(a, 0, rt * 0.94f, rb * 0.94f, L * 2);
+                    for (int m = -1; m <= 1; m++) { float rr = r * (1 + te * 0.5f * m * 0.62f) * 0.9f; Put('T', b, 0, m * L * 0.62f, 0, rr, r * 0.5f, rr); }
+                    break;
+                }
             case "tablet":
                 {   // a round tablet facing forward, with the score line across it
                     float R = MathF.Max(r * 1.15f, L * 1.02f), th = r * 1.1f;
@@ -298,16 +352,14 @@ public static class MedDraw
                     break;
                 }
             case "helmet":
-                {   // a capsule helmet with a wrap-around visor
-                    Capsule(a, b, r * 1.0f, L * 1.08f, true);
-                    Put('Z', 'e', 0, L * 0.12f, -r * 0.52f, r * 0.88f, r * 0.34f, r * 0.55f);
-                    break;
-                }
+                Capsule(a, b, r, L * 1.08f, true);
+                if (ownVisor) Put('Z', 'e', 0, L * 0.12f, -r * 0.52f, r * 0.88f, r * 0.34f, r * 0.55f);
+                break;
             case "tablethead":
                 {
                     float R = MathF.Max(r * 1.15f, L), th = r * 1.15f;
                     Put('C', a, 0, 0, 0, R, th, R, Rx90); Put('T', b, 0, 0, 0, R * 1.01f, th * 0.5f, R * 1.01f, Rx90);
-                    Put('B', 'e', 0, R * 0.08f, -th * 0.52f, R * 1.25f, R * 0.18f, 0.03f);
+                    if (ownVisor) Put('B', 'e', 0, R * 0.08f, -th * 0.52f, R * 1.25f, R * 0.18f, 0.03f);
                     break;
                 }
             case "cap":
@@ -318,25 +370,145 @@ public static class MedDraw
                         float ang = m / 14f * TAU; QAxis(0, 1, 0, -ang, TQ);
                         Put('B', b, MathF.Sin(ang) * r * 1.1f, 0, -MathF.Cos(ang) * r * 1.1f, r * 0.12f, L * 1.55f, r * 0.08f, TQ);
                     }
-                    Put('Z', 'e', -r * 0.38f, L * 0.1f, -r * 1.08f, r * 0.2f, r * 0.2f, r * 0.08f); Put('Z', 'e', r * 0.38f, L * 0.1f, -r * 1.08f, r * 0.2f, r * 0.2f, r * 0.08f);
+                    if (ownVisor) { Put('Z', 'e', -r * 0.38f, L * 0.1f, -r * 1.08f, r * 0.2f, r * 0.2f, r * 0.08f); Put('Z', 'e', r * 0.38f, L * 0.1f, -r * 1.08f, r * 0.2f, r * 0.2f, r * 0.08f); }
                     break;
                 }
             case "plunger":
-                {   // the plunger's thumb press on a short rod, with a visor
-                    Put('C', b, 0, -L * 0.2f, 0, r * 0.45f, L * 1.2f, r * 0.45f);
-                    Put('C', a, 0, L * 0.45f, 0, r * 1.3f, r * 0.35f, r * 1.3f);
-                    Put('Z', a, 0, -L * 0.05f, 0, r * 0.95f, r * 0.8f, r * 0.95f);
-                    Put('B', 'e', 0, -L * 0.02f, -r * 0.82f, r * 1.2f, r * 0.2f, r * 0.12f);
-                    break;
-                }
+                Put('C', b, 0, -L * 0.2f, 0, r * 0.45f, L * 1.2f, r * 0.45f);
+                Put('C', a, 0, L * 0.45f, 0, r * 1.3f, r * 0.35f, r * 1.3f);
+                Put('Z', a, 0, -L * 0.05f, 0, r * 0.95f, r * 0.8f, r * 0.95f);
+                if (ownVisor) Put('B', 'e', 0, -L * 0.02f, -r * 0.82f, r * 1.2f, r * 0.2f, r * 0.12f);
+                break;
             case "boot":
-                {   // a rounded boot, longer front to back
-                    Put('Z', a, 0, 0, -r * 0.35f, r * 1.05f, MathF.Max(r * 0.6f, L * 0.75f), r * 1.7f);
-                    Put('B', b, 0, -L * 0.55f, -r * 0.35f, r * 1.85f, r * 0.3f, r * 3.0f);
+                Put('Z', a, 0, 0, -r * 0.35f, r * 1.05f, MathF.Max(r * 0.6f, L * 0.75f), r * 1.7f);
+                Put('B', b, 0, -L * 0.55f, -r * 0.35f, r * 1.85f, r * 0.3f, r * 3.0f);
+                break;
+            case "wedge":
+                {   // a wedge sole: deep at the heel, thin at the toe
+                    QAxis(1, 0, 0, PI / 2, TQ);
+                    Put('K', a, 0, -L * 0.05f, -r * 0.3f, r * 1.9f, r * 3.2f, L * 1.3f, TQ);
+                    Put('B', b, 0, -L * 0.62f, -r * 0.3f, r * 1.95f, r * 0.22f, r * 3.25f);
                     break;
                 }
-            default: Capsule(a, b, r, L, false); break;
+            case "claw":
+                {   // a palm with three talons
+                    Put('Z', a, 0, 0, 0, r * 0.85f, r * 0.75f, r * 0.85f);
+                    for (int m = -1; m <= 1; m++) { QAxis(0, 0, 1, m * 0.3f, TQ); Put('P', b, m * r * 0.4f, -r * 0.85f, -r * 0.2f, r * 0.2f, r * 0.9f, r * 0.2f, QMul(TQ, Flip, TQ)); }
+                    break;
+                }
+            case "mitt": Put('Z', a, 0, 0, 0, r * 1.15f, r * 0.85f, r * 1.3f); Put('Z', b, -r * 0.75f, r * 0.1f, -r * 0.2f, r * 0.35f, r * 0.5f, r * 0.35f); break;
+            default: Capsule(a, b, r, L, false, te); break;
         }
+        float fd = FrontDepth(st.Shape, r, L);
+        switch (st.Detail)
+        {
+            case "score": Put('B', 'k', 0, 0, -fd * 0.99f, r * 1.3f, 0.02f + r * 0.035f, 0.02f); break;
+            case "rivets": foreach (float ux in new[] { -0.45f, 0.45f }) foreach (float vy in new[] { -0.5f, 0.5f }) Put('Z', 'd', ux * r, vy * L, -fd * 0.96f, r * 0.09f, r * 0.09f, r * 0.06f); break;
+            case "vents": for (int m = -1; m <= 1; m++) Put('B', 'k', 0, m * L * 0.28f, -fd * 0.99f, r * 0.6f, 0.015f + r * 0.05f, 0.025f); break;
+            case "stripe": Put('B', 'c', 0, 0, -fd * 0.99f, r * 0.16f, L * 1.6f, 0.03f); break;
+            case "rings": foreach (float vy in new[] { -0.55f, 0.55f }) { float rr = r * (1 + te * 0.5f * vy); Put('T', 'c', 0, vy * L, 0, rr * 1.04f, r * 0.35f, rr * 1.04f); } break;
+            case "ridges": for (int m = -1; m <= 1; m++) { float rr = r * (1 + te * 0.5f * m * 0.6f); Put('T', b, 0, m * L * 0.6f, 0, rr * 1.03f, r * 0.55f, rr * 1.03f); } break;
+        }
+        if (i == 0)
+        {
+            float top = st.Shape is "tablethead" ? MathF.Max(r * 1.15f, L) : st.Shape is "cap" ? L * 0.85f : L;
+            switch (st.Visor)
+            {
+                case "slit": Put('B', 'e', 0, L * 0.1f, -fd * 0.98f, r * 1.3f, r * 0.16f, 0.04f); break;
+                case "wrap": Put('Z', 'e', 0, L * 0.1f, -fd * 0.52f, r * 0.9f, r * 0.32f, r * 0.55f); break;
+                case "dual": foreach (float ux in new[] { -0.36f, 0.36f }) Put('Z', 'e', ux * r, L * 0.12f, -fd * 0.95f, r * 0.2f, r * 0.2f, r * 0.08f); break;
+                case "mono": Put('Z', 'e', 0, L * 0.1f, -fd * 0.96f, r * 0.34f, r * 0.34f, r * 0.14f); Put('T', 'd', 0, L * 0.1f, -fd * 0.97f, r * 0.42f, r * 0.42f, r * 0.42f, Rx90); break;
+            }
+            switch (st.Antenna)
+            {
+                case "stub": Put('C', 'd', 0, top + r * 0.15f, 0, r * 0.08f, r * 0.35f, r * 0.08f); Put('Z', 'c', 0, top + r * 0.36f, 0, r * 0.11f, r * 0.11f, r * 0.11f); break;
+                case "spike": Put('P', 'd', 0, top + r * 0.3f, 0, r * 0.13f, r * 0.75f, r * 0.13f); break;
+                case "dish": Put('C', 'd', r * 0.3f, top + r * 0.15f, 0, r * 0.05f, r * 0.4f, r * 0.05f); QAxis(0, 0, 1, -0.5f, TQ); Put('C', 'd', r * 0.38f, top + r * 0.38f, 0, r * 0.32f, r * 0.05f, r * 0.32f, TQ); Put('Z', 'c', r * 0.38f, top + r * 0.42f, 0, r * 0.07f, r * 0.07f, r * 0.07f); break;
+                case "twin":
+                    foreach (float sd in new[] { -1f, 1f }) { QAxis(0, 0, 1, -sd * 0.35f, TQ); Put('C', 'd', sd * r * 0.5f, top + r * 0.1f, 0, r * 0.06f, r * 0.5f, r * 0.06f, TQ); Put('Z', 'c', sd * r * 0.62f, top + r * 0.36f, 0, r * 0.1f, r * 0.1f, r * 0.1f); }
+                    break;
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ proportions, anchors and anti-clipping
+    /// <summary>The chain each anchor carries with it: the chest takes the head and both arms along.</summary>
+    public static readonly int[][] CHAINS = { new[] { 1, 0, 3, 4, 5, 6, 7, 8 }, new[] { 0 }, new[] { 3, 4, 5 }, new[] { 6, 7, 8 }, new[] { 2 }, new[] { 9, 10, 11 }, new[] { 12, 13, 14 } };
+    /// <summary>The anchor segment that moves part i: chest, abdomen, waist, head, an arm root or a leg root.</summary>
+    public static int RootOf(int i) => i switch { 0 => 0, 1 => 1, 2 => 2, 15 => 15, 3 or 4 or 5 => 3, 6 or 7 or 8 => 6, 9 or 10 or 11 => 9, 12 or 13 or 14 => 12, _ => -1 };
+    static float[] anch = new float[15 * 13];
+    static readonly V3 PJ = new(), PV = new();
+    // limb bones (arms and legs) are turned over: their local +y runs toward the hand or foot, so the joint nearer the body is at -y
+    static void Prox(float[] p, int i, V3 o) { int k = i * 13; QRot(Q4Of(p, k, TQ), 0, i >= 3 ? -p[k + 8] : p[k + 8], 0, o); o.x += p[k]; o.y += p[k + 1]; o.z += p[k + 2]; }
+    static Q4 Q4Of(float[] p, int k, Q4 q) { q.Set(p[k + 3], p[k + 4], p[k + 5], p[k + 6]); return q; }
+    static void ScaleChain(float[] p, V3 pivot, float s, params int[] parts)
+    {
+        foreach (int i in parts) { int k = i * 13; p[k] = pivot.x + (p[k] - pivot.x) * s; p[k + 1] = pivot.y + (p[k + 1] - pivot.y) * s; p[k + 2] = pivot.z + (p[k + 2] - pivot.z) * s; if (i is not (5 or 8 or 11 or 14)) p[k + 8] *= s; }
+    }
+
+    /// <summary>
+    /// The drawn pose: the skeleton's pose with the hero's proportions (leg and arm length, height), anchors moved, and the
+    /// limbs pushed out of the chest and apart from each other so the body never clips through itself. Shared scratch.
+    /// </summary>
+    public static float[] Anchored(MedSpec sp, float[] pose)
+    {
+        if (pose.Length < 15 * 13) return pose;
+        if (anch.Length < pose.Length) anch = new float[pose.Length];
+        var p = anch; Array.Copy(pose, p, pose.Length);
+        float footMin(float[] q) => MathF.Min(q[11 * 13 + 1] - q[11 * 13 + 8], q[14 * 13 + 1] - q[14 * 13 + 8]);
+        float ground = footMin(pose);
+        // legs: longer legs lift the whole body so the feet stay planted
+        if (MathF.Abs(sp.LegLen - 1) > 1e-3f)
+        {
+            float hipY = 0;
+            foreach (var (t, sh, ft) in new[] { (9, 10, 11), (12, 13, 14) }) { Prox(pose, t, PJ); hipY += PJ.y * 0.5f; ScaleChain(p, PJ, sp.LegLen, t, sh, ft); }
+            float lift = ground - footMin(p);
+            for (int i = 0; i < 15; i++) p[i * 13 + 1] += lift;
+        }
+        if (MathF.Abs(sp.ArmLen - 1) > 1e-3f)
+            foreach (var (u, f, h) in new[] { (3, 4, 5), (6, 7, 8) }) { Prox(p, u, PJ); ScaleChain(p, PJ, sp.ArmLen, u, f, h); }
+        // anchors
+        float tr = (pose[13 + 7] + pose[13 + 9]) * 0.5f * (sp.Seg[1]?.Thick ?? 1) * sp.Bulk;
+        foreach (var c in CHAINS)
+        {
+            var st = sp.Seg[c[0]]; if (st == null || (st.OX == 0 && st.OY == 0 && st.OZ == 0)) continue;
+            int bk = (c[0] is >= 9 or 2 ? 2 : 1) * 13;
+            Q4Of(p, bk, PQ); QRot(PQ, st.OX * tr, st.OY * tr, st.OZ * tr, TV);
+            foreach (int i in c) { int k = i * 13; p[k] += TV.x; p[k + 1] += TV.y; p[k + 2] += TV.z; }
+        }
+        // anti-clipping: arms out of the chest, thighs and shins apart
+        {
+            int tk = 13; Q4Of(p, tk, PQ); float qx = PQ.x, qy = PQ.y, qz = PQ.z, qw = PQ.w;
+            var inv = new Q4(); inv.Set(-qx, -qy, -qz, qw);
+            float cr = tr * (sp.Seg[1]?.Shape is "box" or "trapezoid" ? 1.05f : 0.95f), cl = p[tk + 8] * (sp.Seg[1]?.Len ?? 1);
+            for (int i = 3; i <= 8; i++)
+            {
+                int k = i * 13; float pr = (p[k + 7] + p[k + 9]) * 0.5f * (sp.Seg[i]?.Thick ?? 1);
+                QRot(inv, p[k] - p[tk], p[k + 1] - p[tk + 1], p[k + 2] - p[tk + 2], PV);
+                if (MathF.Abs(PV.y) > cl + pr) continue;
+                float rad = MathF.Sqrt(PV.x * PV.x + PV.z * PV.z), lim = cr + pr * 0.85f;
+                if (rad >= lim) continue;
+                float side = i <= 5 ? -1 : 1;   // left arm parts go to -x, right to +x when there's no direction to push along
+                float dx = rad > 1e-3f ? PV.x / rad : side, dz = rad > 1e-3f ? PV.z / rad : 0;
+                if (dx * side < -0.2f) { dx = side * 0.6f; dz = MathF.Sign(PV.z == 0 ? -1 : PV.z) * 0.8f; }   // never push an arm through to the far side
+                PV.x = dx * lim; PV.z = dz * lim;
+                QRot(PQ, PV.x, PV.y, PV.z, TV); p[k] = p[tk] + TV.x; p[k + 1] = p[tk + 1] + TV.y; p[k + 2] = p[tk + 2] + TV.z;
+            }
+            foreach (var (l, r) in new[] { (9, 12), (10, 13) })
+            {
+                int a = l * 13, b = r * 13; float need = ((p[a + 7] + p[a + 9]) * 0.5f * (sp.Seg[l]?.Thick ?? 1) + (p[b + 7] + p[b + 9]) * 0.5f * (sp.Seg[r]?.Thick ?? 1)) * 0.92f;
+                float dx = p[b] - p[a], dz = p[b + 2] - p[a + 2], d = MathF.Sqrt(dx * dx + dz * dz);
+                if (d >= need || d < 1e-4f) continue;
+                float push = (need - d) * 0.5f / d; p[a] -= dx * push; p[a + 2] -= dz * push; p[b] += dx * push; p[b + 2] += dz * push;
+            }
+        }
+        // height: everything scales about the feet
+        if (MathF.Abs(sp.Height - 1) > 1e-3f)
+        {
+            float g = footMin(p), h = sp.Height, cx = p[2 * 13], cz = p[2 * 13 + 2];
+            for (int i = 0; i < 15; i++) { int k = i * 13; p[k] = cx + (p[k] - cx) * h; p[k + 1] = g + (p[k + 1] - g) * h; p[k + 2] = cz + (p[k + 2] - cz) * h; p[k + 7] *= h; p[k + 8] *= h; p[k + 9] *= h; }
+        }
+        return p;
     }
 
     static readonly Q4 AQ = new(), XQ = new(), YQ = new(), YQ2 = new(), ZQ = new();
@@ -363,123 +535,145 @@ public static class MedDraw
     }
 
     /// <summary>
-    /// One armor piece: a small designed kit for each spot on the body, in a medical-tech style. The chest gets a V-shaped
-    /// breastplate split by a glowing spine, the back a spine plate carrying two serum vials, the belt a band with a lit
-    /// buckle, the helmet a crest and ear discs, the shoulders stepped pauldrons, the forearms bracer sleeves with a lit
-    /// cuff, the thighs tassets and the shins greaves with knee guards. "plate" is that kit in flat panels, "shell" the
-    /// same kit rounded, "angular" adds spikes and sharper cuts; "ring", "studs" and "none" stay minimal.
-    /// Pieces sit just off the surface and cover part of a segment, so the body still shows.
+    /// One armour piece. Plates are real curved shells that wrap the segment at its own radius (following its taper), with
+    /// domed caps on the helmet, shoulders and knees. "plate": smooth shells with a raised centre plate and a glowing edge;
+    /// "shell": overlapping chitin bands like an armadillo's; "angular": faceted plates with spikes. Flat-fronted segments
+    /// (box, trapezoid, tablet, hex) get flat plates. "ring", "studs" and "none" stay minimal.
     /// </summary>
     public static void Armor(MedSpec sp, float[] pose, int part, float y0, float y1, float phi, string style, char tone, Emit emit, bool anchored = false)
     {
-        ps = anchored ? pose : Anchored(sp, pose); em = emit; flashTone = '\0'; Part(part);
+        ps = anchored ? pose : Anchored(sp, pose); em = emit; cur = sp; flashTone = '\0'; Part(part);
         var st = sp.Seg[part] ?? new SegStyle(); var (r, L) = Dims(ps, part, st, sp);
-        bool flatFront = st.Shape is "tablet" or "tablethead";
-        float yc = (y0 + y1) * 0.5f * L, hh = MathF.Max(r * 0.35f, (y1 - y0) * 0.5f * L * 0.85f) * 0.75f, a = phi * PI / 180;
-        float nx = MathF.Sin(a), nz = -MathF.Cos(a), off = flatFront ? MathF.Max(r * 1.15f, L) * 0.55f : r * (part == 1 ? 1.06f : 0.96f);
-        QAxis(0, 1, 0, -a, AQ);
-        char d = tone, g = tone == 'f' ? 'f' : 'c', k = tone == 'f' ? 'f' : 'k';   // armor colour, glow trim, dark detail
+        // limb bones are turned over (local +y runs toward the hand/foot, local x is mirrored): flip the band and the side to match
+        bool limb = part >= 3 && part != 15;
+        if (limb) { (y0, y1) = (-y1, -y0); phi = -phi; }
+        float a = phi * PI / 180; QAxis(0, 1, 0, -a, AQ);
+        char d = tone, g = tone == 'f' ? 'f' : 'c', k = tone == 'f' ? 'f' : 'k';
+        float nx = MathF.Sin(a), nz = -MathF.Cos(a);
         switch (style)
         {
             case "none": return;
-            case "ring": Put('T', d, 0, yc + hh * 0.4f, 0, r * 1.12f, r * 0.7f, r * 1.12f); Put('T', d, 0, yc - hh * 0.4f, 0, r * 1.12f, r * 0.7f, r * 1.12f); return;
-            case "studs": for (int m = -1; m <= 1; m++) Put('Z', d, nx * off, yc + m * hh * 0.6f, nz * off, r * 0.3f, r * 0.3f, r * 0.2f, AQ); return;
+            case "ring": Put('T', d, 0, (y0 + y1) * 0.5f * L + 0.15f * L, 0, r * 1.12f, r * 0.7f, r * 1.12f); Put('T', d, 0, (y0 + y1) * 0.5f * L - 0.15f * L, 0, r * 1.12f, r * 0.7f, r * 1.12f); return;
+            case "studs": for (int m = -1; m <= 1; m++) Put('Z', d, nx * r, (y0 + y1) * 0.5f * L + m * 0.25f * L, nz * r, r * 0.28f, r * 0.28f, r * 0.2f, AQ); return;
         }
-        bool round = style == "shell", sharp = style == "angular";
-        float cx = nx * off, cz = nz * off, t = r * 0.13f;
-        // a piece in the plate's own frame: u across, v along the segment, w outward from the surface
-        void PP(char sh, char tn, float u, float v, float w, float sx, float sy, float sz, Q4 extra = null)
-        {
-            QRot(AQ, u, v, -w, TV2); var q = extra != null ? QMul(AQ, extra, XQ) : AQ;
-            Put(sh, tn, cx + TV2.x, TV2.y, cz + TV2.z, sx, sy, sz, q);
-        }
-        // a main panel: a flat slab, or a rounded shell
-        void Panel(float u, float v, float w, float wd, float ht, float th, Q4 extra = null)
-        {
-            if (round) PP('Z', d, u, v, w, wd * 0.55f, ht * 0.55f, th * 0.9f, extra); else PP('B', d, u, v, w, wd, ht, th, extra);
-        }
-        void Spike(float u, float v, float w, float len) => PP('P', d, u, v, w + len * 0.5f, len * 0.28f, len, len * 0.28f, QAxis(1, 0, 0, -PI / 2, YQ));
-        Q4 Tilt(float ax, float ay, float az, float deg) => QAxis(ax, ay, az, deg * PI / 180, ZQ);
+        bool chitin = style == "shell", sharp = style == "angular";
+        char plate = sharp ? 'J' : 'U';
+        float te = Math.Clamp(st.Taper + (part == 1 && st.Shape is "capsule" or "pill" ? 0.35f : 0), -0.8f, 0.8f);
+        float RadAt(float y) => r * (1 + te * 0.5f * Math.Clamp(y / MathF.Max(1e-4f, L), -1, 1));
+        bool flat = st.Shape is "box" or "trapezoid" or "tablet" or "tablethead" or "hex" or "disc" or "cap";
+        float ya = y0 * L, yb = y1 * L, H = yb - ya;
 
-        if (part == 1 && MathF.Abs(phi) < 90)
-        {   // chest: two angled plates meeting in a V, a glowing spine down the middle, a dark keel under it
-            float vy = yc - hh * 0.45f;
-            foreach (float sd in new[] { -1f, 1f })
-            {   // each half follows the curve of the chest (turned toward its side) and leans in at the bottom to make the V
-                QAxis(0, 0, 1, sd * 0.24f, TQ); QAxis(0, 1, 0, -sd * 0.5f, YQ2); QMul(YQ2, TQ, ZQ);
-                Panel(sd * r * 0.34f, vy, -r * 0.08f, r * 0.6f, hh * 2.1f, t, ZQ);
-                if (sharp) Spike(sd * r * 0.5f, vy + hh * 0.42f, -r * 0.05f, r * 0.26f);
+        // a curved plate wrapping the segment from y=lo to y=hi, facing the way of q (a cone-shaped one when the segment tapers)
+        void Wrap(char sh, char tn, float lo, float hi, float grow, Q4 q)
+        {
+            float rt = RadAt(hi), rb = RadAt(lo), big = MathF.Max(rt, rb) * grow, ym = (lo + hi) * 0.5f;
+            if (sh != 'V' && sh != 'O' && MathF.Abs(rt - rb) > 0.12f * MathF.Max(rt, rb))
+            {   // the conical plate is wide at its top; turn it over (about the facing axis) when the segment is wider below
+                if (rb > rt) { QAxis(0, 0, 1, PI, TQ); Put('A', tn, 0, ym, 0, big, hi - lo, big, QMul(q, TQ, YQ2)); }
+                else Put('A', tn, 0, ym, 0, big, hi - lo, big, q);
+                return;
             }
-            PP('B', k, 0, vy, t * 0.35f, r * 0.2f, hh * 2.3f, t * 0.7f);
-            PP('B', g, 0, vy, t * 0.75f, r * 0.08f, hh * 2.0f, t * 0.4f);
-            PP('B', g, 0, vy + hh * 0.55f, t * 0.75f, r * 0.3f, r * 0.08f, t * 0.4f);   // the cross bar: a medic's cross
+            Put(sh, tn, 0, ym, 0, big, hi - lo, big, q);
         }
-        else if (part == 1)
-        {   // back: a spine plate carrying two serum vials
-            Panel(0, yc, 0, r * 0.5f, hh * 1.7f, t);
-            foreach (float sd in new[] { -1f, 1f })
+        // the straight part of the segment, where a curved plate can sit flush (rounded ends get domed scutes instead)
+        float core = st.Shape is "cylinder" or "vial" or "bottle" or "hex" ? L * 0.95f : st.Shape is "sphere" or "disc" or "tablet" ? 0 : MathF.Max(0, L - r * 0.85f);
+        // a domed plate facing out of the segment (the cap shell turned to face forward), shaped to the segment's curve
+        void Scute(char tn, float ym, float halfH, float halfW, float grow, Q4 q)
+        {
+            QAxis(1, 0, 0, -PI / 2, TQ); QMul(q, TQ, YQ);
+            float depth = MathF.Max(RadAt(ym - halfH * 0.8f), RadAt(ym + halfH * 0.8f)) * grow;   // clear of the widest point it covers
+            Put('S', tn, 0, ym, 0, halfW * grow, depth, halfH * grow, YQ);
+        }
+        void Plate(char sh, char tn, float lo, float hi, float grow, Q4 q)
+        {
+            float l2 = MathF.Max(lo, -core), h2 = MathF.Min(hi, core);
+            if (h2 - l2 >= MathF.Max(r * 0.55f, (hi - lo) * 0.4f)) Wrap(sh, tn, l2, h2, grow, q);
+            else Scute(tn, (lo + hi) * 0.5f, MathF.Max((hi - lo) * 0.5f, r * 0.5f), RadAt((lo + hi) * 0.5f) * 0.95f, grow, q);
+        }
+        void Spike(float u, float v, float w, float len)
+        {   // a cone pointing straight out of the plate's face
+            QAxis(1, 0, 0, -PI / 2, TQ); QMul(AQ, TQ, YQ);
+            QRot(AQ, u, v, -(w + len * 0.45f), TV2); Put('P', d, TV2.x, TV2.y, TV2.z, len * 0.26f, len, len * 0.26f, YQ);
+        }
+        void FlatPlate(float lo, float hi, float wd)
+        {   // for flat-fronted segments: a slab with a bevelled rim and a glow bar
+            float fd = FrontDepth(st.Shape, r, L), t = r * 0.12f, ym = (lo + hi) * 0.5f;
+            QRot(AQ, 0, ym, -(fd + t * 0.5f), TV2); Put('B', d, TV2.x, TV2.y, TV2.z, wd, hi - lo, t, AQ);
+            QRot(AQ, 0, ym, -(fd + t * 1.1f), TV2); Put('B', d, TV2.x, TV2.y, TV2.z, wd * 0.62f, (hi - lo) * 0.8f, t * 0.6f, AQ);
+            QRot(AQ, 0, lo + (hi - lo) * 0.12f, -(fd + t * 1.05f), TV2); Put('B', g, TV2.x, TV2.y, TV2.z, wd * 0.8f, r * 0.06f, t * 0.4f, AQ);
+        }
+
+        if (part == 1 || part == 15)
+        {   // chest (front) or back plate
+            bool front = MathF.Abs(phi) < 90;
+            if (flat) { FlatPlate(ya, yb, r * 1.5f); if (sharp && front) { Spike(-r * 0.5f, yb - H * 0.15f, r, r * 0.3f); Spike(r * 0.5f, yb - H * 0.15f, r, r * 0.3f); } return; }
+            float ym = (ya + yb) * 0.5f, hh = MathF.Min(MathF.Max(H * 0.55f, r * 0.55f), r * 0.85f), hw = MathF.Min(RadAt(ym) * 0.9f, r * 1.05f);
+            if (chitin)
+                for (int m = 0; m < 3; m++) Scute(d, ym + hh * 0.45f - m * hh * 0.45f, hh * 0.55f, hw * (1 - m * 0.06f), 1.08f + m * 0.025f, AQ);   // overlapping bands, each a little proud of the one above
+            else
             {
-                PP('C', g, sd * r * 0.42f, yc, r * 0.16f, r * 0.13f, hh * 1.25f, r * 0.13f);
-                PP('C', d, sd * r * 0.42f, yc + hh * 0.68f, r * 0.16f, r * 0.17f, hh * 0.18f, r * 0.17f);
-                PP('C', d, sd * r * 0.42f, yc - hh * 0.68f, r * 0.16f, r * 0.17f, hh * 0.18f, r * 0.17f);
+                Scute(d, ym, hh, hw, 1.05f, AQ);                                                      // the breastplate, following the chest's curve
+                Scute(d, ym + hh * 0.05f, hh * 0.85f, hw * 0.34f, 1.11f, AQ);                          // a raised keel down the middle
+                if (front)
+                {   // a glowing core set into the keel: a lit disc in a dark ring
+                    QAxis(1, 0, 0, PI / 2, TQ); QMul(AQ, TQ, ZQ);
+                    QRot(AQ, 0, ym + hh * 0.3f, -RadAt(ym) * 1.13f, TV2); Put('C', k, TV2.x, TV2.y, TV2.z, r * 0.2f, r * 0.08f, r * 0.2f, ZQ);
+                    QRot(AQ, 0, ym + hh * 0.3f, -RadAt(ym) * 1.17f, TV2); Put('C', g, TV2.x, TV2.y, TV2.z, r * 0.13f, r * 0.05f, r * 0.13f, ZQ);
+                }
+                else for (int m = -1; m <= 1; m += 2) { QRot(AQ, m * hw * 0.55f, ym, -RadAt(ym) * 0.98f, TV2); Put('B', k, TV2.x, TV2.y, TV2.z, r * 0.07f, hh * 0.9f, r * 0.1f, AQ); }   // vents on the back
+                if (sharp && front) { Spike(-hw * 0.62f, ym + hh * 0.45f, RadAt(ym) * 0.9f, r * 0.32f); Spike(hw * 0.62f, ym + hh * 0.45f, RadAt(ym) * 0.9f, r * 0.32f); }
+                if (sharp && !front) for (int m = 0; m < 3; m++) Spike(0, ym - hh * 0.5f + m * hh * 0.5f, RadAt(ym) * 1.1f, r * 0.26f);
             }
-            if (sharp) for (int m = -1; m <= 1; m++) Spike(0, yc + m * hh * 0.55f, t * 0.4f, r * 0.22f);
         }
         else if (part == 2)
-        {   // belt: a band round the hips, a lit buckle in front
-            Put('T', d, 0, yc, 0, r * 1.06f, r * 0.55f, r * 1.06f);
-            PP('B', d, 0, yc, t * 0.3f, r * 0.42f, r * 0.3f, t * 1.2f);
-            PP('B', g, 0, yc, t * 0.95f, r * 0.24f, r * 0.14f, t * 0.4f);
+        {   // belt: a band all the way round (open at the back), a lit buckle
+            Wrap('O', d, ya + H * 0.3f, yb - H * 0.25f, 1.07f, AQ);
+            float fd = flat ? FrontDepth(st.Shape, r, L) : RadAt(0) * 1.07f;
+            QRot(AQ, 0, (ya + yb) * 0.5f, -(fd + r * 0.05f), TV2); Put('B', d, TV2.x, TV2.y, TV2.z, r * 0.45f, H * 0.42f, r * 0.12f, AQ);
+            QRot(AQ, 0, (ya + yb) * 0.5f, -(fd + r * 0.11f), TV2); Put('B', g, TV2.x, TV2.y, TV2.z, r * 0.25f, H * 0.18f, r * 0.05f, AQ);
         }
         else if (part == 0)
-        {   // helmet: a crest along the top, ear discs with a glowing core
-            if (round) Put('Z', d, 0, L * 0.86f, r * 0.05f, r * 0.14f, r * 0.24f, r * 0.75f); else Put('B', d, 0, L * 0.88f, r * 0.05f, r * 0.12f, r * 0.32f, r * 1.25f);
-            if (sharp) Put('P', d, 0, L * 0.98f, -r * 0.45f, r * 0.12f, r * 0.45f, r * 0.12f, QAxis(1, 0, 0, -0.5f, TQ));
-            foreach (float sd in new[] { -1f, 1f })
-            {
-                QAxis(0, 0, 1, PI / 2, TQ);
-                Put('C', d, sd * r * 0.98f, L * 0.05f, 0, r * 0.34f, r * 0.14f, r * 0.34f, TQ);
-                Put('C', g, sd * r * 1.06f, L * 0.05f, 0, r * 0.16f, r * 0.06f, r * 0.16f, TQ);
-            }
+        {   // helmet: a domed cap over the top, a brow plate, a glowing rim
+            float top = st.Shape is "tablethead" ? MathF.Max(r * 1.15f, L) : st.Shape is "helmet" ? L * 1.08f : st.Shape is "sphere" ? MathF.Max(r * 1.05f, L * 0.8f) : L;
+            float capR = r * 1.2f, cy = top - capR + r * 0.08f;
+            QAxis(0, 1, 0, 0, TQ);
+            Put('S', d, 0, cy, 0, capR, capR * 1.02f, capR);
+            Put('T', g, 0, cy + capR * 0.48f, 0, capR * 0.885f, capR * 0.3f, capR * 0.885f);
+            if (chitin) Put('S', d, 0, cy + capR * 0.12f, capR * 0.12f, capR * 0.82f, capR * 0.9f, capR * 0.82f);
+            QAxis(0, 1, 0, 0, YQ2); Wrap('V', d, cy + capR * 0.38f, cy + capR * 0.6f, 1.14f, YQ2);   // the brow
+            if (sharp) Put('P', d, 0, top + r * 0.15f, r * 0.1f, r * 0.14f, r * 0.55f, r * 0.14f);
         }
         else if (part is 3 or 6)
-        {   // shoulders: three stepped plates over the top of the arm, each edged with light
-            for (int m = 0; m < 3; m++)
-            {
-                float v = L * 0.8f - m * hh * 0.55f, wd = r * (1.55f - m * 0.22f), w = t * (1.3f - m * 0.35f);
-                var tl = Tilt(1, 0, 0, -14 - m * 6);
-                Panel(0, v, w, wd, hh * 0.75f, t, tl);
-                PP('B', g, 0, v - hh * 0.36f, w + t * 0.3f, wd * 0.8f, r * 0.05f, t * 0.35f, tl);
-            }
-            if (sharp) { Spike(0, L * 0.85f, t * 1.4f, r * 0.45f); Spike(0, L * 0.85f - hh * 0.55f, t, r * 0.3f); }
+        {   // shoulders: a domed pauldron over the joint, tipped outward, a plate under it, a glowing rim
+            // in the limb's frame, outward is local +x for the left arm and -x for the right, and up is local -y
+            float s2 = part == 3 ? 1 : -1, capR = r * 1.58f, cyS = -L * 0.92f;   // centred on the shoulder joint, so the dome wraps over the top of it (and over any pauldron there)
+            QAxis(0, 0, 1, PI + s2 * 0.32f, ZQ);                                  // the dome faces up and a little outward
+            Put('S', d, s2 * r * 0.15f, cyS, 0, capR, capR, capR, ZQ);
+            QRot(ZQ, 0, capR * 0.45f, 0, TV2); Put('T', g, s2 * r * 0.15f + TV2.x, cyS + TV2.y, TV2.z, capR * 0.885f, capR * 0.3f, capR * 0.885f, ZQ);
+            if (chitin) { QRot(ZQ, 0, -capR * 0.3f, 0, TV2); Put('S', d, s2 * r * 0.15f + TV2.x, cyS + TV2.y, TV2.z, capR * 0.94f, capR * 0.94f, capR * 0.94f, ZQ); }
+            else Plate(plate, d, ya + H * 0.45f, yb, 1.1f, AQ);
+            if (sharp) { QAxis(0, 0, 1, PI + s2 * 1.0f, TQ); QRot(TQ, 0, capR * 0.85f, 0, TV2); Put('P', d, s2 * r * 0.15f + TV2.x, cyS + TV2.y, TV2.z, r * 0.17f, r * 0.7f, r * 0.17f, TQ); }
         }
-        else if (part is 4 or 7)
-        {   // bracers: a sleeve round the forearm, a lit cuff, a raised plate on the outside
-            Put(round ? 'Z' : 'C', d, 0, yc, 0, r * 1.12f, round ? hh * 0.9f : hh * 1.5f, r * 1.12f);
-            Put('T', g, 0, yc - hh * 0.72f, 0, r * 1.14f, r * 0.45f, r * 1.14f);
-            Panel(0, yc + hh * 0.1f, t * 0.6f, r * 0.62f, hh * 1.1f, t);
-            if (sharp) Spike(0, yc + hh * 0.3f, t * 1.2f, r * 0.35f);
-        }
-        else if (part is 9 or 12)
-        {   // thighs: a tasset hanging over the front, a glowing seam across it
-            var tl = Tilt(1, 0, 0, 10);
-            Panel(0, yc + hh * 0.1f, t * 0.4f, r * 1.15f, hh * 1.45f, t, tl);
-            PP('B', g, 0, yc - hh * 0.25f, t * 1.0f, r * 0.9f, r * 0.06f, t * 0.35f, tl);
-            if (sharp) Spike(0, yc + hh * 0.35f, t * 0.8f, r * 0.25f);
+        else if (part is 4 or 7 or 9 or 12)
+        {   // bracers and thigh plates: a curved plate on the outside / front, a glowing band at the lower edge
+            float lo0 = MathF.Max(ya, -core), hi0 = MathF.Min(yb, core), H0 = MathF.Max(0.01f, hi0 - lo0);
+            if (chitin) for (int m = 0; m < 3; m++) { float hi = hi0 - H0 * m / 3.2f, lo = hi - H0 / 2.6f; Plate('U', d, lo, hi, 1.07f + m * 0.025f, AQ); }
+            else { Plate(plate, d, lo0, hi0, 1.08f, AQ); Plate('V', d, lo0 + H0 * 0.2f, hi0 - H0 * 0.1f, 1.13f, AQ); }
+            if (H0 > r * 0.55f) Wrap('U', g, hi0 - H0 * 0.09f, hi0, 1.115f, AQ);   // at the wrist / knee end
+            if (sharp) Spike(0, (ya + yb) * 0.5f, RadAt((ya + yb) * 0.5f) * 1.12f, r * 0.34f);
         }
         else if (part is 10 or 13)
-        {   // shins: a greave with a glowing strip, a knee guard on top
-            Panel(0, yc - hh * 0.1f, 0, r * 0.95f, hh * 1.55f, t);
-            if (!round) PP('B', g, 0, yc - hh * 0.1f, t * 0.6f, r * 0.12f, hh * 1.2f, t * 0.4f);
-            float kv = L * 0.85f;
-            if (round) PP('Z', d, 0, kv, t * 0.4f, r * 0.8f, r * 0.26f, r * 0.34f); else { PP('B', d, 0, kv, t * 0.6f, r * 0.85f, r * 0.55f, t * 1.6f, Tilt(1, 0, 0, -12)); PP('B', k, 0, kv - r * 0.3f, t * 1.2f, r * 0.7f, r * 0.06f, t * 0.6f); }
-            if (sharp) Spike(0, kv, t * 1.6f, r * 0.4f);
+        {   // greaves: a curved shin plate, a domed knee guard facing forward, a glowing strip
+            float lo1 = MathF.Max(ya * 0.8f, -core), hi1 = MathF.Min(yb, core), H1 = MathF.Max(0.01f, hi1 - lo1);   // leave the knee (at -y) for the knee guard
+            if (chitin) for (int m = 0; m < 3; m++) { float hi = hi1 - H1 * m / 3.4f, lo = hi - H1 / 2.8f; Plate('U', d, lo, hi, 1.07f + m * 0.025f, AQ); }
+            else Plate(plate, d, lo1, hi1, 1.08f, AQ);
+            QAxis(1, 0, 0, -PI / 2, TQ); QMul(AQ, TQ, ZQ);
+            float kr = r * 1.0f; QRot(AQ, 0, -L * 0.9f, -r * 0.1f, TV2);
+            Put('S', d, TV2.x, TV2.y, TV2.z, kr, kr * 0.95f, kr, ZQ);
+            QRot(AQ, 0, (lo1 + hi1) * 0.5f, -RadAt(0) * 1.1f, TV2); Put('B', g, TV2.x, TV2.y, TV2.z, r * 0.12f, H1 * 0.7f, r * 0.05f, AQ);
+            if (sharp) Spike(0, -L * 0.9f, r * 0.9f, r * 0.4f);
         }
-        else
-        {   // anything else: one slim panel with a glow strip
-            Panel(0, yc, 0, r * 0.9f, hh * 1.4f, t);
-            PP('B', g, 0, yc, t * 0.6f, r * 0.12f, hh, t * 0.4f);
-        }
+        else Plate(plate, d, ya, yb, 1.08f, AQ);
     }
 
     /// <summary>A copy of a preset with the player's per-segment overrides and attachments applied.</summary>
@@ -490,7 +684,8 @@ public static class MedDraw
         if (c == null) return sp;
         if (c.Col != null) foreach (var (k, v) in c.Col) switch (k) { case "a": sp.Col.A = v; break; case "b": sp.Col.B = v; break; case "c": sp.Col.C = v; break; case "e": sp.Col.E = v; break; }
         sp.Col.D = c.ArmorCol;
-        if (c.Seg != null) foreach (var (i, s) in c.Seg) if (i >= 0 && i < 15 && s != null) sp.Seg[i] = s.Clone();
+        if (c.Seg != null) foreach (var (i, s) in c.Seg) if (i >= 0 && i < 16 && s != null) sp.Seg[i] = s.Clone();
+        sp.Height = Math.Clamp(c.Height, 0.8f, 1.2f); sp.ArmLen = Math.Clamp(c.ArmLen, 0.75f, 1.3f); sp.LegLen = Math.Clamp(c.LegLen, 0.75f, 1.3f);
         if (c.Att != null) sp.Att = c.Att.Select(a => a.Clone()).ToList();
         if (c.Bulk > 0) sp.Bulk = c.Bulk;
         sp.ArmorStyle = string.IsNullOrEmpty(c.Armor) || !ARMOR_STYLES.Contains(c.Armor) ? "plate" : c.Armor;

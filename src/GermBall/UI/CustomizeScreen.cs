@@ -31,7 +31,7 @@ public sealed class CustomizeScreen
     /// <summary>The pose with limb anchors applied: what is actually drawn, so picking and dragging use it.</summary>
     float[] apose = GermDraw.RestPose(1, 0);
 
-    static readonly (string key, string label)[] TABS = { ("preset", "Preset"), ("segments", "Segments"), ("attach", "Attachments"), ("colors", "Colours"), ("armor", "Armor") };
+    static readonly (string key, string label)[] TABS = { ("preset", "Preset"), ("build", "Build"), ("segments", "Segments"), ("attach", "Attachments"), ("colors", "Colours"), ("armor", "Armor") };
     static readonly (string name, uint[] p)[] PALETTES =
     {
         ("Preset", null), ("Classic", new uint[] { 0xe8303c, 0xf4f1ec, 0x7affef, 0x7affef }), ("Antibiotic", new uint[] { 0x2a8af0, 0xffd23a, 0xffffff, 0xffffff }), ("Cherry", new uint[] { 0xb0102a, 0xff8aa0, 0xffe08a, 0xffe08a }),
@@ -49,7 +49,7 @@ public sealed class CustomizeScreen
         scene.HemiSky = Material.Hex(0xffe8f4); scene.HemiGround = Material.Hex(0x40142a); scene.HemiIntensity = 0.85f;
         scene.SunDir = Vector3.Normalize(new Vector3(2, 4, 3)); scene.SunIntensity = 0.85f; scene.SunColor = Vector3.One;
         scene.Add(new Mesh(Geo.Cylinder(1.1f, 1.25f, 0.12f, 40), new Material { Kind = MatKind.Phong, Color = Material.Hex(0x5a1a40), Emissive = Material.Hex(0x2a0818), Shininess = 80, Fog = false }) { Position = new Vector3(0, -0.06f, 0) });
-        GEO = new() { ['Z'] = Geo.Sphere(1, 18, 12), ['I'] = Geo.Icosahedron(1, 1), ['B'] = Geo.Box(1, 1, 1), ['P'] = Geo.Cone(1, 1, 12), ['C'] = Geo.Cylinder(1, 1, 1, 16), ['T'] = Geo.Torus(1, 0.18f, 8, 24).RotateX(MathF.PI / 2), ['F'] = Geo.Cylinder(1, 0.72f, 1, 16) };
+        GEO = Geo.PartShapes(true);
         selMesh = scene.Add(new InstancedMesh(Geo.Sphere(1, 16, 10), new Material { Kind = MatKind.Basic, Color = Material.Hex(0x7affef), Transparent = true, Opacity = 0.22f, Blending = Blend.Additive, DepthWrite = false, Fog = false }, 4) { Count = 0, RenderOrder = 4 });
         opt = new DrawOpts { T = 0, Fdt = 1 / 60f, Lod = 2, Has = has, St = st, S = 1 };
         Changed();
@@ -82,12 +82,12 @@ public sealed class CustomizeScreen
 
     float PanelW => Math.Clamp(app.UiW * 0.38f, 340, 500);
     Vector2 ScreenOf(Vector3 p) { var v = cam.Project(p); return new Vector2((v.X + 1) / 2 * app.UiW, (1 - v.Y) / 2 * app.UiH); }
-    Vector3 PartCenter(int i) { int k = i * 13; return new Vector3(apose[k], apose[k + 1], apose[k + 2]); }
+    Vector3 PartCenter(int i) { MedDraw.SegFrame(SP, apose, i, out float x, out float y, out float z, out _, out _, out _, out _); return new Vector3(x, y, z); }
+    Quaternion PartRot(int i) { MedDraw.SegFrame(SP, apose, i, out _, out _, out _, out float qx, out float qy, out float qz, out float qw); return new Quaternion(qx, qy, qz, qw); }
     Vector3 AttachWorld(Attach a)
     {
-        int k = a.Part * 13; var (r, L) = MedDraw.Dims(apose, a.Part, SP.Seg[a.Part] ?? new SegStyle(), SP);
-        var q = new Quaternion(apose[k + 3], apose[k + 4], apose[k + 5], apose[k + 6]);
-        return PartCenter(a.Part) + Vector3.Transform(new Vector3(a.X * r, a.Y * L, a.Z * r), q);
+        var (r, L) = MedDraw.Dims(apose, a.Part, SP.Seg[a.Part] ?? new SegStyle(), SP);
+        return PartCenter(a.Part) + Vector3.Transform(new Vector3(a.X * r, a.Y * L, a.Z * r), PartRot(a.Part));
     }
 
     public void Update(float dt)
@@ -100,7 +100,7 @@ public sealed class CustomizeScreen
         {
             var m = new Vector2(umx, umy); float best = 34; int bestA = -1, bestS = -1;
             for (int i = 0; i < Atts.Count; i++) { float d = Vector2.Distance(ScreenOf(AttachWorld(Atts[i])), m); if (d < best) { best = d; bestA = i; } }
-            if (bestA < 0) for (int i = 0; i < 15; i++) { float d = Vector2.Distance(ScreenOf(PartCenter(i)), m); if (d < best + 10) { best = d; bestS = i; } }
+            if (bestA < 0) for (int i = 0; i < 16; i++) { if (i == 15 && MedDraw.Merged(SP)) continue; float d = Vector2.Distance(ScreenOf(PartCenter(i)), m); if (d < best + 10) { best = d; bestS = i; } }
             if (bestA >= 0) { att = bestA; seg = Atts[bestA].Part; tab = "attach"; dragAtt = true; spin = false; }
             else if (bestS >= 0) { seg = bestS; att = -1; if (tab != "segments") tab = "segments"; if (dragMode == "anchor" && MedDraw.RootOf(bestS) >= 0) dragAnchor = true; else dragSeg = true; spin = false; }
             else dragView = true;
@@ -159,7 +159,7 @@ public sealed class CustomizeScreen
             {
                 foreach (int i in mirror && MedDraw.MirrorPart(seg) != seg ? new[] { seg, MedDraw.MirrorPart(seg) } : new[] { seg })
                 {
-                    int k = i * 13; var (r, L) = MedDraw.Dims(apose, i, SP.Seg[i] ?? new SegStyle(), SP); var q = new Quaternion(apose[k + 3], apose[k + 4], apose[k + 5], apose[k + 6]);
+                    var (r, L) = MedDraw.Dims(apose, i, SP.Seg[i] ?? new SegStyle(), SP); var q = PartRot(i);
                     selMesh.Matrices[selMesh.Count++] = Matrix4x4.CreateScale(r * 1.5f * pulse, L * 1.25f * pulse, r * 1.5f * pulse) * Matrix4x4.CreateFromQuaternion(q) * Matrix4x4.CreateTranslation(PartCenter(i));
                 }
             }
@@ -170,8 +170,8 @@ public sealed class CustomizeScreen
     /// <summary>Moves an attachment by a screen-space drag (pixels) plus a depth nudge, converted into its segment's frame.</summary>
     void MoveAttach(Attach a, float dxPx, float dyPx, float dz)
     {
-        int k = a.Part * 13; var (r, L) = MedDraw.Dims(apose, a.Part, SP.Seg[a.Part] ?? new SegStyle(), SP);
-        var q = new Quaternion(apose[k + 3], apose[k + 4], apose[k + 5], apose[k + 6]);
+        var (r, L) = MedDraw.Dims(apose, a.Part, SP.Seg[a.Part] ?? new SegStyle(), SP);
+        var q = PartRot(a.Part);
         float wpp = 2 * MathF.Tan(cam.Fov * MathF.PI / 360) * Vector3.Distance(cam.Position, AttachWorld(a)) / app.UiH;
         var camR = Vector3.Transform(Vector3.UnitX, cam.Rotation); var camU = Vector3.Transform(Vector3.UnitY, cam.Rotation); var camF = Vector3.Transform(-Vector3.UnitZ, cam.Rotation);
         var dw = camR * dxPx * wpp - camU * dyPx * wpp + camF * dz * r;
@@ -184,7 +184,7 @@ public sealed class CustomizeScreen
     void MoveAnchor(int part, float dxPx, float dyPx, float dz)
     {
         int root = MedDraw.RootOf(part); if (root < 0) return;
-        int bk = (root >= 9 ? 2 : 1) * 13;
+        int bk = (root is >= 9 and < 15 or 2 ? 2 : 1) * 13;
         var q = new Quaternion(apose[bk + 3], apose[bk + 4], apose[bk + 5], apose[bk + 6]);
         var (tr, _) = MedDraw.Dims(apose, 1, SP.Seg[1] ?? new SegStyle(), SP);
         float wpp = 2 * MathF.Tan(cam.Fov * MathF.PI / 360) * Vector3.Distance(cam.Position, PartCenter(root)) / app.UiH;
@@ -232,7 +232,7 @@ public sealed class CustomizeScreen
         y += 40;
         float footH = 92, top = y, viewH = Ht - top - footH - 8;
         gui.PushClip(px + 1, top, pw - 2, viewH);
-        float contentH = tab switch { "preset" => TabPreset(d, ix, top - scroll, iw), "segments" => TabSegments(d, ix, top - scroll, iw), "attach" => TabAttach(d, ix, top - scroll, iw), "colors" => TabColors(d, ix, top - scroll, iw), _ => TabArmor(d, ix, top - scroll, iw) };
+        float contentH = tab switch { "preset" => TabPreset(d, ix, top - scroll, iw), "build" => TabBuild(d, ix, top - scroll, iw), "segments" => TabSegments(d, ix, top - scroll, iw), "attach" => TabAttach(d, ix, top - scroll, iw), "colors" => TabColors(d, ix, top - scroll, iw), _ => TabArmor(d, ix, top - scroll, iw) };
         gui.PopClip();
         gui.ScrollPanel(ref scroll, top, viewH, contentH);
         float fy = Ht - footH + 4, fx = ix;
@@ -318,58 +318,91 @@ public sealed class CustomizeScreen
         return y - y0;
     }
 
+    static readonly string[] SEG_SHORT = { "Head", "Chest", "Waist", "L arm", "L forearm", "L hand", "R arm", "R forearm", "R hand", "L thigh", "L shin", "L foot", "R thigh", "R shin", "R foot", "Abdomen" };
+    // the order the chips are shown in: head and the three core segments first
+    static readonly int[] SEG_ORDER = { 0, 1, 15, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
+
+    float TabBuild(Draw2D d, float x, float y, float w)
+    {
+        float y0 = y;
+        y += Csub(d, "Proportions", x, y);
+        float hgt = C.Height, arm = C.ArmLen, leg = C.LegLen;
+        float b0 = C.Bulk > 0 ? C.Bulk : MedDraw.PRESETS[C.Preset].Bulk, bulk = b0;
+        y += CRow(d, "bh", "Height", ref hgt, 0.8f, 1.2f, 0.01f, x, y, w);
+        y += CRow(d, "ba", "Arm length", ref arm, 0.75f, 1.3f, 0.01f, x, y, w);
+        y += CRow(d, "bl", "Leg length", ref leg, 0.75f, 1.3f, 0.01f, x, y, w);
+        y += CRow(d, "bulk", "Shoulders", ref bulk, 0.7f, 1.6f, 0.05f, x, y, w);
+        if (hgt != C.Height || arm != C.ArmLen || leg != C.LegLen || MathF.Abs(bulk - b0) > 1e-4f) { C.Height = hgt; C.ArmLen = arm; C.LegLen = leg; if (MathF.Abs(bulk - b0) > 1e-4f) C.Bulk = bulk; Changed(); }
+        if (gui.Chip("breset", x, y, "Reset proportions", false, Draw2D.Col(0xff9ae8))) { C.Height = C.ArmLen = C.LegLen = 1; C.Bulk = 0; Changed(); }
+        y += 32;
+        y += Note(d, "Height scales the whole hero; longer legs lift the body so the feet stay planted. Arms and legs are kept clear of the chest and of each other automatically. The game plays the same at any size.", x, y, w);
+        return y - y0;
+    }
+
     float TabSegments(Draw2D d, float x, float y, float w)
     {
         float y0 = y, h; int r;
         y += Csub(d, "Segment", x, y);
-        string[] short_ = { "Head", "Torso", "Pelvis", "L arm", "L forearm", "L hand", "R arm", "R forearm", "R hand", "L thigh", "L shin", "L foot", "R thigh", "R shin", "R foot" };
-        if ((r = gui.Chips("segs", x, y, w, short_, i => i == seg || (mirror && MedDraw.MirrorPart(seg) == i), out h)) >= 0) { seg = r; att = -1; }
+        var labels = SEG_ORDER.Select(i => SEG_SHORT[i]).ToList();
+        if ((r = gui.Chips("segs", x, y, w, labels, k => SEG_ORDER[k] == seg || (mirror && MedDraw.MirrorPart(seg) == SEG_ORDER[k]), out h)) >= 0) { seg = SEG_ORDER[r]; att = -1; }
         y += h + 6;
         if (gui.Chip("mirror", x, y, "Mirror left/right", mirror)) mirror = !mirror;
         if (gui.Chip("segreset", x + gui.lastW + 6, y, "Reset segment", false, Draw2D.Col(0xff9ae8))) { C.Seg.Remove(seg); if (mirror) C.Seg.Remove(MedDraw.MirrorPart(seg)); Changed(); }
         y += 32;
         var cur = SegOf(seg);
         y += Csub(d, MedDraw.PART_NAMES[seg] + " · shape", x, y);
-        var shapes = seg == 0 ? MedDraw.HEAD_SHAPES : seg is 5 or 8 ? MedDraw.HAND_SHAPES : seg is 11 or 14 ? MedDraw.FOOT_SHAPES : MedDraw.SHAPES;
-        if ((r = gui.Chips("shape", x, y, w, shapes, i => cur.Shape == shapes[i], out h)) >= 0) { EditSeg(seg).Shape = shapes[r]; ApplyMirror(seg); Changed(); }
+        if (seg == 15 && cur.Shape == "none") y += Note(d, "Merged into the chest. Pick a shape to split the torso into chest, abdomen and waist.", x, y, w);
+        var shapes = MedDraw.ShapesFor(seg);
+        var shapeLabels = shapes.Select(sh => sh == "none" ? "merged" : sh).ToList();
+        if ((r = gui.Chips("shape", x, y, w, shapeLabels, i => cur.Shape == shapes[i], out h)) >= 0) { EditSeg(seg).Shape = shapes[r]; ApplyMirror(seg); Changed(); }
         y += h + 8;
-        var es = SegOf(seg); float th = es.Thick, ln = es.Len;
-        y += CRow(d, "sth", "Thickness", ref th, 0.4f, 2.2f, 0.05f, x, y, w);
-        y += CRow(d, "sln", "Length", ref ln, 0.4f, 2.2f, 0.05f, x, y, w);
-        if (th != es.Thick || ln != es.Len) { var e = EditSeg(seg); e.Thick = th; e.Len = ln; ApplyMirror(seg); Changed(); }
-        y += Csub(d, "Colour", x, y);
-        if ((r = gui.Chips("tone", x, y, w, TONES.Select(t => t.label).ToList(), i => SegOf(seg).Tone == TONES[i].tone, out h)) >= 0) { EditSeg(seg).Tone = TONES[r].tone; ApplyMirror(seg); Changed(); }
-        y += h + 8;
-        if (gui.Chip("two", x, y, "Two-tone halves", SegOf(seg).TwoTone)) { var e = EditSeg(seg); e.TwoTone = !e.TwoTone; ApplyMirror(seg); Changed(); }
-        y += 32;
-        if (SegOf(seg).TwoTone || SegOf(seg).Shape is "tablet" or "disc" or "cylinder" or "vial" or "bottle" or "boot")
+        if (!(seg == 15 && cur.Shape == "none"))
         {
-            y += Csub(d, "Second colour", x, y);
-            if ((r = gui.Chips("tone2", x, y, w, TONES.Select(t => t.label).ToList(), i => SegOf(seg).Tone2 == TONES[i].tone, out h)) >= 0) { EditSeg(seg).Tone2 = TONES[r].tone; ApplyMirror(seg); Changed(); }
+            var es = SegOf(seg); float th = es.Thick, ln = es.Len, tp = es.Taper;
+            y += CRow(d, "sth", "Thickness", ref th, 0.4f, 2.2f, 0.05f, x, y, w);
+            y += CRow(d, "sln", "Length", ref ln, 0.4f, 2.2f, 0.05f, x, y, w);
+            y += CRow(d, "stp", "Taper", ref tp, -0.6f, 0.6f, 0.05f, x, y, w, v => v > 0.02f ? "wide top" : v < -0.02f ? "wide base" : "even");
+            if (th != es.Thick || ln != es.Len || tp != es.Taper) { var e = EditSeg(seg); e.Thick = th; e.Len = ln; e.Taper = tp; ApplyMirror(seg); Changed(); }
+            y += Csub(d, "Detail", x, y);
+            if ((r = gui.Chips("detail", x, y, w, MedDraw.DETAILS, i => (SegOf(seg).Detail ?? "none") == MedDraw.DETAILS[i], out h)) >= 0) { EditSeg(seg).Detail = MedDraw.DETAILS[r]; ApplyMirror(seg); Changed(); }
             y += h + 8;
+            if (seg == 0)
+            {
+                y += Csub(d, "Visor", x, y);
+                if ((r = gui.Chips("visor", x, y, w, MedDraw.VISORS, i => (SegOf(0).Visor ?? "default") == MedDraw.VISORS[i], out h)) >= 0) { EditSeg(0).Visor = MedDraw.VISORS[r]; Changed(); }
+                y += h + 8;
+                y += Csub(d, "On top", x, y);
+                if ((r = gui.Chips("antenna", x, y, w, MedDraw.ANTENNAS, i => (SegOf(0).Antenna ?? "none") == MedDraw.ANTENNAS[i], out h)) >= 0) { EditSeg(0).Antenna = MedDraw.ANTENNAS[r]; Changed(); }
+                y += h + 8;
+            }
+            y += Csub(d, "Colour", x, y);
+            if ((r = gui.Chips("tone", x, y, w, TONES.Select(t => t.label).ToList(), i => SegOf(seg).Tone == TONES[i].tone, out h)) >= 0) { EditSeg(seg).Tone = TONES[r].tone; ApplyMirror(seg); Changed(); }
+            y += h + 8;
+            if (gui.Chip("two", x, y, "Two-tone halves", SegOf(seg).TwoTone)) { var e = EditSeg(seg); e.TwoTone = !e.TwoTone; ApplyMirror(seg); Changed(); }
+            y += 32;
+            if (SegOf(seg).TwoTone || SegOf(seg).Shape is "tablet" or "disc" or "cylinder" or "vial" or "bottle" or "boot" or "trapezoid" or "hex" or "ribbed" or "wedge" or "claw" or "mitt" || SegOf(seg).Detail == "ridges")
+            {
+                y += Csub(d, "Second colour", x, y);
+                if ((r = gui.Chips("tone2", x, y, w, TONES.Select(t => t.label).ToList(), i => SegOf(seg).Tone2 == TONES[i].tone, out h)) >= 0) { EditSeg(seg).Tone2 = TONES[r].tone; ApplyMirror(seg); Changed(); }
+                y += h + 8;
+            }
         }
         int root = MedDraw.RootOf(seg);
-        if (root >= 0)
+        if (root >= 0 && !(root == 15 && SegOf(15).Shape == "none"))
         {
-            y += Csub(d, "Anchor · " + MedDraw.PART_NAMES[root], x, y);
+            y += Csub(d, "Position · " + MedDraw.PART_NAMES[root], x, y);
             if (gui.Chip("dsize", x, y, "Drag resizes", dragMode == "size")) dragMode = "size";
-            if (gui.Chip("danchor", x + gui.lastW + 6, y, "Drag moves anchor", dragMode == "anchor")) dragMode = "anchor";
+            if (gui.Chip("danchor", x + gui.lastW + 6, y, "Drag moves it", dragMode == "anchor")) dragMode = "anchor";
             y += 32;
             var rs = SegOf(root); float ax = rs.OX, ay = rs.OY, az = rs.OZ;
             y += CRow(d, "aox", "Side", ref ax, -1.2f, 1.2f, 0.05f, x, y, w);
             y += CRow(d, "aoy", "Height", ref ay, -1.2f, 1.2f, 0.05f, x, y, w);
             y += CRow(d, "aoz", "Depth", ref az, -1.2f, 1.2f, 0.05f, x, y, w);
             if (ax != rs.OX || ay != rs.OY || az != rs.OZ) { var e = EditSeg(root); e.OX = ax; e.OY = ay; e.OZ = az; ApplyMirror(root); Changed(); }
-            if (gui.Chip("areset", x, y, "Reset anchor", false, Draw2D.Col(0xff9ae8))) { var e = EditSeg(root); e.OX = e.OY = e.OZ = 0; ApplyMirror(root); Changed(); }
+            if (gui.Chip("areset", x, y, "Reset position", false, Draw2D.Col(0xff9ae8))) { var e = EditSeg(root); e.OX = e.OY = e.OZ = 0; ApplyMirror(root); Changed(); }
             y += 32;
         }
-        if (seg == 1)
-        {
-            float b0 = C.Bulk > 0 ? C.Bulk : MedDraw.PRESETS[C.Preset].Bulk, bulk = b0;
-            y += CRow(d, "bulk", "Shoulders", ref bulk, 0.7f, 1.6f, 0.05f, x, y, w);
-            if (MathF.Abs(bulk - b0) > 1e-4f) { C.Bulk = bulk; Changed(); }
-        }
-        y += Note(d, "Tip: click a segment on the model to select it, then drag it to resize it or to move its anchor (controller: hold L3 + stick to move the anchor).", x, y, w);
+        y += Note(d, root == 1 ? "Moving the chest takes the head and arms with it." : "Tip: click a segment on the model to select it, then drag it to resize it or move it (controller: hold L3 + stick to move it).", x, y, w);
         return y - y0;
     }
 

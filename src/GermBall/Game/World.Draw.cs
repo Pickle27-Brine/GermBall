@@ -202,7 +202,7 @@ public sealed partial class World
     void InitDrawLists()
     {
         InitWShapes();
-        GGEO = new() { ['Z'] = Geo.Sphere(1, 16, 11), ['I'] = Geo.Icosahedron(1, 1), ['B'] = boxGeo, ['P'] = Geo.Cone(1, 1, 9), ['C'] = Geo.Cylinder(1, 1, 1, 10), ['T'] = Geo.Torus(1, 0.18f, 7, 22).RotateX(PI / 2), ['F'] = Geo.Cylinder(1, 0.72f, 1, 14) };
+        GGEO = Geo.PartShapes(false);
         germEmit = GermEmit;
         var sph = Geo.Sphere(1, 14, 10); var lowSph = Geo.Sphere(1, 8, 6);
         MkInst("flash", sph, BasicM(0xff2638), 512, false);
