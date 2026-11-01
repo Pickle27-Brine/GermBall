@@ -13,7 +13,7 @@ public sealed class Dyn
     public float[][] wr = { new float[3], new float[3] }, wv = { new float[3], new float[3] };
 }
 
-public sealed partial class Actor { public string brainState; public bool wasDown, saidHurt, isBoss; public float curlT; public (float, float)? dodge; public Dyn dyn; public float animFist, animFlail, animBreath = 1, animFlatPop; public List<float[]> trail; }
+public sealed partial class Actor { public float[] poseS; public bool poseSOk, poseSRide; public float poseSX, poseSY, poseSZ; public string brainState; public bool wasDown, saidHurt, isBoss; public float curlT; public (float, float)? dodge; public Dyn dyn; public float animFist, animFlail, animBreath = 1, animFlatPop; public List<float[]> trail; }
 
 public sealed partial class World
 {
@@ -110,7 +110,7 @@ public sealed partial class World
         QuatYF(b[0] - a[0], b[1] - a[1], b[2] - a[2], fx, fy, fz, SQ);
         SetPart(A, i, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2, SQ, ballK);
     }
-    void PosePartsNow(Actor A) => PoseActor(A, 1, 0);
+    void PosePartsNow(Actor A) => PoseActor(A, 1, 0, false);
     static bool W_AIMING(Actor A) => A.W.aimT > 0 || A.P.ads || (A.team == "enemy" && A.brain != null && A.brain.aiming) || (A.human && App_FP);
     static bool App_FP;
     static readonly HashSet<string> TWO_HAND = new() { "bat", "hammer", "sledge" };
@@ -146,14 +146,56 @@ public sealed partial class World
     readonly float[] AIMD = new float[3], PJ = new float[3]; readonly Q4 SEATQ = new(); readonly V3 SEATV = new(), SEATO = new();
     /// <summary>Poses an actor, then moves limb anchors (heroes the player has customised), so weapons, armor and hit
     /// boxes all follow the limbs where they are drawn.</summary>
-    public void PoseActor(Actor A, float alpha, float fdt)
+    public void PoseActor(Actor A, float alpha, float fdt, bool display = true)
     {
-        if (!A.P.alive || A.P.ragdoll != null) { PoseActorCore(A, alpha, fdt); return; }   // these don't rebuild the pose, so don't shift it again
+        if (!A.P.alive || A.P.ragdoll != null) { PoseActorCore(A, alpha, fdt); A.poseSOk = false; return; }   // these don't rebuild the pose, so don't shift it again
         PoseActorCore(A, alpha, fdt);
         if (MED.TryGetValue(A.type, out var med))
         {
             var ap = MedDraw.Anchored(med, A.pose);
             if (!ReferenceEquals(ap, A.pose)) Array.Copy(ap, A.pose, A.pose.Length);
+        }
+        if (display) PoseFinish(A, alpha, fdt);
+    }
+
+    /// <summary>
+    /// The last touches on a drawn pose. Every part eases toward its new place relative to the body (so switching between
+    /// animations, aiming, landing or turning blends instead of snapping; quicker during swings, instant after a teleport),
+    /// and nothing is allowed under the floor: any part that dips below the ground under it is lifted back onto it.
+    /// </summary>
+    void PoseFinish(Actor A, float alpha, float fdt)
+    {
+        var G = A.P; var ps = A.pose; int n = Math.Min(ps.Length / 13, NPART);
+        float rx = Lerp(G.px, G.x, alpha), ry = Lerp(G.py, G.y, alpha), rz = Lerp(G.pz, G.z, alpha);
+        if (A.poseS == null || A.poseS.Length != ps.Length) { A.poseS = new float[ps.Length]; A.poseSOk = false; }
+        var sm = A.poseS;
+        bool snap = !A.poseSOk || Hypot(rx - A.poseSX, ry - A.poseSY, rz - A.poseSZ) > 3 || G.vehicle != null != A.poseSRide;
+        A.poseSX = rx; A.poseSY = ry; A.poseSZ = rz; A.poseSRide = G.vehicle != null;
+        if (snap) { for (int i = 0; i < n; i++) { int k = i * 13; sm[k] = ps[k] - rx; sm[k + 1] = ps[k + 1] - ry; sm[k + 2] = ps[k + 2] - rz; for (int j = 3; j < 7; j++) sm[k + j] = ps[k + j]; } A.poseSOk = true; }
+        else if (fdt > 0)
+        {   // ease toward the new pose; fast moves (swings, punches, recoil, rolling) ease much quicker so they keep their snap
+            bool quick = A.W.swingT > 0 || A.W.punchQ > 0 || G.rolling || G.dashT > 0 || A.W.since < 0.08f;
+            float k = 1 - MathF.Exp(-fdt * (quick ? 70 : 24));
+            for (int i = 0; i < n; i++)
+            {
+                int b = i * 13;
+                sm[b] += (ps[b] - rx - sm[b]) * k; sm[b + 1] += (ps[b + 1] - ry - sm[b + 1]) * k; sm[b + 2] += (ps[b + 2] - rz - sm[b + 2]) * k;
+                float dot = sm[b + 3] * ps[b + 3] + sm[b + 4] * ps[b + 4] + sm[b + 5] * ps[b + 5] + sm[b + 6] * ps[b + 6], sg = dot < 0 ? -1 : 1, l = 0;
+                for (int j = 3; j < 7; j++) { sm[b + j] += (ps[b + j] * sg - sm[b + j]) * k; l += sm[b + j] * sm[b + j]; }
+                l = l > 1e-12f ? 1 / MathF.Sqrt(l) : 1; for (int j = 3; j < 7; j++) sm[b + j] *= l;
+            }
+        }
+        for (int i = 0; i < n; i++) { int k = i * 13; ps[k] = sm[k] + rx; ps[k + 1] = sm[k + 1] + ry; ps[k + 2] = sm[k + 2] + rz; for (int j = 3; j < 7; j++) ps[k + j] = sm[k + j]; }
+        // the floor: one height under each foot and one under the body (a floor indoors, the terrain outside)
+        if (G.vehicle != null || A.hidden) return;
+        float top = ry + 0.9f * G.s;
+        float fl = GroundAt(ps[11 * 13], ps[11 * 13 + 2], top, true).h, fr = GroundAt(ps[14 * 13], ps[14 * 13 + 2], top, true).h, fc = GroundAt(rx, rz, top, true).h;
+        if (G.ground) { fl = MathF.Min(fl, ry + 0.25f); fr = MathF.Min(fr, ry + 0.25f); fc = MathF.Min(fc, ry + 0.25f); }   // never lift a standing body off a slope edge
+        for (int i = 0; i < n; i++)
+        {
+            int k = i * 13; float floor = i is 9 or 10 or 11 ? fl : i is 12 or 13 or 14 ? fr : fc;
+            float ext = i is 11 or 14 ? ps[k + 8] : MathF.Min(ps[k + 7], ps[k + 9]) * 0.9f;
+            if (ps[k + 1] - ext < floor) ps[k + 1] = floor + ext;
         }
     }
     void PoseActorCore(Actor A, float alpha, float fdt)

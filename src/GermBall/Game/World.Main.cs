@@ -683,7 +683,9 @@ public sealed partial class World
     /// <summary>One displayed frame: simulation steps, camera, effects. The renderer draws <see cref="scene"/> afterwards.</summary>
     public void Frame(float fdt, float aspect)
     {
-        clockT += fdt;
+        // the world's display clock stops while paused, so every animation (poses, springs, villi, organs, effects) freezes with it
+        float afdt = playing ? fdt : 0;
+        clockT += afdt;
         Sound.Tick(fdt); Speech.Update();
         PollPad();
         if (playing) { HandlePlayKeys(); PadPlay(fdt); }
@@ -701,13 +703,13 @@ public sealed partial class World
         RP.x = Lerp(P.px, P.x, alpha); RP.y = Lerp(P.py, P.y, alpha); RP.z = Lerp(P.pz, P.z, alpha);
         camera.Aspect = aspect; camera.Far = 3500;
         SyncProps(alpha);
-        DrawMen(alpha, fdt);
-        StepSprites(fdt);
+        DrawMen(alpha, afdt);
+        StepSprites(afdt);
         if (FREECAM.on) UpdateFreeCam(fdt); else UpdateCamera(fdt, playing ? clockT : -100);
         camPos = camera.Position;
         Sound.LX = camPos.X; Sound.LY = camPos.Y; Sound.LZ = camPos.Z; Sound.LRx = MathF.Cos(cam.yaw); Sound.LRz = -MathF.Sin(cam.yaw);
-        UpdateHolo(fdt); UpdateDashReticle(fdt); UpdateThrowReticle(fdt);
-        UpdateOrganic(clockT, fdt, camPos); UpdateNerves(clockT);
+        UpdateHolo(afdt); UpdateDashReticle(afdt); UpdateThrowReticle(afdt);
+        UpdateOrganic(clockT, afdt, camPos); UpdateNerves(clockT);
         scene.ShadowCenter = new Vector3(RP.x, RP.y, RP.z); scene.Time = clockT;
         hurtA = MathF.Max(0, hurtA - fdt * 1.8f);
         if (hintT > 0) hintT -= fdt;

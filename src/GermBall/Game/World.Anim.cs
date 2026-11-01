@@ -75,9 +75,10 @@ public sealed partial class World
                     Set(Rh, shR, tuck * aimK + 0.35f * ready, 0.04f * aimK - 0.22f * ready, -0.04f * aimK - 0.1f * ready, 0.25f * ready);
                     float grip2 = grip == "scoped" ? 0.42f : 0.34f;
                     for (int k = 0; k < 3; k++) Lh[k] = Rh[k] + aim[k] * grip2 * s * aimK + (cf[k] * 0.28f - cr[k] * 0.12f + up[k] * 0.1f) * s * ready - up[k] * 0.03f * s;
-                    if (grip == "shotgun" && since < 0.5f)
-                    {   // rack the pump: the off hand slides back along the barrel and forward again
-                        float u = MathF.Sin(Clamp((since - 0.08f) / 0.4f, 0, 1) * PI);
+                    if (grip == "shotgun" && (since < 0.5f || W2.pumpT > 0))
+                    {   // rack the pump: the off hand slides back along the barrel and forward again (after firing, and after loading shells)
+                        float pt = W2.pumpT > 0 ? 0.48f - W2.pumpT : since;
+                        float u = MathF.Sin(Clamp((pt - 0.08f) / 0.4f, 0, 1) * PI);
                         for (int k = 0; k < 3; k++) Lh[k] -= aim[k] * 0.16f * s * u;
                     }
                     if (grip == "scoped" && since < 0.75f)
@@ -114,13 +115,115 @@ public sealed partial class World
         }
         // recoil: the muzzle kicks back and climbs
         for (int k = 0; k < 3; k++) { float dk = (-aim[k] * 0.22f + up[k] * 0.14f) * rec * s; Rh[k] += dk; if (grip != "onehand") Lh[k] += dk * 0.8f; }
-        // reloading: the off hand drops to the belt for a fresh magazine and slaps it home; the gun dips
-        if (W2.reload > 0 && W2.reloadMax > 0 && grip != "bow")
+        // drawing a weapon just switched to: it comes up from low across the body
+        if (W2.switchT > 0) { float k = W2.switchT / 0.32f; k = k * k * (3 - 2 * k); for (int c = 0; c < 3; c++) { float dk = (-up[c] * 0.32f + cf[c] * 0.12f - aim[c] * 0.15f) * s * k; Rh[c] += dk; Lh[c] += dk; } }
+        // reloading: every kind of gun has its own
+        if (W2.reload > 0 && W2.reloadMax > 0 && grip != "bow" && grip != "beam")
         {
-            float u = 1 - W2.reload / W2.reloadMax, away = u < 0.35f ? u / 0.35f : u < 0.6f ? 1 : MathF.Max(0, 1 - (u - 0.6f) / 0.35f);
-            float[] belt = { shL[0] - up[0] * 0.55f * s + cf[0] * 0.12f * s, shL[1] - up[1] * 0.55f * s + cf[1] * 0.12f * s, shL[2] - up[2] * 0.55f * s + cf[2] * 0.12f * s };
-            for (int k = 0; k < 3; k++) { Lh[k] = Lerp(Rh[k] + aim[k] * 0.12f * s - up[k] * 0.1f * s, belt[k], away); Rh[k] -= up[k] * 0.1f * s * MathF.Sin(u * PI); }
-            kL = 1;
+            float u = Clamp(1 - W2.reload / W2.reloadMax, 0, 1);
+            ReloadHands(ReloadKind(d), u, Rh, Lh, shL, shR, aim, up, cr, cf, s, ref kL);
+        }
+    }
+
+    /// <summary>How a weapon is reloaded.</summary>
+    static string ReloadKind(WeaponDef d) => d.Id switch
+    {
+        "revolver" => "cylinder", "darts" or "knives" => "pouch", "shotgun" => "shell", "sniper" or "hunting" => "bolt", "hmg" => "belt",
+        "rocket" or "chargecannon" or "mechbomb" or "mechhoming" => "tube", "smg" or "rifle" or "needler" => "rifle",
+        _ => GripOf(d) == "onehand" ? "mag" : "rifle",
+    };
+
+    // a hand path through keyframes (time, point), eased between them
+    static void Path(float u, float[] o, params (float t, float[] p)[] keys)
+    {
+        if (u <= keys[0].t) { Array.Copy(keys[0].p, o, 3); return; }
+        for (int i = 1; i < keys.Length; i++)
+            if (u <= keys[i].t)
+            {
+                float k = (u - keys[i - 1].t) / MathF.Max(1e-4f, keys[i].t - keys[i - 1].t); k = k * k * (3 - 2 * k);
+                for (int c = 0; c < 3; c++) o[c] = keys[i - 1].p[c] + (keys[i].p[c] - keys[i - 1].p[c]) * k;
+                return;
+            }
+        Array.Copy(keys[^1].p, o, 3);
+    }
+
+    /// <summary>
+    /// The reload, per kind of gun: a pistol drops its magazine and takes a fresh one from the belt; a revolver tips up while
+    /// rounds are thumbed in; a rifle swaps a magazine from the chest rig and racks the handle; a shotgun is fed one shell at a
+    /// time from the belt (each cycle of u is one shell); a scoped rifle opens its bolt and thumbs in rounds; the heavy gun
+    /// takes a new belt box from the back of the hip; a launcher comes off the shoulder for a rocket from the back.
+    /// </summary>
+    void ReloadHands(string kind, float u, float[] Rh, float[] Lh, float[] shL, float[] shR, float[] aim, float[] up, float[] cr, float[] cf, float s, ref float kL)
+    {
+        float[] At(float[] b, float a, float uu, float rr, float ff) { var o = new float[3]; for (int c = 0; c < 3; c++) o[c] = b[c] + aim[c] * a * s + up[c] * uu * s + cr[c] * rr * s + cf[c] * ff * s; return o; }
+        float bump = MathF.Sin(u * PI);
+        var R0 = (float[])Rh.Clone();
+        float[] belt = At(shL, 0, -0.55f, 0.02f, 0.12f), chest = At(shL, 0, -0.28f, 0.14f, 0.26f), backHip = At(shL, 0, -0.45f, 0.05f, -0.25f), overShoulder = At(shL, 0, 0.14f, 0.05f, -0.22f);
+        var tmp = new float[3];
+        switch (kind)
+        {
+            case "mag":
+                {   // the gun tips up a little; the old magazine drops, a fresh one comes up from the belt, a slap seats it
+                    for (int c = 0; c < 3; c++) Rh[c] = R0[c] + (up[c] * 0.06f - cr[c] * 0.04f) * s * bump;
+                    var well = At(Rh, 0.04f, -0.1f, 0, 0);
+                    Path(u, Lh, (0, well), (0.25f, belt), (0.45f, belt), (0.72f, At(well, 0, -0.06f, 0, 0)), (0.8f, At(well, 0, 0.03f, 0, 0)), (0.9f, well));
+                    kL = u < 0.88f ? 1 : MathF.Max(0, (1 - u) / 0.12f);
+                    break;
+                }
+            case "cylinder":
+                {   // the gun swings up and in, rounds are thumbed in one by one, then a flick of the wrist closes it
+                    float lift = u < 0.12f ? u / 0.12f : u < 0.88f ? 1 : MathF.Max(0, (1 - u) / 0.12f);
+                    for (int c = 0; c < 3; c++) Rh[c] = R0[c] + (up[c] * 0.18f - cr[c] * 0.14f - aim[c] * 0.25f) * s * lift;
+                    var cyl = At(Rh, 0.06f, 0.02f, -0.06f, 0);
+                    Path(u, Lh, (0, cyl), (0.18f, cyl), (0.32f, belt), (0.45f, cyl), (0.9f, cyl));
+                    if (u > 0.45f && u < 0.85f) { float th = MathF.Abs(MathF.Sin((u - 0.45f) / 0.4f * PI * 3)); for (int c = 0; c < 3; c++) Lh[c] += aim[c] * 0.04f * s * th; }
+                    kL = u < 0.88f ? 1 : MathF.Max(0, (1 - u) / 0.12f);
+                    break;
+                }
+            case "pouch":
+                Path(u, Lh, (0, At(Rh, 0, -0.1f, -0.1f, 0)), (0.4f, belt), (0.75f, At(Rh, 0.02f, 0, -0.04f, 0)), (1, At(Rh, 0, -0.1f, -0.1f, 0)));
+                kL = u < 0.85f ? 1 : MathF.Max(0, (1 - u) / 0.15f);
+                break;
+            case "rifle":
+                {   // magazine out and down, a fresh one from the chest rig, seated, then the charging handle racked
+                    for (int c = 0; c < 3; c++) Rh[c] = R0[c] + (up[c] * 0.04f - cr[c] * 0.05f) * s * bump;
+                    var well = At(Rh, 0.18f, -0.12f, 0, 0); var handle = At(Rh, 0.06f, 0.07f, 0.07f, 0);
+                    Path(u, Lh, (0, At(Rh, 0.34f, 0, 0, 0)), (0.1f, well), (0.2f, At(well, 0, -0.25f, 0, 0)), (0.36f, chest), (0.52f, At(well, 0, -0.05f, 0, 0)), (0.6f, At(well, 0, 0.03f, 0, 0)),
+                        (0.72f, handle), (0.8f, At(handle, -0.1f, 0, 0, 0)), (0.86f, handle), (1, At(Rh, 0.34f, 0, 0, 0)));
+                    kL = 1; break;
+                }
+            case "shell":
+                {   // canted, the off hand fetches a shell from the belt and pushes it up into the loading port; u is one shell
+                    for (int c = 0; c < 3; c++) Rh[c] = R0[c] + (-up[c] * 0.08f - cr[c] * 0.06f) * s;
+                    var port = At(Rh, 0.18f, -0.1f, 0, 0); var pouch = At(belt, 0, 0.05f, 0.05f, 0.1f);
+                    Path(u, Lh, (0, port), (0.35f, pouch), (0.45f, pouch), (0.8f, port), (0.9f, At(port, 0.06f, 0.02f, 0, 0)), (1, port));
+                    kL = 1; break;
+                }
+            case "bolt":
+                {   // bolt up and back, rounds thumbed in from a pouch, bolt home
+                    float boltOpen = u < 0.15f ? u / 0.15f : u < 0.82f ? 1 : MathF.Max(0, (1 - u) / 0.18f);
+                    var boltPos = At(R0, 0.02f, 0.08f, 0.07f, 0);
+                    for (int c = 0; c < 3; c++) Rh[c] = Lerp(R0[c], boltPos[c] - aim[c] * 0.07f * s, boltOpen);
+                    var top = At(R0, 0.1f, 0.08f, 0, 0);
+                    Path(u, Lh, (0, At(R0, 0.42f, 0, 0, 0)), (0.18f, At(R0, 0.42f, 0, 0, 0)), (0.32f, chest), (0.42f, top), (0.72f, top), (0.85f, At(R0, 0.42f, 0, 0, 0)));
+                    if (u > 0.42f && u < 0.72f) { float th = MathF.Abs(MathF.Sin((u - 0.42f) / 0.3f * PI * 2)); for (int c = 0; c < 3; c++) Lh[c] -= up[c] * 0.04f * s * th; }
+                    kL = 1; break;
+                }
+            case "belt":
+                {   // the big gun sags to the hip; the off hand hauls a belt box from the back of the hip and clips it on
+                    for (int c = 0; c < 3; c++) Rh[c] = R0[c] - up[c] * 0.14f * s * bump;
+                    var side = At(Rh, 0.18f, 0.04f, -0.14f, 0);
+                    Path(u, Lh, (0, At(Rh, 0.36f, 0.03f, -0.16f, 0)), (0.25f, backHip), (0.4f, backHip), (0.62f, side), (0.78f, At(side, 0, -0.04f, 0, 0)), (1, At(Rh, 0.36f, 0.03f, -0.16f, 0)));
+                    kL = 1; break;
+                }
+            case "tube":
+                {   // off the shoulder to the hip, a rocket from over the shoulder fed into the back of the tube, back up
+                    float down = u < 0.15f ? u / 0.15f : u < 0.85f ? 1 : MathF.Max(0, (1 - u) / 0.15f);
+                    for (int c = 0; c < 3; c++) Rh[c] = R0[c] + (-up[c] * 0.3f + cf[c] * 0.12f) * s * down;
+                    var rear = At(Rh, -0.18f, 0.02f, 0, 0);
+                    Path(u, Lh, (0, At(Rh, 0.32f, -0.12f, -0.08f, 0)), (0.32f, overShoulder), (0.55f, rear), (0.72f, At(rear, 0.14f, 0, 0, 0)), (1, At(Rh, 0.32f, -0.12f, -0.08f, 0)));
+                    kL = 1; break;
+                }
         }
     }
 

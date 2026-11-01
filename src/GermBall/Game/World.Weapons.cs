@@ -16,7 +16,7 @@ public sealed class Weapon { public string id; public float ammo, clip, heat; pu
 public sealed class BeamFx { public float x0, y0, z0, x1, y1, z1, t; }
 public sealed class WState
 {
-    public Weapon[] slots = new Weapon[3]; public int cur; public float cd, since = 9, aimT; public Actor lockA; public Body lockBody; public float flash, hitT, empty, charge, reload, reloadMax, punchQ; public int pat; public float patT, swingT; public int swingHit;
+    public Weapon[] slots = new Weapon[3]; public int cur; public float cd, since = 9, aimT; public Actor lockA; public Body lockBody; public float flash, hitT, empty, charge, reload, reloadMax, punchQ, pumpT, switchT; public bool shell; public int pat; public float patT, swingT; public int swingHit;
     public BeamFx beam; public float beamAcc, laserT; public int combo; public float swingDur; public WeaponDef swingDef; public bool trig;
 }
 public sealed class Shot
@@ -470,7 +470,24 @@ public sealed partial class World
         if (IN.reload && W.reload <= 0 && canReload && W.swingT <= 0) StartReload(A, w, def);
         // the AI tops up its magazine in a lull
         else if (!A.human && !held && canReload && W.reload <= 0 && w.clip < def.Clip * 0.5f && W.since > 1.2f) StartReload(A, w, def);
-        if (W.reload > 0) { W.reload -= dt; if (W.reload <= 0 && w != null) { float n = MathF.Min(def.Clip - w.clip, w.ammo); w.clip += n; w.ammo -= n; if (A.human) Sfx("cooled", P.x, P.y, P.z, 0.4f); } return; }
+        W.pumpT = MathF.Max(0, W.pumpT - dt); W.switchT = MathF.Max(0, W.switchT - dt);
+        if (W.reload > 0)
+        {
+            W.reload -= dt;
+            if (W.reload <= 0 && w != null)
+            {
+                if (W.shell)
+                {   // one shell in; keep going until full or out, then pump
+                    w.clip += 1; w.ammo -= 1; if (A.human) Sfx("click", P.x, P.y, P.z, 0.35f);
+                    if (w.clip < def.Clip && w.ammo >= 1) W.reload = W.reloadMax;
+                    else { W.shell = false; W.pumpT = 0.48f; W.cd = MathF.Max(W.cd, 0.35f); if (A.human) Sfx("reload", P.x, P.y, P.z, 0.5f); }
+                }
+                else { float n = MathF.Min(def.Clip - w.clip, w.ammo); w.clip += n; w.ammo -= n; if (A.human) Sfx("cooled", P.x, P.y, P.z, 0.4f); }
+            }
+            // pulling the trigger with shells already in stops the loading: pump and fire
+            if (W.reload > 0 && W.shell && held && w != null && w.clip >= 1) { W.reload = 0; W.shell = false; W.pumpT = 0.48f; W.cd = MathF.Max(W.cd, 0.3f); }
+            else return;
+        }
         if (!able) { W.charge = 0; return; }
         if (held) W.aimT = 0.9f;
         if (def.Type == "melee") { if (held && W.cd <= 0 && W.swingT <= 0) { MeleeSwing(def); W.cd = MathF.Max(W.swingDur * 0.92f, 0.7f / def.Rate); } return; }
@@ -514,13 +531,16 @@ public sealed partial class World
     {
         // heroes reload faster than the germs (the germs' slowness is their weakness)
         float t = def.Reload * (A.team == "hero" ? 0.85f : 1);
+        // the shotgun loads one shell at a time (and can be interrupted between shells); everything else swaps a magazine
+        A.W.shell = def.Id == "shotgun";
+        if (A.W.shell) t = Clamp(t / MathF.Max(1, def.Clip) * 1.4f, 0.34f, 0.6f);
         A.W.reload = t; A.W.reloadMax = t; A.W.charge = 0;
         Sfx("reload", A.P.x, A.P.y, A.P.z, A.human ? 0.7f : 0.5f);
     }
     public void SwitchWeapon(Actor A, int i)
     {
         var W = A.W; i = ((i % 3) + 3) % 3;
-        W.cur = i; W.cd = MathF.Max(W.cd, 0.2f); W.charge = 0; W.reload = 0;
+        W.cur = i; W.cd = MathF.Max(W.cd, 0.2f); W.charge = 0; W.reload = 0; W.shell = false; W.switchT = 0.32f;   // the new weapon comes up from low
         if (A.human) { var w = W.slots[i]; ShowHint(w != null ? WPN[w.id].Name + (float.IsFinite(w.ammo) ? " · " + w.clip + " / " + w.ammo : "") : "PSEUDOPODS"); Sfx("switch", A.P.x, A.P.y, A.P.z, 0.4f); }
     }
     public void CycleWeapon(Actor A, int d)
