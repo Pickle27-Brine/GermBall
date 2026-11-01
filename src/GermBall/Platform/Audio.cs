@@ -13,7 +13,7 @@ namespace GermBall.Platform;
 /// </summary>
 public sealed unsafe class Audio : IDisposable
 {
-    public const int Rate = 48000, Block = 512;
+    public const int Rate = 48000, Block = 768;   // 16 ms blocks, four queued: enough slack that a frame hitch never starves the device
     IXAudio2 xa; IXAudio2MasteringVoice master; IXAudio2SourceVoice src;
     readonly Thread thread; volatile bool running = true;
     readonly object gate = new();
@@ -58,7 +58,8 @@ public sealed unsafe class Audio : IDisposable
         if (!Ok || data == null || data.Length == 0) return 0;
         lock (gate)
         {
-            if (voices.Count > 96) voices.RemoveAt(0);   // the browser capped voices far lower; keep it sane anyway
+            // too many voices: the oldest fades out over a few milliseconds instead of being cut (a cut is a click)
+            if (voices.Count > 96) { foreach (var o in voices) if (o.GainTarget > 0) { o.GainTarget = 0; o.GainStep = -o.Gain / (0.008f * Rate); break; } }
             var v = new Voice { Data = data, Rate = rate * (data.Length > 0 ? 1 : 0), Gain = gain, GainTarget = gain, Pan = Math.Clamp(pan, -1, 1), Loop = loop, Id = nextId++ };
             voices.Add(v); return v.Id;
         }
@@ -67,13 +68,14 @@ public sealed unsafe class Audio : IDisposable
     {
         lock (gate) foreach (var v in voices) if (v.Id == id) { v.GainTarget = gain; v.GainStep = (gain - v.Gain) / MathF.Max(1, seconds * Rate); }
     }
-    public void Stop(int id) { lock (gate) voices.RemoveAll(v => v.Id == id); }
+    /// <summary>Stops a voice with a very short fade (never a hard cut).</summary>
+    public void Stop(int id) { lock (gate) foreach (var v in voices) if (v.Id == id) { v.GainTarget = 0; v.GainStep = -MathF.Max(1e-6f, v.Gain) / (0.01f * Rate); } }
     public void Add(IGenerator g) { lock (gate) gens.Add(g); }
     public void Remove(IGenerator g) { lock (gate) gens.Remove(g); }
 
     void Run()
     {
-        const int nbuf = 3;
+        const int nbuf = 4;
         var bufs = new float[nbuf][]; var handles = new GCHandle[nbuf];
         for (int i = 0; i < nbuf; i++) { bufs[i] = new float[Block * 2]; handles[i] = GCHandle.Alloc(bufs[i], GCHandleType.Pinned); }
         var music = new float[Block * 2]; int which = 0;
@@ -90,6 +92,8 @@ public sealed unsafe class Audio : IDisposable
                     {
                         int i0 = (int)v.Pos; if (i0 >= v.Data.Length - 1) { if (v.Loop) { v.Pos -= v.Data.Length - 1; i0 = (int)v.Pos; } else { done = true; break; } }
                         float t = (float)(v.Pos - i0), s = (v.Data[i0] + (v.Data[i0 + 1] - v.Data[i0]) * t) * v.Gain;
+                        // de-click: every one-shot fades in over its first 1.5 ms and out over its last 3 ms, whatever the buffer holds
+                        if (!v.Loop) { double rem = v.Data.Length - 1 - v.Pos; if (v.Pos < 72) s *= (float)(v.Pos / 72); if (rem < 144) s *= (float)Math.Max(0, rem / 144); }
                         b[f * 2] += s * gl; b[f * 2 + 1] += s * gr; v.Pos += v.Rate;
                         if (v.GainStep != 0) { v.Gain += v.GainStep; if ((v.GainStep > 0 && v.Gain >= v.GainTarget) || (v.GainStep < 0 && v.Gain <= v.GainTarget)) { v.Gain = v.GainTarget; v.GainStep = 0; } }
                     }
@@ -104,10 +108,16 @@ public sealed unsafe class Audio : IDisposable
                 }
             }
             float mv = MusicVolume, m = Master;
-            for (int i = 0; i < b.Length; i++)
+            for (int f = 0; f < Block; f++)
             {
-                float s = (b[i] + music[i] * mv) * m;
-                b[i] = s > 1 ? 1 : s < -1 ? -1 : s;   // hard ceiling
+                // a limiter instead of a hard ceiling: an envelope follower (instant attack, ~120 ms release) pulls the gain down
+                // so peaks land under 0.95; anything left over is rounded off by a soft clip rather than squared off (squared = crackle)
+                float l = (b[f * 2] + music[f * 2] * mv) * m, r = (b[f * 2 + 1] + music[f * 2 + 1] * mv) * m;
+                float pk = MathF.Max(MathF.Abs(l), MathF.Abs(r));
+                env = pk > env ? pk : env + (pk - env) * 0.00017f;
+                float g = env > 0.95f ? 0.95f / env : 1;
+                gain += (g - gain) * (g < gain ? 0.25f : 0.0004f);
+                b[f * 2] = Soft(l * gain); b[f * 2 + 1] = Soft(r * gain);
             }
             var ab = new AudioBuffer { AudioDataPointer = handles[which].AddrOfPinnedObject(), AudioBytes = (uint)(b.Length * 4) };
             src.SubmitSourceBuffer(ab);
@@ -115,6 +125,9 @@ public sealed unsafe class Audio : IDisposable
         }
         for (int i = 0; i < nbuf; i++) handles[i].Free();
     }
+
+    float env, gain = 1;
+    static float Soft(float x) { float a = MathF.Abs(x); if (a <= 0.9f) return x; float o = 0.9f + 0.1f * MathF.Tanh((a - 0.9f) / 0.1f); return MathF.Sign(x) * o; }
 
     public void Dispose()
     {

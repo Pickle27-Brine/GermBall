@@ -257,6 +257,7 @@ public sealed class Music : Audio.IGenerator
                 if (t < 0.005) sub = 0.0001 + (pk * p.sub - 0.0001) * t / 0.005; else if (t < end) sub = pk * p.sub; else sub = Approach(sub, 0.0001, p.r / 3 + 0.01);
                 o += Math.Sin(SubPh(fb)) * sub;
             }
+            { double left = stop - t; if (left < 0.006) o *= left / 0.006; }   // whatever the envelope is doing, fade the last 6 ms: no click at the cut
             return true;
         }
         double subPh; double SubPh(double fb) { subPh += fb / 2 / SR; return subPh * 2 * Math.PI; }

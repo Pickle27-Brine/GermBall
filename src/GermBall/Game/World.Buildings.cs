@@ -461,7 +461,25 @@ public sealed partial class World
     public bool InsideStatic(float x, float z, float y, float pad)
     {
         QueryStatics(x - pad, x + pad, z - pad, z + pad, QHs);
-        foreach (var o in QHs) if (o.Kind == BOXK && x > o.MinX - pad && x < o.MaxX + pad && z > o.MinZ - pad && z < o.MaxZ + pad && o.MaxY > y + 0.5f && o.MinY < y + 1.6f) return true;
+        foreach (var o in QHs)
+        {
+            if (o.Kind == BOXK && x > o.MinX - pad && x < o.MaxX + pad && z > o.MinZ - pad && z < o.MaxZ + pad && o.MaxY > y + 0.5f && o.MinY < y + 1.6f) return true;
+            // cylinders too (organs, cysts, vessels, nerve stems): pathfinding and placement used to see straight through them
+            if (o.Kind == CYLK && o.Top > y + 0.5f && o.Bottom < y + 1.6f && Hypot(x - o.X, z - o.Z) < o.R + pad) return true;
+        }
+        return false;
+    }
+    /// <summary>Is the point (x, y, z) inside (or within pad of) any static solid? (for the collision audit)</summary>
+    public bool SolidAt(float x, float y, float z, float pad)
+    {
+        if (y < TerrainH(x, z) + 0.1f) return true;
+        QueryStatics(x - pad - 1, x + pad + 1, z - pad - 1, z + pad + 1, QHs);
+        foreach (var o in QHs)
+        {
+            if (o.Kind == BOXK && x > o.MinX - pad && x < o.MaxX + pad && z > o.MinZ - pad && z < o.MaxZ + pad && y > o.MinY - pad && y < o.MaxY + pad) return true;
+            if (o.Kind == CYLK && y > o.Bottom - pad && y < o.Top + pad && Hypot(x - o.X, z - o.Z) < o.R + pad) return true;
+            if (o.Kind == PATCHK && x > o.MinX - pad && x < o.MaxX + pad && z > o.MinZ - pad && z < o.MaxZ + pad && o.Fn != null && y < o.Fn(x, z) + pad) return true;
+        }
         return false;
     }
     public float GroundY(float x, float z) => GroundAt(x, z, 999, true).h;

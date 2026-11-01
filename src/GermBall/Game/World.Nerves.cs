@@ -30,10 +30,15 @@ public sealed partial class World
     /// <summary>Collision for the parts of a nerve near the ground, so nothing you can walk into is a ghost.</summary>
     void SolidNerve(IList<Vector3> pts, float rad)
     {
-        for (int i = 0; i <= 16; i++)
+        float len = 0; for (int i = 1; i < pts.Count; i++) len += Vector3.Distance(pts[i - 1], pts[i]);
+        int ns = Math.Clamp((int)(len / MathF.Max(0.2f, rad * 0.8f)), 8, 400);   // closer than the radius, so there are no gaps
+        for (int i = 0; i <= ns; i++)
         {
-            var q = Geo.CatmullRom(pts, i / 16f, false); float g = GroundY(q.X, q.Z);
-            if (q.Y - rad - g < 2.2f && !InsideBuilding(q.X, q.Z, 0)) AddStatic(new Static { Kind = CYLK, X = q.X, Z = q.Z, R = rad + 0.12f, Bottom = g - 1, Top = q.Y + rad });
+            var q = Geo.CatmullRom(pts, i / (float)ns, false);
+            // measured from the terrain around the footprint (GroundY would report a roof next to a building)
+            float gHi = TerrainH(q.X, q.Z), gLo = gHi;
+            for (int k = 0; k < 4; k++) { float gg = TerrainH(q.X + (k == 0 ? rad : k == 1 ? -rad : 0), q.Z + (k == 2 ? rad : k == 3 ? -rad : 0)); gHi = MathF.Max(gHi, gg); gLo = MathF.Min(gLo, gg); }
+            if (q.Y - rad - gHi < 2.6f && !InsideBuilding(q.X, q.Z, -0.3f)) AddStatic(new Static { Kind = CYLK, X = q.X, Z = q.Z, R = rad + 0.12f, Bottom = gLo - 1, Top = q.Y + rad });
         }
     }
     void BuildNerves()

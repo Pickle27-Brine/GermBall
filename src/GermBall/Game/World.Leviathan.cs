@@ -55,11 +55,15 @@ public sealed partial class World
             var vp = pts.Select(p => new Vector3(p[0], p[1], p[2])).ToList();
             if (solid && rad > 0.12f)
             {   // wherever the tube runs within reach of the floor it's solid (sampled along its length)
-                int ns = Math.Max(6, vp.Count * 4);
+                float len = 0; for (int q = 1; q < vp.Count; q++) len += Vector3.Distance(vp[q - 1], vp[q]);
+                int ns = Math.Clamp((int)(len / MathF.Max(0.25f, rad * 0.7f)), 6, 600);   // samples closer than the radius: no gaps between them
                 for (int q = 0; q <= ns; q++)
                 {
-                    var c = Geo.CatmullRom(vp, q / (float)ns, closed); float g = Gy(c.X, c.Z);
-                    if (c.Y - rad < g + 2.4f && c.Y + rad > g - 0.5f) AddStatic(new Static { Kind = CYLK, X = c.X, Z = c.Z, R = rad + 0.1f, Bottom = g - 2, Top = c.Y + rad });
+                    var c = Geo.CatmullRom(vp, q / (float)ns, closed);
+                    // the ground around the footprint, not just under the centre: on a slope the uphill side is closer
+                    float g0 = Gy(c.X, c.Z), gHi = g0, gLo = g0;
+                    for (int k = 0; k < 4; k++) { float gg = Gy(c.X + (k == 0 ? rad : k == 1 ? -rad : 0), c.Z + (k == 2 ? rad : k == 3 ? -rad : 0)); gHi = MathF.Max(gHi, gg); gLo = MathF.Min(gLo, gg); }
+                    if (c.Y - rad < gHi + 2.6f && c.Y + rad > gLo - 0.5f) AddStatic(new Static { Kind = CYLK, X = c.X, Z = c.Z, R = rad + 0.1f, Bottom = gLo - 2, Top = c.Y + rad });
                 }
             }
             return Add(new Mesh(Geo.Tube(vp, seg > 0 ? seg : pts.Count * 6, rad, 8, closed), mat), true);
@@ -151,7 +155,7 @@ public sealed partial class World
         foreach (var g in LAYOUT.Guts)
         {
             var pts = g.Pts.Select(p => new[] { p.x, Gy(p.x, p.z) - g.R * 0.6f, p.z }).ToList();
-            Tube(pts, g.R, gutMat, pts.Count * 8, solid: false);   // (the terrain already rises over the intestines)
+            Tube(pts, g.R, gutMat, pts.Count * 8);   // solid: the raised floor under them doesn't reach their full height
             var tg = Geo.Torus(g.R * 1.01f, 0.25f, 6, 18);
             for (int i = 0; i < pts.Count - 1; i++)
             {
@@ -165,7 +169,7 @@ public sealed partial class World
         void Vein(float x, float z, float a, int len, float rad, Material mat, int depth)
         {
             var pts = new List<float[]>(); for (int k = 0; k <= len; k++) { pts.Add(new[] { x, Gy(x, z) - rad * 0.78f, z }); /* sunk nearly flush: ground markings you walk over */ a += (r() - 0.5f) * 0.7f; x += MathF.Cos(a) * 4; z += MathF.Sin(a) * 4; }
-            if (pts.Count > 2) Tube(pts, rad, mat, pts.Count * 4, solid: false);
+            if (pts.Count > 2) Tube(pts, rad, mat, pts.Count * 4);   // solid where they rise out of the floor: low enough to step over, but nothing passes through
             if (depth < 2) for (int b = 0; b < 2; b++) { int k = 2 + (int)MathF.Floor(r() * (len - 2)); if (k < pts.Count) Vein(pts[k][0], pts[k][2], a + (r() < 0.5f ? 1 : -1) * (0.6f + r() * 0.6f), Math.Max(3, len >> 1), rad * 0.6f, mat, depth + 1); }
         }
         for (int i = 0; i < (arena ? 8 : 26); i++) Vein((r() * 2 - 1) * LIM * 0.9f, (r() * 2 - 1) * LIM * 0.9f, r() * 6.28f, 8 + (int)MathF.Floor(r() * 10), 0.45f + r() * 0.4f, i % 2 != 0 ? artMat : venMat, 0);
@@ -235,7 +239,7 @@ public sealed partial class World
         // glowing nodules dotting the floor
         {
             int n = arena ? 60 : 260; var nm = new InstancedMesh(s8, BasicM(0xffffff), n); uint[] cols = { 0xfff070, 0x7affef, 0xff7ae6 };
-            for (int i = 0; i < n; i++) { float x = (r() * 2 - 1) * LIM, z = (r() * 2 - 1) * LIM, s = 0.2f + r() * 0.5f; nm.Matrices[i] = Mtx(x, Gy(x, z) + s * 0.3f, z, s, s * 0.7f, s); nm.SetColor(i, C(cols[i % 3])); }
+            for (int i = 0; i < n; i++) { float x = (r() * 2 - 1) * LIM, z = (r() * 2 - 1) * LIM, s = 0.2f + r() * 0.45f; { var ts = TerrainSample(x, z); if (Hypot(ts.gx, ts.gz) > 0.25f) s = 0; /* none on steep ground: they'd stick out of the slope */ } nm.Matrices[i] = Mtx(x, Gy(x, z) - s * 0.3f, z, s, s * 0.45f, s); nm.SetColor(i, C(cols[i % 3])); }   // sunk: flush lights in the floor
             nm.Touch(); scene.Add(nm); ORG.nodules = nm;
         }
         // ---- the drifting things: red cells in streams, white cells patrolling, platelets, bacteria, viruses, phages, antibodies

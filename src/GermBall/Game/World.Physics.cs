@@ -62,6 +62,9 @@ public sealed partial class World
     static int FloorI(float v) => (int)MathF.Floor(v);
     public Static AddStatic(Static o)
     {
+        // cylinders carry their footprint as X, Z, R: give them bounds too, or the spatial grid files every one of them in the
+        // cell at the origin and nothing anywhere else ever finds them (organs, cysts, vessels and nerves were phase-through)
+        if (o.Kind == CYLK) { o.MinX = o.X - o.R; o.MaxX = o.X + o.R; o.MinZ = o.Z - o.R; o.MaxZ = o.Z + o.R; o.MinY = o.Bottom; o.MaxY = o.Top; }
         o.Id = statics.Count + 1; o.Stamp = 0; statics.Add(o);
         for (int i = FloorI(o.MinX / SG); i <= FloorI(o.MaxX / SG); i++) for (int j = FloorI(o.MinZ / SG); j <= FloorI(o.MaxZ / SG); j++)
             {

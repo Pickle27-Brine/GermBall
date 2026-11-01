@@ -212,6 +212,44 @@ public static class Shots
             Frame(gs, name: "fluids");
             world.SetFreeCam(false);
         }
+        if (Want("collide"))
+        {   // the collision audit: every static mesh's surface in the band a body can reach (0.3..2.2 m above the ground under it)
+            // is checked against the collision world; anything you'd phase through is listed, worst first
+            foreach (var (mode, map) in new[] { ("sandbox", "random"), ("sandbox", "classic"), ("sandbox", "leviathan"), ("waves", "bowl"), ("waves", "city"), ("waves", "spires"), ("waves", "gut") })
+            {
+                var world = new World(new BootConfig { Mode = mode, Map = map, Seed = 12345, Custom = GermDraw.DefaultCustom() }, new Settings { res = 0, density = 1 }, World.DefaultBinds());
+                var stats = new Dictionary<string, (int bad, int all, float x, float y, float z)>();
+                void Probe(string key, System.Numerics.Matrix4x4 M, Geometry g)
+                {
+                    int nv = g.VertexCount, step = Math.Max(1, nv / 60);
+                    for (int i = 0; i < nv; i += step)
+                    {
+                        var p = System.Numerics.Vector3.Transform(new System.Numerics.Vector3(g.Position[i * 3], g.Position[i * 3 + 1], g.Position[i * 3 + 2]), M);
+                        if (MathF.Abs(p.X) > 340 || MathF.Abs(p.Z) > 340) continue;
+                        float gy = world.TerrainH(p.X, p.Z), h = p.Y - gy; if (h < 0.3f || h > 2.2f) continue;
+                        // pull the sample a little toward the mesh's centre: a surface point sits exactly on the edge of a matching solid
+                        if (g.BoundRadius < 0) g.ComputeBounds();
+                        var c = System.Numerics.Vector3.Transform(g.BoundCenter, M); var dc = c - p; float dl = dc.Length();
+                        var q = dl > 1e-4f ? p + dc / dl * MathF.Min(0.15f, dl * 0.5f) : p;   // 15 cm inward: a surface point sits exactly on the edge of a matching solid
+                        bool ok = world.SolidAt(q.X, q.Y, q.Z, 0.35f);
+                        var e = stats.TryGetValue(key, out var v) ? v : (bad: 0, all: 0, x: 0f, y: 0f, z: 0f);
+                        stats[key] = (e.bad + (ok ? 0 : 1), e.all + 1, ok ? e.x : p.X, ok ? e.y : p.Y, ok ? e.z : p.Z);
+                    }
+                }
+                void Walk(Node n)
+                {
+                    if (!n.Visible) return;
+                    if (n is InstancedMesh im) { if (im.Geo != null && !(im.Mat?.Color == new System.Numerics.Vector3(1, 138 / 255f, 160 / 255f))) { string k = $"inst v{im.Geo.VertexCount} col{im.Mat?.Color} n{im.Count}"; for (int i = 0; i < Math.Min(im.Count, im.Capacity); i++) Probe(k, im.Matrices[i] * im.World, im.Geo); } }
+                    else if (n is Mesh m && m.Geo != null && !(m.Mat?.Transparent ?? false)) Probe($"mesh v{m.Geo.VertexCount} col{m.Mat?.Color}", m.World, m.Geo);
+                    foreach (var ch in n.Children) Walk(ch);
+                }
+                world.scene.UpdateWorld(System.Numerics.Matrix4x4.Identity);
+                Walk(world.scene);
+                int tb = stats.Values.Sum(v => v.bad), ta = stats.Values.Sum(v => v.all);
+                Console.WriteLine($"COLLIDE {mode}/{map}: {tb}/{ta} reachable surface samples have no collision");
+                foreach (var kv in stats.Where(k => k.Value.bad > 3).OrderByDescending(k => k.Value.bad).Take(14)) Console.WriteLine($"   {kv.Value.bad,5}/{kv.Value.all,-5} {kv.Key}  e.g. at {kv.Value.x:0.0},{kv.Value.y:0.0},{kv.Value.z:0.0}");
+            }
+        }
         if (Want("cast")) { Lineup.Run(sr, Path.Combine(dir, "cast-raw.png"), false, 18, false); }
         if (Want("heroes"))
             foreach (var k in MedDraw.PRESETS.Keys)
