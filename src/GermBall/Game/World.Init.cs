@@ -31,7 +31,7 @@ public sealed partial class World
         BuildLeviathan(); Mark("leviathan");
         InitSprites(); InitSpores();
         InitWaves();
-        BuildGerms(); BuildFace(); InitDrawLists(); InitReticles(); Mark("germs");
+        BuildGerms(); InitDrawLists(); InitReticles(); Mark("germs");
 
         HUMAN = MakeActor("hero", SPAWNX, SPAWNZ, true, MathF.PI); ME = HUMAN;
         P = HUMAN.P; PBODY = HUMAN.body; W = HUMAN.W; AIM = HUMAN.AIM; IN = HUMAN.IN; CUR = HUMAN;

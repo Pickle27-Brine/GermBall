@@ -418,6 +418,7 @@ public sealed partial class World
     // squashed flat: stuck to the spot and harmless until it springs back up with a boing
     void Flatten(Actor B, float t)
     {
+        if (Guarded(B)) return;
         var G = B.P; if (B.type == "mech" || B.type == "mecha") return;
         float k = B.type == "brute" || TYPES[B.type].Boss ? 0.55f : 1;
         G.flatT = MathF.Max(G.flatT, t * k); B.flatMax = G.flatT; G.ctrlLock = MathF.Max(G.ctrlLock, G.flatT); G.vx *= 0.1f; G.vz *= 0.1f; G.vy = MathF.Min(G.vy, 0);

@@ -101,19 +101,30 @@ public sealed partial class World
     static readonly Dictionary<string, string> ARMOR_STYLE_OF = new() { ["ally"] = "glass", ["ally2"] = "chitin", ["ally3"] = "slime", ["brute"] = "capsid" };
     static readonly Dictionary<string, uint> ARMOR_COL = new() { ["hero"] = 0xf7f4ff, ["ally"] = 0x9fe4ff, ["ally2"] = 0x8a9a52, ["ally3"] = 0xe9c6f5, ["brute"] = 0x5a4a5e, ["mhero"] = 0x1c1622, ["mally"] = 0x1c1622, ["mally2"] = 0x1c1622, ["mally3"] = 0x1c1622 };
     static uint DarkHex(uint c, float k) { uint r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255; return ((uint)MathF.Round(r * k) << 16) | ((uint)MathF.Round(g * k * 0.6f) << 8) | (uint)MathF.Round(b * k * 0.75f); }
+    // ---------------------------------------------------------------- the heroes are medicine, the enemies germs
+    public readonly Dictionary<string, MedSpec> MED = new();
+    static readonly Dictionary<string, string> MED_OF = new() { ["ally"] = "tablet", ["ally2"] = "bottle", ["ally3"] = "syringe", ["mecha"] = "medmech" };
     void BuildGerms()
     {
-        foreach (var t in GermDraw.TYPE_SPECIES.Keys)
+        foreach (var t in GermDraw.TYPE_SPECIES.Keys.Append("mecha"))
         {
             string src = MIMIC_OF.TryGetValue(t, out var mm) ? mm : t;
-            var sp = src == "hero" ? GermDraw.SpeciesFromCustom(CFG.Custom) : GermDraw.SPECIES[GermDraw.TYPE_SPECIES[src]].Clone();
-            if (src != "hero") { sp.ArmorStyle = ARMOR_STYLE_OF.TryGetValue(src, out var st) ? st : "chitin"; sp.Col.D = ARMOR_COL.TryGetValue(src, out var ac) ? ac : 0xd8d0e8; }
-            if (MIMIC_OF.ContainsKey(t)) { sp = sp.Clone(); sp.Col = new SpeciesColors { A = DarkHex(sp.Col.A, 0.24f), B = 0x3a0610, C = 0xff1830, E = 0xff2020, D = 0x1c1622 }; sp.Face = new(); }
+            if (src == "hero" || MED_OF.ContainsKey(src))
+            {
+                var med = src == "hero" ? MedDraw.FromCustom(CFG.Custom) : MedDraw.PRESETS[MED_OF[src]].Clone();
+                if (src != "hero") med.Col.D = ARMOR_COL.TryGetValue(src, out var acm) ? acm : med.Col.D;
+                if (MIMIC_OF.ContainsKey(t)) med.Col = new SpeciesColors { A = DarkHex(med.Col.A, 0.24f), B = 0x3a0610, C = 0xff1830, E = 0xff2020, D = 0x1c1622 };
+                if (t == "mecha") med.Bulk = 1.25f;
+                MED[t] = med;
+                // a germ-species stand-in carries the colours for materials and chips
+                var stub = GermDraw.SPECIES["coccus"].Clone(); stub.Key = t; stub.Col = med.Col.Clone(); stub.Facet = false; stub.ArmorStyle = med.ArmorStyle;
+                GERM[t] = stub; continue;
+            }
+            var sp = GermDraw.SPECIES[GermDraw.TYPE_SPECIES[src]].Clone();
+            sp.ArmorStyle = ARMOR_STYLE_OF.TryGetValue(src, out var st) ? st : "chitin"; sp.Col.D = ARMOR_COL.TryGetValue(src, out var ac) ? ac : 0xd8d0e8;
+            if (src == "mech") sp.Col = new SpeciesColors { A = 0x7a5ad8, B = 0x2a1a5a, C = 0xff3a6a, E = 0xff3a6a, D = 0x5a4a6e };   // the giant phage
             GERM[t] = sp;
         }
-        // the battle mecha had its own segmented look; here it's drawn as a white-and-steel water bear
-        var mech = GermDraw.SPECIES["tardigrade"].Clone(); mech.Col = new SpeciesColors { A = 0xdfe3ea, B = 0x2b3240, C = 0x2aa8ff, E = 0x2aa8ff, D = 0xf2f2f2 }; mech.ArmorStyle = "plaque";
-        GERM["mecha"] = mech;
     }
     static Dictionary<char, Geometry> GGEO;
     readonly Dictionary<string, string> GK = new();
@@ -145,8 +156,8 @@ public sealed partial class World
         o.HasBall = G.curl > 0.6f;
         if (o.HasBall) { o.BallX = Lerp(G.px, G.x, alpha); o.BallY = Lerp(G.py, G.y, alpha) + G.BR; o.BallZ = Lerp(G.pz, G.z, alpha); o.BallR = G.BR; QNlerp(G.pBallQ, G.ballQ, alpha, o.BallQ); }
         EMIT_T = A.type;
-        GermDraw.Draw(sp, A.pose, o, germEmit);
-        if (A.type == "hero" && faceMesh != null) PlaceFace(A);
+        if (MED.TryGetValue(A.type, out var med)) MedDraw.Draw(med, A.pose, o, germEmit);
+        else GermDraw.Draw(sp, A.pose, o, germEmit);
     }
     // ---- germ chunks: hits knock blobs of membrane off; a burst part sprays them
     void GermChips(Actor B, int part, int n, float burst, Dmg o)
@@ -184,34 +195,11 @@ public sealed partial class World
         D.vb -= 0.5f * k;
     }
 
-    // ---- the player's face: the shapes from the face builder painted on a cap over the front of the head
-    Mesh faceMesh;
-    void BuildFace()
-    {
-        if (faceMesh != null) { scene.Remove(faceMesh); faceMesh = null; }
-        var face = GERM["hero"].Face; if (face == null || face.Count == 0) return;
-        var c = new Canvas2D(256, 256); FaceArt.Draw(c, 256, face);
-        var tex = c.ToTexture(); tex.Nearest = false;
-        // a cap over the front of the unit head sphere, mapped flat from the front
-        var g = Geo.Sphere(1, 24, 16, PI * 0.25f, PI * 0.5f, PI * 0.15f, PI * 0.7f);
-        for (int i = 0; i < g.VertexCount; i++) { float x = g.Position[i * 3], y = g.Position[i * 3 + 1]; g.Uv[i * 2] = 0.5f + x * 0.62f; g.Uv[i * 2 + 1] = 0.5f + y * 0.62f; }
-        faceMesh = new Mesh(g, new Material { Kind = MatKind.Lambert, Map = tex, Transparent = true, AlphaTest = 0.35f, PolygonOffset = true }) { FrustumCulled = false };
-        scene.Add(faceMesh);
-    }
-    void PlaceFace(Actor A)
-    {
-        var m = faceMesh; var ps = A.pose; var sp = GERM["hero"]; var G = A.P;
-        m.Visible = A.has[0] && G.curl < 0.6f && !(A.human && SET.fp) && !A.hidden;
-        if (!m.Visible) return;
-        m.Position = new Vector3(ps[0], ps[1], ps[2]); m.Rotation = new Quaternion(ps[3], ps[4], ps[5], ps[6]);
-        float k = sp.Head == "cube" ? 0.85f : 1.06f; m.Scale = new Vector3(ps[7] * sp.Hs[0] * k, ps[8] * sp.Hs[1] * k, ps[9] * sp.Hs[2] * k);
-    }
-
     // ---------------------------------------------------------------- drawing everything that moves
     void InitDrawLists()
     {
         InitWShapes();
-        GGEO = new() { ['Z'] = Geo.Sphere(1, 16, 11), ['I'] = Geo.Icosahedron(1, 1), ['B'] = boxGeo, ['P'] = Geo.Cone(1, 1, 9), ['C'] = Geo.Cylinder(1, 1, 1, 10), ['T'] = Geo.Torus(1, 0.18f, 7, 22).RotateX(PI / 2) };
+        GGEO = new() { ['Z'] = Geo.Sphere(1, 16, 11), ['I'] = Geo.Icosahedron(1, 1), ['B'] = boxGeo, ['P'] = Geo.Cone(1, 1, 9), ['C'] = Geo.Cylinder(1, 1, 1, 10), ['T'] = Geo.Torus(1, 0.18f, 7, 22).RotateX(PI / 2), ['F'] = Geo.Cylinder(1, 0.72f, 1, 14) };
         germEmit = GermEmit;
         var sph = Geo.Sphere(1, 14, 10); var lowSph = Geo.Sphere(1, 8, 6);
         MkInst("flash", sph, BasicM(0xff2638), 512, false);
@@ -273,7 +261,10 @@ public sealed partial class World
         {
             if (pc.hp <= 0 || !A.has[pc.part]) continue;
             if (pc.flash > 0) pc.flash -= 1 / 60f;
-            if (gs != null && G.curl < 0.6f) { EMIT_T = A.type; GermDraw.ArmorPiece(gs.ArmorStyle, new ArmorPieceSpec(pc.part, pc.y0, pc.y1, pc.phi, pc.arc, pc.sc), A.pose, germEmit, pc.flash > 0 ? 'f' : 'd', clockT); }
+            if (G.curl >= 0.6f) continue;
+            EMIT_T = A.type;
+            if (MED.TryGetValue(A.type, out var med)) MedDraw.Armor(med, A.pose, pc.part, pc.y0, pc.y1, pc.phi, med.ArmorStyle, pc.flash > 0 ? 'f' : 'd', germEmit);
+            else if (gs != null) GermDraw.ArmorPiece(gs.ArmorStyle, new ArmorPieceSpec(pc.part, pc.y0, pc.y1, pc.phi, pc.arc, pc.sc), A.pose, germEmit, pc.flash > 0 ? 'f' : 'd', clockT, GermDraw.LimbK(gs, pc.part));
         }
         // weapon in hand
         var w = A.W.slots[A.W.cur];
@@ -340,7 +331,6 @@ public sealed partial class World
     void DrawMen(float alpha, float fdt)
     {
         InstBegin(); frameNo++;
-        if (faceMesh != null) faceMesh.Visible = false;
         float cx = camPos.X, cz = camPos.Z;
         foreach (var A in actors)
         {

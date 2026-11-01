@@ -29,7 +29,7 @@ public sealed class ActorType
 public sealed class PartDef { public string N; public int Par; public float Hp; public bool Dark, Crit; public List<int> Kids = new(); }
 
 /// <summary>The character controller state (the original's "P").</summary>
-public sealed class PState
+public sealed partial class PState
 {
     public string type; public float s, f, R, H, BR, STEP, km, mass;
     public float x, y, z, vx, vy, vz, px, py, pz; public bool ground = true, rolling, jumping, jumpRolled, charging; public float rev, ctrlLock, facing, nx, ny = 1, nz;
@@ -402,6 +402,8 @@ public sealed partial class World
         if (P.grabCD > 0) P.grabCD -= dt;
         if (P.homingT > 0) P.homingT -= dt;
         bool usePress = IN.use && !P.prevUse && !outp; P.prevUse = IN.use;
+        // recovery: tech out with jump or roll, or break out automatically after being held down too long
+        if (A.team == "hero") { bool tech = (IN.jump && !P.prevJumpG) || (IN.roll && !P.prevRollG); if (P.grabbed == null) { P.prevJumpG = IN.jump; P.prevRollG = IN.roll; } RecoveryStep(A, dt, tech); }
         if (P.ragdoll != null) { RagdollFollow(A, dt); FinishStep(dt, t, 0, 0, 0); return; }
         if (usePress && P.hold == null && P.holdA == null) Interact(A);
         if (P.vehicle != null) { if (outp) Dismount(A, true); else { VehicleStep(dt, m, wx, wz, jumpPress); FinishStep(dt, t, 0, 0, 0); return; } }
@@ -413,7 +415,7 @@ public sealed partial class World
             {
                 if ((IN.jump && !P.prevJumpG) || (IN.roll && !P.prevRollG))
                 {
-                    P.struggle += A.type == "small" ? 0.12f : 0.26f; P.squash = 0.18f; Rumble(0.3f, 0.5f, 60);
+                    P.struggle += A.type == "small" ? 0.12f : A.team == "hero" ? 0.34f : 0.26f; P.squash = 0.18f; Rumble(0.3f, 0.5f, 60);
                     if (P.struggle >= 1) { DropHeld(H); H.P.stunT = MathF.Max(H.P.stunT, 0.5f); }
                 }
                 P.prevJumpG = IN.jump; P.prevRollG = IN.roll;

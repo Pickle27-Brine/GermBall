@@ -283,6 +283,15 @@ public sealed partial class World
                 d.Text(txt, x + 9 + kw + 6, y + 4, f, Pal.Warn, "left", 1.4f);
             }
         }
+        // ---- recovery: how to get up, and how close an automatic breakout is
+        if (P.alive && Locked(P) && P.techT > 0.15f)
+        {
+            float bw = 180, bx = Wd / 2 - bw / 2, by = Ht / 2 + 70, k = Math.Clamp(P.lockT / BREAKOUT_LOCK, 0, 1);
+            string msg = P.grabbed != null ? (padActive ? "MASH A TO BREAK FREE" : "MASH JUMP TO BREAK FREE") : P.techT >= TECH_MIN ? (padActive ? "A / B TO RECOVER" : "JUMP / ROLL TO RECOVER") : "…";
+            d.Text(msg, Wd / 2, by, d.DisplaySmall, Pal.Warn, "center", 2);
+            d.Frame(bx, by + 16, bw, 6, Pal.A(Pal.Warn, 0.6f)); d.Rect(bx + 1, by + 17, (bw - 2) * k, 4, k > 0.8f ? Pal.Hot : Pal.Warn);
+        }
+        if (P.guardT > 0 && ((int)(clockT * 20) & 1) == 0) d.Frame(Wd / 2 - 26, Ht / 2 - 26, 52, 52, Pal.A(Pal.Hud, 0.5f), 2);
         // ---- hint line
         if (hintT > 0 && hintText.Length > 0)
         {

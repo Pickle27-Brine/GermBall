@@ -40,7 +40,7 @@ public sealed partial class World
         }
         return false;
     }
-    static bool CanGrab(Actor A, Actor B) { var G = B.P; return G.alive && !G.rolling && G.stunT <= 0 && G.downT <= 0 && G.grabbed == null && LegsOf(A) > 0 && ArmsOf(A) > 0; }
+    static bool CanGrab(Actor A, Actor B) { var G = B.P; return G.alive && !Guarded(B) && G.grabCD <= 0 && !G.rolling && G.stunT <= 0 && G.downT <= 0 && G.grabbed == null && LegsOf(A) > 0 && ArmsOf(A) > 0; }
     bool GrabActor(Actor A, Actor B)
     {
         if (!CanGrab(A, B)) return false;

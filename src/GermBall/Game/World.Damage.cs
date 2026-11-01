@@ -52,7 +52,7 @@ public sealed partial class World
         if (src != null && src != B && src.team == B.team && (kind == "bullet" || kind == "melee")) return 0;
         // knockback happens whatever the damage
         if (o.knock != 0) { float l = Hypot(o.fx, o.fz); if (l == 0) l = 1; G.vx += o.fx / l * o.knock; G.vz += o.fz / l * o.knock; if (o.up != 0) { G.vy = MathF.Max(G.vy, o.up); G.ground = false; } }
-        if (B.team == "hero") { if (src == null || src.team != "hero") dmg *= ENEMY_DMG * SET.dmgTaken; }
+        if (B.team == "hero") { if (src == null || src.team != "hero") dmg *= ENEMY_DMG * SET.dmgTaken; if (G.guardT > 0 && kind == "melee") dmg *= 0.5f; }
         else if (src != null && src.team == "hero") dmg *= 2 * SET.dmgDealt;
         if (G.rolling)
         {   // curled up: hits glance off the shell
@@ -397,15 +397,14 @@ public sealed partial class World
     static Dictionary<string, ArmorDef[]> BuildArmorDef()
     {
         ArmorDef A(int p, string pr, float y0, float y1, float phi, float arc, float sc, float hp) => new(p, pr, y0, y1, phi, arc, sc, hp);
-        var hero = new[] { A(1, "V", 0.15f, 0.96f, 0, 150, 1.1f, 25), A(1, "V", -0.9f, -0.62f, 0, 120, 1.09f, 10), A(1, "V", -0.58f, -0.3f, 0, 126, 1.09f, 10), A(1, "V", -0.26f, 0.1f, 0, 136, 1.09f, 10), A(1, "V", -0.3f, 0.9f, 180, 140, 1.1f, 18),
-            A(2, "G", -0.6f, 0.55f, 0, 140, 1.12f, 12), A(0, "H", 0.0f, 1.0f, 180, 250, 1.12f, 15),
-            A(3, "L", -1.0f, -0.45f, 0, 360, 1.25f, 12), A(3, "L", -0.42f, 0.08f, -90, 200, 1.15f, 8), A(4, "C", -0.55f, 0.75f, -90, 220, 1.14f, 8),
-            A(9, "L", -0.85f, 0.5f, 0, 150, 1.12f, 10), A(10, "C", -0.75f, 0.85f, 0, 170, 1.12f, 10) };
-        var brute = new[] { A(1, "V", -0.1f, 1.0f, 0, 200, 1.22f, 60), A(1, "V", -0.95f, -0.12f, 0, 180, 1.2f, 40), A(1, "V", -0.5f, 1.0f, 180, 200, 1.22f, 40), A(0, "H", 0.1f, 1.0f, 180, 300, 1.22f, 40), A(2, "G", -0.8f, 0.6f, 0, 220, 1.2f, 40),
-            A(3, "L", -1.0f, -0.2f, 0, 360, 1.35f, 40), A(3, "L", -0.2f, 0.5f, -90, 220, 1.25f, 25), A(4, "C", -0.8f, 0.8f, -90, 260, 1.25f, 25), A(9, "L", -0.9f, 0.6f, 0, 200, 1.2f, 30), A(10, "C", -0.85f, 0.85f, 0, 220, 1.2f, 30) };
+        // one plate per spot, none overlapping: chest, back, belt, helmet, shoulders, bracers, thighs, shins
+        var hero = new[] { A(1, "V", -0.05f, 0.85f, 0, 120, 1.08f, 40), A(1, "V", -0.4f, 0.75f, 180, 120, 1.08f, 22), A(2, "G", -0.6f, 0.5f, 0, 120, 1.08f, 14), A(0, "H", 0.1f, 0.95f, 180, 120, 1.08f, 18),
+            A(3, "L", 0.1f, 0.95f, -90, 120, 1.1f, 14), A(4, "C", -0.6f, 0.5f, -90, 120, 1.08f, 10), A(9, "L", -0.55f, 0.55f, 0, 120, 1.08f, 12), A(10, "C", -0.55f, 0.6f, 0, 120, 1.08f, 12) };
+        var brute = new[] { A(1, "V", -0.1f, 0.95f, 0, 150, 1.12f, 60), A(1, "V", -0.5f, 0.9f, 180, 150, 1.12f, 40), A(0, "H", 0.1f, 1.0f, 180, 150, 1.12f, 40), A(2, "G", -0.7f, 0.5f, 0, 150, 1.12f, 40),
+            A(3, "L", -0.2f, 0.9f, -90, 150, 1.15f, 40), A(4, "C", -0.7f, 0.7f, -90, 150, 1.12f, 25), A(9, "L", -0.8f, 0.5f, 0, 150, 1.12f, 30), A(10, "C", -0.75f, 0.75f, 0, 150, 1.12f, 30) };
         var d = new Dictionary<string, ArmorDef[]> { ["hero"] = hero, ["brute"] = brute, ["ally"] = hero };
         d["ally2"] = hero.Select(x => x with { Sc = x.Sc + 0.06f, Hp = MathF.Round(x.Hp * 1.8f) }).ToArray();   // Brick's plates are thicker
-        d["ally3"] = hero.Where(x => (x.Part == 1 && x.Phi == 0) || x.Part == 0 || x.Part == 4).ToArray();      // Wisp travels light
+        d["ally3"] = hero.Where(x => (x.Part == 1 && x.Phi == 0) || x.Part == 0 || x.Part == 4 || x.Part == 10).ToArray();      // Wisp travels light
         foreach (var (m, of) in MIMIC_OF) d[m] = d[of].Select(x => x with { Hp = MathF.Round(x.Hp * 1.8f) }).ToArray();
         return d;
     }
@@ -482,6 +481,8 @@ public sealed partial class World
     public void Knockdown(Actor B, float t, float vx, float vy, float vz, bool light = false)
     {
         var G = B.P; if (!G.alive || G.vehicle != null) return;   // riders stay seated: only a crash throws them off
+        if (Guarded(B)) { G.vx += vx * 0.3f; G.vz += vz * 0.3f; return; }   // just recovered: can't be floored again yet
+        t *= StunScale(B);
         if (B.team == "hero" && G.grabbed == null && !light) { StartRagdoll(B, vx, vy, vz, t); return; }
         G.stunT = MathF.Max(G.stunT, t); G.vx += vx; G.vz += vz; if (vy != 0) { G.vy = MathF.Max(G.vy, vy); G.ground = false; }
     }
@@ -583,7 +584,7 @@ public sealed partial class World
         G.x = pb.Pos.x; G.z = pb.Pos.z; G.vx = pb.Vel.x; G.vy = pb.Vel.y; G.vz = pb.Vel.z;
         G.y = MathF.Min(pb.Pos.y, GroundAt(pb.Pos.x, pb.Pos.z, pb.Pos.y + 0.5f, true).h);
         float sp = 0; foreach (var b in R2.bodies) if (b != null) sp = MathF.Max(sp, Hypot(b.Vel.x, b.Vel.y, b.Vel.z));
-        if ((R2.t > R2.minT && sp < 1.6f) || R2.t > R2.minT + 3.5f) EndRagdoll(A);
+        if ((R2.t > R2.minT && sp < 1.6f) || R2.t > R2.minT + (A.team == "hero" ? 1.2f : 3.5f)) EndRagdoll(A);
     }
     void EndRagdoll(Actor A)
     {
@@ -593,7 +594,7 @@ public sealed partial class World
         foreach (var j in R2.joints) joints.Remove(j);
         foreach (var b in R2.bodies) if (b != null && b.RagdollOf == A) { RemoveBody(b); OnBodyRemoved(b); }
         G.ragdoll = null; G.ground = true; G.vx = G.vz = G.vy = 0; G.y = GroundAt(G.x, G.z, G.y + 1, true).h; G.px = G.x; G.py = G.y; G.pz = G.z;
-        A.anim.down = 1; G.stunT = 0.5f;
+        A.anim.down = 1; G.stunT = A.team == "hero" ? 0.3f : 0.5f;
     }
     // a part leaving the ragdoll (cut off, or he died) becomes ordinary debris
     Body DetachRagdollPart(Actor B, int i)

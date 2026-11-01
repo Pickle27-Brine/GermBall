@@ -61,6 +61,13 @@ public static class Shots
         bool Want(string n) => only == null || only.Split(',').Contains(n);
         if (Want("title")) { var t = new TitleScreen(app); for (int i = 0; i < 3; i++) Frame(t); Frame(t, name: "title"); }
         if (Want("custom")) { var c = new CustomizeScreen(app, GermDraw.DefaultCustom()); for (int i = 0; i < 30; i++) Frame(new Wrap(c)); Frame(new Wrap(c), name: "custom"); }
+        if (Want("lineup")) { Lineup.Run(sr, Path.Combine(dir, "lineup-heroes.png"), false); Lineup.Run(sr, Path.Combine(dir, "lineup-heroes-back.png"), false, 200); Lineup.Run(sr, Path.Combine(dir, "lineup-heroes-bare.png"), false, 25, false); Lineup.Run(sr, Path.Combine(dir, "lineup-germs.png"), true); }
+        if (Want("heroes"))
+            foreach (var k in MedDraw.PRESETS.Keys)
+            {
+                var c = new CustomizeScreen(app, new GermCustom { Preset = k }); c.C.Preset = k; typeof(CustomizeScreen).GetMethod("Changed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(c, null);
+                for (int i = 0; i < 6; i++) Frame(new Wrap(c), 0.5f); Frame(new Wrap(c), name: "hero-" + k);
+            }
         foreach (var (mode, map) in new[] { ("sandbox", "random"), ("waves", "bowl"), ("sandbox", "leviathan") })
         {
             string tag = mode + "-" + map;

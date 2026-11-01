@@ -31,12 +31,6 @@ public sealed class SpeciesColors
     public uint Get(char t) => t switch { 'a' => A, 'b' => B, 'c' => C, 'e' => E, 'd' => D, _ => A };
 }
 
-public sealed class FaceShape
-{
-    public string S = "circle"; public float X = 0.5f, Y = 0.5f, W = 0.15f, H = 1, R; public string C = "#111111";
-    public FaceShape Clone() => (FaceShape)MemberwiseClone();
-}
-
 /// <summary>A body type. Every germ in the game is drawn from one of these.</summary>
 public sealed class Species
 {
@@ -48,7 +42,6 @@ public sealed class Species
     public List<Deco> Deco;
     public SpeciesColors Col;
     public string ArmorStyle = "chitin";
-    public List<FaceShape> Face = new();
     // caches
     internal bool BandCached; internal Deco Band; internal int ClawsCached = -1;
 
@@ -56,36 +49,30 @@ public sealed class Species
     {
         var s = (Species)MemberwiseClone();
         s.Hs = (float[])Hs.Clone(); s.Torso = (float[])Torso.Clone(); s.Arm = (float[])Arm.Clone(); s.Leg = (float[])Leg.Clone(); s.Foot = (float[])Foot.Clone();
-        s.Eyes = Eyes.Clone(); s.Deco = Deco.Select(d => d.Clone()).ToList(); s.Col = Col.Clone(); s.Face = Face.Select(f => f.Clone()).ToList();
+        s.Eyes = Eyes.Clone(); s.Deco = Deco.Select(d => d.Clone()).ToList(); s.Col = Col.Clone();
         s.BandCached = false; s.Band = null; s.ClawsCached = -1;
         return s;
     }
 }
 
-public sealed class BodyShape
-{
-    public float Head = 1, Torso = 1, Width = 1, Belly = 0, Limbs = 1, Hands = 1, Feet = 1, Bend = 1, Neck = 1, Hump = 0, Segments = 1;
-    public BodyShape Clone() => (BodyShape)MemberwiseClone();
-}
-
-public sealed class EyeCustom { public int N = -1; public float Size = 1, Spread = 1; public EyeCustom Clone() => (EyeCustom)MemberwiseClone(); }
-
-/// <summary>The player's germ customization (saved to custom.json).</summary>
+/// <summary>The player's hero design (saved to custom.json): a medicine preset, colours, per-segment styles and attachments.</summary>
 public sealed class GermCustom
 {
-    public string Preset = "phage", Head = "";
-    public BodyShape Body = new();
+    public string Preset = "gelcap";
     public Dictionary<string, uint> Col;   // overrides for a/b/c/e, or null
-    public EyeCustom Eyes = new();
-    public List<FaceShape> Face = new();
-    public List<string> Acc = new();
-    public string Armor = "chitin";
-    public uint ArmorCol = 0xf7f4ff;
+    /// <summary>Per-segment overrides (0..14, the skeleton's parts); missing segments use the preset's.</summary>
+    public Dictionary<int, SegStyle> Seg = new();
+    /// <summary>Extra shapes; null means "use the preset's".</summary>
+    public List<Attach> Att;
+    public float Bulk;
+    public string Armor = "plate";
+    public uint ArmorCol = 0xdfe6ee;
     public GermCustom Clone()
     {
         var c = (GermCustom)MemberwiseClone();
-        c.Body = Body.Clone(); c.Col = Col == null ? null : new Dictionary<string, uint>(Col); c.Eyes = Eyes.Clone();
-        c.Face = Face.Select(f => f.Clone()).ToList(); c.Acc = new List<string>(Acc); return c;
+        c.Col = Col == null ? null : new Dictionary<string, uint>(Col);
+        c.Seg = Seg == null ? new() : Seg.ToDictionary(kv => kv.Key, kv => kv.Value?.Clone());
+        c.Att = Att?.Select(a => a.Clone()).ToList(); return c;
     }
 }
 
@@ -97,6 +84,8 @@ public sealed class DrawOpts
     public float T, Fdt, S = 1, Curl; public int Lod = 2;
     public bool[] Has; public float[] Flash; public float[] St;
     public bool HasBall; public float BallX, BallY, BallZ, BallR; public Q4 BallQ = new();
+    /// <summary>Ground height under a point; chain segments are kept above it so limbs never sink into the floor.</summary>
+    public Func<float, float, float> Ground;
 }
 
 /// <summary>
@@ -135,7 +124,7 @@ public static class GermDraw
     /// <summary>Which species each kind of actor is.</summary>
     public static readonly Dictionary<string, string> TYPE_SPECIES = new()
     {
-        ["small"] = "coccus", ["normal"] = "bacillus", ["brute"] = "amoeba", ["assassin"] = "spirillum", ["mech"] = "tardigrade", ["hero"] = "phage", ["ally"] = "diatom", ["ally2"] = "copepod", ["ally3"] = "medusa",
+        ["small"] = "coccus", ["normal"] = "bacillus", ["brute"] = "amoeba", ["assassin"] = "spirillum", ["mech"] = "phage", ["hero"] = "phage", ["ally"] = "diatom", ["ally2"] = "copepod", ["ally3"] = "medusa",
         ["mhero"] = "phage", ["mally"] = "diatom", ["mally2"] = "copepod", ["mally3"] = "medusa",
     };
 
@@ -151,38 +140,14 @@ public static class GermDraw
     };
     public static readonly string[] ARMOR_STYLES = { "chitin", "capsid", "spines", "glass", "slime", "shell", "coral", "scales", "cilia", "bubbles", "frustule", "barnacles", "rings", "plaque", "pearls", "pollen", "none" };
     public static readonly string[] HEAD_SHAPES = { "sphere", "rod", "capsid", "disc", "bell", "cone", "snout", "shield", "wheel", "star", "blob", "slipper", "drop", "cube" };
-    public static readonly string[] FACE_SHAPES = { "circle", "oval", "square", "triangle", "star", "heart", "crescent", "line", "zigzag", "ring", "cross", "drop" };
 
     /// <summary>The player's armor layout (the same plates the game gives the hero), for previews.</summary>
     public static readonly ArmorPieceSpec[] HERO_ARMOR = new float[][]
-    {
-        new[]{1f, 0.15f, 0.96f, 0, 150, 1.1f}, new[]{1f, -0.9f, -0.62f, 0, 120, 1.09f}, new[]{1f, -0.58f, -0.3f, 0, 126, 1.09f}, new[]{1f, -0.26f, 0.1f, 0, 136, 1.09f}, new[]{1f, -0.3f, 0.9f, 180, 140, 1.1f}, new[]{2f, -0.6f, 0.55f, 0, 140, 1.12f}, new[]{0f, 0.0f, 1.0f, 180, 250, 1.12f},
-        new[]{3f, -1.0f, -0.45f, 0, 360, 1.25f}, new[]{6f, -1.0f, -0.45f, 0, 360, 1.25f}, new[]{3f, -0.42f, 0.08f, -90, 200, 1.15f}, new[]{6f, -0.42f, 0.08f, 90, 200, 1.15f}, new[]{4f, -0.55f, 0.75f, -90, 220, 1.14f}, new[]{7f, -0.55f, 0.75f, 90, 220, 1.14f},
-        new[]{9f, -0.85f, 0.5f, 0, 150, 1.12f}, new[]{12f, -0.85f, 0.5f, 0, 150, 1.12f}, new[]{10f, -0.75f, 0.85f, 0, 170, 1.12f}, new[]{13f, -0.75f, 0.85f, 0, 170, 1.12f},
+    {   // the same layout the game gives the heroes (World.ARMOR_DEF), with the limb plates mirrored
+        new[]{1f, -0.05f, 0.85f, 0, 120, 1.08f}, new[]{1f, -0.4f, 0.75f, 180, 120, 1.08f}, new[]{2f, -0.6f, 0.5f, 0, 120, 1.08f}, new[]{0f, 0.1f, 0.95f, 180, 120, 1.08f},
+        new[]{3f, 0.1f, 0.95f, -90, 120, 1.1f}, new[]{6f, 0.1f, 0.95f, 90, 120, 1.1f}, new[]{4f, -0.6f, 0.5f, -90, 120, 1.08f}, new[]{7f, -0.6f, 0.5f, 90, 120, 1.08f},
+        new[]{9f, -0.55f, 0.55f, 0, 120, 1.08f}, new[]{12f, -0.55f, 0.55f, 0, 120, 1.08f}, new[]{10f, -0.55f, 0.6f, 0, 120, 1.08f}, new[]{13f, -0.55f, 0.6f, 0, 120, 1.08f},
     }.Select(a => new ArmorPieceSpec((int)a[0], a[1], a[2], a[3], a[4], a[5])).ToArray();
-
-    /// <summary>A full species object for a customization.</summary>
-    public static Species SpeciesFromCustom(GermCustom c)
-    {
-        c ??= DefaultCustom();
-        var b = c.Body ?? new BodyShape();
-        var baseSp = SPECIES.TryGetValue(c.Preset ?? "phage", out var bs) ? bs : SPECIES["phage"];
-        var sp = baseSp.Clone();
-        if (c.Col != null) foreach (var (k, v) in c.Col) switch (k) { case "a": sp.Col.A = v; break; case "b": sp.Col.B = v; break; case "c": sp.Col.C = v; break; case "e": sp.Col.E = v; break; }
-        if (!string.IsNullOrEmpty(c.Head)) sp.Head = c.Head;
-        for (int i = 0; i < 3; i++) sp.Hs[i] *= b.Head;
-        sp.Torso = new[] { sp.Torso[0] * b.Width * (1 + b.Belly * 0.15f), sp.Torso[1] * b.Width * (1 + b.Belly * 0.45f), sp.Torso[2] * b.Width };
-        sp.TLen = b.Torso; sp.Hump = b.Hump;
-        for (int i = 0; i < 2; i++) { sp.Arm[i] *= b.Limbs; sp.Leg[i] *= b.Limbs; }
-        sp.Hand *= b.Hands; for (int i = 0; i < 3; i++) sp.Foot[i] *= b.Feet;
-        sp.Bend = 1 + (sp.Bend - 1) * b.Bend; sp.Neck *= b.Neck; sp.Seg = (sp.Seg == 0 ? 1 : sp.Seg) * b.Segments;
-        var e = c.Eyes ?? new EyeCustom();
-        if (e.N >= 0) sp.Eyes.N = e.N; sp.Eyes.Size *= e.Size; sp.Eyes.Spread *= e.Spread;
-        foreach (var k in c.Acc ?? new()) sp.Deco.Add(ACCESSORY.TryGetValue(k, out var d) ? d.Clone() : new Deco(k));
-        sp.ArmorStyle = string.IsNullOrEmpty(c.Armor) ? "chitin" : c.Armor; sp.Col.D = c.ArmorCol;
-        sp.Face = (c.Face ?? new()).Select(f => f.Clone()).ToList();
-        return sp;
-    }
 
     // ---- temporaries (single-threaded drawing)
     sealed class Frame { public V3 f = new(), r = new(), u = new(); }
@@ -206,7 +171,8 @@ public static class GermDraw
         float len = Hypot(c.x - p0.x, c.y - p0.y, c.z - p0.z) + Hypot(p2.x - c.x, p2.y - c.y, p2.z - c.z);
         if (prof != null) { r0 = prof(0.1f); r1 = prof(0.9f); }
         float rAvg = MathF.Max(0.01f, (r0 + r1) / 2);
-        int n = (int)Clamp(MathF.Ceiling(len / (rAvg * 0.48f) * density), minN == 0 ? 4 : minN, maxN == 0 ? 22 : maxN);
+        // fewer, longer links than the browser build: smoother limbs, far less overlap and shimmer
+        int n = (int)Clamp(MathF.Ceiling(len / (rAvg * 0.85f) * density), Math.Max(3, (minN == 0 ? 4 : minN) / 2), Math.Max(4, (maxN == 0 ? 22 : maxN) * 2 / 3));
         float step = len / n;
         for (int i = 0; i <= n; i++)
         {
@@ -219,14 +185,16 @@ public static class GermDraw
                 x += fr.r.x * w + fr.f.x * w2; y += fr.r.y * w + fr.f.y * w2; z += fr.r.z * w + fr.f.z * w2;
             }
             float r = prof != null ? prof(u) : Lerp(r0, r1, u) + bulge * MathF.Sin(u * PI);
+            if (Ground != null) { float gy = Ground(x, z) + r * 0.55f; if (y < gy) y = gy; }
             QFromY(tx, ty, tz, PQ);
-            emit(shape, tone(i, n), x, y, z, PQ.x, PQ.y, PQ.z, PQ.w, r, MathF.Max(r, step * 0.7f), r);
+            emit(shape, tone(i, n), x, y, z, PQ.x, PQ.y, PQ.z, PQ.w, r, MathF.Max(r, step * 0.62f), r);
         }
     }
     static void Chain(Emit emit, char shape, char tone, V3 p0, V3 c, V3 p2, float r0, float r1, float bulge, float density, int minN, int maxN, float t)
         => Chain(emit, shape, (_, _) => tone, p0, c, p2, null, r0, r1, bulge, density, 0, 0, null, t, minN, maxN);
 
-    /// <summary>The bowed control point for a limb, on a spring so the limb lags, overshoots and whips.</summary>
+    [ThreadStatic] static Func<float, float, float> Ground;
+    /// <summary>The bowed control point for a limb, on a spring so it lags a little and settles (critically damped: no wobble).</summary>
     static V3 Bowed(V3 p0, V3 p1, V3 p2, float bend, float[] st, int si, float fdt, V3 o)
     {
         float mx = (p0.x + p2.x) / 2, my = (p0.y + p2.y) / 2, mz = (p0.z + p2.z) / 2;
@@ -236,9 +204,18 @@ public static class GermDraw
         {
             int k = si * 7;
             if (st[k + 6] == 0 || MathF.Abs(st[k] - tx) + MathF.Abs(st[k + 1] - ty) + MathF.Abs(st[k + 2] - tz) > 3) { st[k] = tx; st[k + 1] = ty; st[k + 2] = tz; st[k + 3] = st[k + 4] = st[k + 5] = 0; st[k + 6] = 1; }
-            st[k + 3] += ((tx - st[k]) * 210 - st[k + 3] * 15) * fdt; st[k] += st[k + 3] * fdt;
-            st[k + 4] += ((ty - st[k + 1]) * 210 - st[k + 4] * 15) * fdt; st[k + 1] += st[k + 4] * fdt;
-            st[k + 5] += ((tz - st[k + 2]) * 210 - st[k + 5] * 15) * fdt; st[k + 2] += st[k + 5] * fdt;
+            // two half steps per frame with critical damping (2*sqrt(k)), so the bow settles instead of whipping and jittering
+            const float K = 260, C = 32.2f; float h = fdt * 0.5f;
+            for (int it = 0; it < 2; it++)
+            {
+                st[k + 3] += ((tx - st[k]) * K - st[k + 3] * C) * h; st[k] += st[k + 3] * h;
+                st[k + 4] += ((ty - st[k + 1]) * K - st[k + 4] * C) * h; st[k + 1] += st[k + 4] * h;
+                st[k + 5] += ((tz - st[k + 2]) * K - st[k + 5] * C) * h; st[k + 2] += st[k + 5] * h;
+            }
+            // never trail more than a quarter of the limb behind where it should be
+            float lim = 0.25f * MathF.Sqrt((p2.x - p0.x) * (p2.x - p0.x) + (p2.y - p0.y) * (p2.y - p0.y) + (p2.z - p0.z) * (p2.z - p0.z)) + 0.02f;
+            float ex = st[k] - tx, ey = st[k + 1] - ty, ez = st[k + 2] - tz, el = MathF.Sqrt(ex * ex + ey * ey + ez * ez);
+            if (el > lim) { float q = lim / el; st[k] = tx + ex * q; st[k + 1] = ty + ey * q; st[k + 2] = tz + ez * q; }
             tx = st[k]; ty = st[k + 1]; tz = st[k + 2];
         }
         o.x = p0.x + tx; o.y = p0.y + ty; o.z = p0.z + tz; return o;
@@ -253,7 +230,7 @@ public static class GermDraw
     /// <summary>The whole body.</summary>
     public static void Draw(Species sp, float[] ps, DrawOpts o, Emit emit)
     {
-        var has = o.Has; var fl = o.Flash; float t = o.T, s = o.S == 0 ? 1 : o.S; int lod = o.Lod;
+        var has = o.Has; var fl = o.Flash; float t = o.T, s = o.S == 0 ? 1 : o.S; int lod = o.Lod; Ground = o.Ground;
         float dens = (sp.Seg == 0 ? 1 : sp.Seg) * (lod >= 2 ? 1 : lod == 1 ? 0.6f : 0.35f);
         char facet = sp.Facet ? 'I' : 'Z';
         char Tone(int i, char b) => fl != null && fl[i] > 0 ? 'f' : b;
@@ -291,7 +268,7 @@ public static class GermDraw
             CC.x = has[1] ? ps[k1] : (A0.x + A1.x) / 2; CC.y = has[1] ? ps[k1 + 1] - ps[k1 + 11] * ps[k1 + 8] * 0.2f : (A0.y + A1.y) / 2; CC.z = has[1] ? ps[k1 + 2] : (A0.z + A1.z) / 2;
             At(ps, 1, CF);
             if (sp.Hump != 0) { CC.x -= CF.f.x * sp.Hump * cr * 0.6f; CC.y -= CF.f.y * sp.Hump * cr * 0.6f; CC.z -= CF.f.z * sp.Hump * cr * 0.6f; }
-            Bowed(A0, CC, A1, 1.15f, st, 4, fdt, B0);
+            Bowed(A0, CC, A1, 1.05f, st, 4, fdt, B0);
             float ra = sp.Torso[0], rb = sp.Torso[1], rc = sp.Torso[2];
             if (!sp.BandCached) { sp.Band = sp.Deco.FirstOrDefault(d => d.K == "bands"); sp.BandCached = true; }
             var band = sp.Band;
@@ -320,7 +297,7 @@ public static class GermDraw
             Eyes(sp, ps, emit, t);
         }
         // ---- arms and legs: chains through elbow and knee, bowed and springy
-        float bend = sp.Bend == 0 ? 1.5f : sp.Bend;
+        float bend = MathF.Min(1.2f, sp.Bend == 0 ? 1.2f : 1 + (sp.Bend - 1) * 0.4f);
         for (int li = 0; li < 4; li++)
         {
             int up = li switch { 0 => 3, 1 => 6, 2 => 9, _ => 12 }, lo = up + 1, end = up + 2, root = li < 2 ? 1 : 2, si = li;
@@ -592,21 +569,30 @@ public static class GermDraw
         ["pearls"] = ('Z', 0.5f, 0.5f, 0.5f), ["pollen"] = ('I', 0.62f, 0.62f, 0.62f),
     };
 
-    public static void ArmorPiece(string style, ArmorPieceSpec p, float[] ps, Emit emit, char tone, float t)
+    /// <summary>How thick a part's chain actually is compared with its pose radius (so plates sit on the surface, not in the air).</summary>
+    public static float LimbK(Species sp, int part) => part switch
+    {
+        0 => (sp.Hs[0] + sp.Hs[2]) * 0.5f, 1 => sp.Torso[1], 2 => sp.Torso[0],
+        3 or 6 => sp.Arm[0], 4 or 7 => sp.Arm[1], 9 or 12 => sp.Leg[0], 10 or 13 => sp.Leg[1], _ => 1
+    };
+    /// <summary>An armor plate: a small grid (at most two rows of three) of thin scales hugging its part, in the chosen style.
+    /// The browser build tiled plates as big as the limb itself, which buried the body and overlapped its neighbours.</summary>
+    public static void ArmorPiece(string style, ArmorPieceSpec p, float[] ps, Emit emit, char tone, float t, float rk = 1)
     {
         if (!ARMOR_SHAPE.TryGetValue(style, out var S)) return;
-        int k = p.Part * 13; float rx = ps[k + 7] * p.Sc, ry = ps[k + 8], rz = ps[k + 9] * p.Sc;
+        int k = p.Part * 13; float rx = ps[k + 7] * rk, ry = ps[k + 8], rz = ps[k + 9] * rk;
         Part(ps, p.Part, TQ2);
-        float size = MathF.Min(rx, rz) * 0.95f + 0.02f, arcR = p.Arc * PI / 180;
-        int rows = Math.Max(1, (int)MathF.Round((p.Y1 - p.Y0) * ry / size)), cols = Math.Max(1, (int)MathF.Round(arcR * (rx + rz) / 2 / size));
+        float arcR = MathF.Min(p.Arc, 150) * PI / 180, span = (p.Y1 - p.Y0) * ry;
+        int rows = Math.Clamp((int)MathF.Round(span / (rx * 1.6f)), 1, 2), cols = Math.Clamp((int)MathF.Round(arcR * rx / (rx * 1.1f)), 1, 3);
+        float size = MathF.Min(span / rows, arcR * (rx + rz) * 0.5f / cols) * 0.55f;
         for (int r = 0; r < rows; r++)
             for (int c = 0; c < cols; c++)
             {
-                float yy = Lerp(p.Y0, p.Y1, (r + 0.5f) / rows) * ry, a = p.Phi * PI / 180 + (cols == 1 ? 0 : ((c + 0.5f) / cols - 0.5f) * arcR) + (r % 2 != 0 ? 0.5f * arcR / cols : 0);
+                float yy = Lerp(p.Y0, p.Y1, (r + 0.5f) / rows) * ry, a = p.Phi * PI / 180 + (cols == 1 ? 0 : ((c + 0.5f) / cols - 0.5f) * arcR);
                 float nx = MathF.Sin(a), nz = -MathF.Cos(a);
-                QRot(TQ2, nx * rx * 0.98f, yy, nz * rz * 0.98f, TV); QRot(TQ2, nx, 0, nz, TV2); QFromY(TV2.x, TV2.y, TV2.z, TQ);
-                float wob = style == "slime" || style == "bubbles" ? 1 + 0.08f * MathF.Sin(t * 3 + r + c) : style == "cilia" ? 1 + 0.2f * MathF.Sin(t * 8 + c) : 1;
-                emit(S.shape, tone, ps[k] + TV.x, ps[k + 1] + TV.y, ps[k + 2] + TV.z, TQ.x, TQ.y, TQ.z, TQ.w, size * S.a * wob, size * S.b * wob * (style == "spines" || style == "cilia" ? 1.6f : 1), size * S.c * wob);
+                QRot(TQ2, nx * rx * 1.02f, yy, nz * rz * 1.02f, TV); QRot(TQ2, nx, 0, nz, TV2); QFromY(TV2.x, TV2.y, TV2.z, TQ);
+                float wob = style == "slime" || style == "bubbles" ? 1 + 0.06f * MathF.Sin(t * 3 + r + c) : 1;
+                emit(S.shape, tone, ps[k] + TV.x, ps[k + 1] + TV.y, ps[k + 2] + TV.z, TQ.x, TQ.y, TQ.z, TQ.w, size * S.a * wob, size * MathF.Min(S.b, 0.45f) * wob, size * S.c * wob);
             }
     }
 
