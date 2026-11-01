@@ -235,8 +235,8 @@ public sealed partial class World
             {
                 var w = W.slots[k]; var def = w != null ? WPN[w.id] : null; bool on = k == W.cur;
                 var col = w != null && w.over ? (((int)(clockT * 6.6f) & 1) == 0 ? Pal.Hot : Pal.A(Pal.Hot, 0.4f)) : on ? Pal.Warn : hud;
-                float a = def == null && !on ? 0.3f : on || (w != null && w.over) ? 1 : 0.6f;
-                d.Rect(x, y, sw, 52, new Vector4(10 / 255f, 22 / 255f, 34 / 255f, 0.35f * a)); d.Frame(x, y, sw, 52, Pal.A(on ? Pal.Warn : w != null && w.over ? Pal.Hot : Pal.HudDim, a));
+                float a = def == null && !on ? 0.55f : on || (w != null && w.over) ? 1 : 0.82f;
+                d.Rect(x, y, sw, 52, new Vector4(10 / 255f, 14 / 255f, 26 / 255f, 0.62f)); d.Frame(x, y, sw, 52, Pal.A(on ? Pal.Warn : w != null && w.over ? Pal.Hot : Pal.HudDim, a));
                 string title = (k + 1) + " · " + (def != null ? def.Name : "PSEUDOPODS");
                 while (title.Length > 4 && d.DisplaySmall.Measure(title, 1.7f) > sw - 14) title = title[..^2] + "…";
                 d.Text(title, x + 7, y + 4, d.DisplaySmall, Pal.A(col, a), "left", 1.7f);

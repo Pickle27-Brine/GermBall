@@ -49,9 +49,12 @@ Target: `src/GermBall` — .NET 8, Windows only (Win32 + Direct3D 11 + XInput + 
   convolver, and the compressor is a simple peak follower. Notes, patches, drums, songs and the sequencer are the same.
 - **Colour pickers** in the customizer are hue/saturation/lightness sliders instead of the browser's native colour input.
 - **Speech voices** depend on the Windows voices installed; pitch/rate are mapped onto SAPI's ranges.
+- **Redesigned since the port.** Heroes are medicine figures (`Game/MedDraw.cs`) instead of germ bodies. The face system is gone, and so are all floating decor and spores. Vehicles, armor, buildings (cells and nerves), weapon animations (`World.Anim.cs`), recovery (`World.Recovery.cs`), navigation (`World.Nav.cs`), squad ranks (`World.Ranks.cs`), magazines and the punch are new. Controls changed: RB punches, and pounds only in ball mode; tap X reloads; hold X interacts. The camera no longer auto-rotates.
 - New: settings for display mode, VSync, a 1080p render option and an Ultra preset; germ export/import to files; folder shortcuts.
 
 ## Verification
 The port was written on Linux, where the Win32/D3D11/XAudio2 layer cannot run. `tools/Smoke` exercises everything else headlessly
 (world generation for every map, a minute of scripted play with debug spawns, music rendering). The window, renderer, audio
-device output, controllers and speech still need a first run on Windows.
+device output, controllers and speech still need a first run on Windows. `tools/Smoke --shots` renders
+every screen through a software rasteriser that follows the same conventions as the D3D11 path. It catches layout and geometry problems,
+but it is not the real shaders.

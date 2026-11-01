@@ -60,7 +60,16 @@ public static class Shots
         app = new App(Window.Headless(w, h), sr);
         bool Want(string n) => only == null || only.Split(',').Contains(n);
         if (Want("title")) { var t = new TitleScreen(app); for (int i = 0; i < 3; i++) Frame(t); Frame(t, name: "title"); }
-        if (Want("custom")) { var c = new CustomizeScreen(app, GermDraw.DefaultCustom()); for (int i = 0; i < 30; i++) Frame(new Wrap(c)); Frame(new Wrap(c), name: "custom"); }
+        if (Want("custom"))
+        {
+            var c = new CustomizeScreen(app, GermDraw.DefaultCustom()); for (int i = 0; i < 30; i++) Frame(new Wrap(c)); Frame(new Wrap(c), name: "custom");
+            foreach (var tb in new[] { "segments", "attach", "colors", "armor" })
+            {
+                typeof(CustomizeScreen).GetField("tab", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(c, tb);
+                if (tb == "attach") typeof(CustomizeScreen).GetField("att", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(c, 0);
+                for (int i = 0; i < 4; i++) Frame(new Wrap(c)); Frame(new Wrap(c), name: "custom-" + tb);
+            }
+        }
         if (Want("lineup")) { Lineup.Run(sr, Path.Combine(dir, "lineup-heroes.png"), false); Lineup.Run(sr, Path.Combine(dir, "lineup-heroes-back.png"), false, 200); Lineup.Run(sr, Path.Combine(dir, "lineup-heroes-bare.png"), false, 25, false); Lineup.Run(sr, Path.Combine(dir, "lineup-germs.png"), true); }
         if (Want("vehicles"))
         {
