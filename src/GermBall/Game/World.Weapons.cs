@@ -551,6 +551,7 @@ public sealed partial class World
     }
     public void Explode(float x, float y, float z, float R2, float blast, float dmg, Actor src)
     {
+        VilliImpulse(x, z, MathF.Min(2, R2 / 4)); Splash(x, z, y, 5, R2 * 0.6f);
         BlastChunks(x, y, z, R2 * 0.9f, dmg);
         QueryBodies(x - R2 - 2, x + R2 + 2, z - R2 - 2, z + R2 + 2, QPK);
         foreach (var b in QPK.ToArray())

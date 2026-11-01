@@ -213,7 +213,11 @@ public sealed partial class World
         var kinds = arena ? new[] { "heart", "lung", "kidney" } : new[] { "heart", "lung", "lung", "liver", "kidney", "stomach", "brain" };
         foreach (var k in kinds) { var p = Spot(arena ? 14 : 24); if (p is var (px, pz)) { var o = MakeOrgan(k, px, pz, r); if (arena) { o.W *= 0.6f; o.H *= 0.6f; } L.Organs.Add(o); } }
         for (int i = 0; i < (arena ? 2 : 5); i++) { var p = Spot(8); if (p is var (px, pz)) L.Guts.Add(GutPath(r, px, pz, arena ? 7 : 14)); }
-        if (L.Craters.Count > 0) L.Craters[0].Acid = true;
+        // acid only goes in a real pit: a crater no pad flattens; if there isn't one, dig one somewhere clear
+        foreach (var c in L.Craters) c.Acid = false;
+        var pit = L.Craters.FirstOrDefault(c => L.Pads.All(p => Hypot(c.X - p.X, c.Z - p.Z) > p.R + (p.Fall != 0 ? p.Fall : 22) + c.R + 2) && (!arena || Hypot(c.X, c.Z) < L.Bowl.R - c.R - 4));
+        if (pit == null && Spot(arena ? 10 : 18) is var (ax, az)) { pit = new Crater { X = ax, Z = az, R = arena ? 9 : 16, D = arena ? 4.5f : 7 }; L.Craters.Add(pit); }
+        if (pit != null) pit.Acid = true;
         return L;
     }
 

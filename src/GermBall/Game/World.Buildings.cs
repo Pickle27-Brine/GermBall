@@ -16,7 +16,8 @@ public sealed class Chunk
 }
 public sealed class Place { public float x, z, r, y; public string name; public List<(float x, float z)> waypoints = new(); public List<Squad> squads = new(); public List<(float x, float z)> outside; }
 public sealed class BigCell { public float x, z, y, r, h, ph; }
-public sealed class Bone { public float x, z, y, a, L, r; }
+/// <summary>A fleshy cyst mound rising out of the floor: cover in the open.</summary>
+public sealed class Cyst { public float x, z, y, r, h, ph; }
 public sealed class Prop { public string kind; public bool heavy, rock, debug; public float ripT; public bool ripped => kind == "ripped"; public Node vis; public Mesh lit; }
 
 public sealed partial class World
@@ -124,6 +125,20 @@ public sealed partial class World
         string inner = style == 3 ? "innerT" : new[] { "innerA", "innerB", "innerC" }[style % 3];
         for (int f = 0; f < floors; f++) Rooms(B, x0 + WT, z0 + WT, x1 - WT, z1 - WT, y + 0.05f + f * FH, f, inner, keep, r, 0);
         return B;
+    }
+    /// <summary>Collision for a dome or the top of an ellipsoid (centre cx,cy,cz, radius rr across, ry up): stacked cylinders,
+    /// each as wide as the shape at its base, so you meet the surface about where you see it. groundY is where it meets the floor.</summary>
+    void SolidDome(float cx, float cy, float cz, float rr, float ry, float groundY)
+    {
+        // bands from where the shape comes out of the floor up to near its top; each band is as wide as the shape at its bottom
+        float h0 = Clamp((groundY - cy) / MathF.Max(0.01f, ry), 0, 0.95f); if (h0 >= 0.9f) return;
+        const int N = 3;
+        for (int i = 0; i < N; i++)
+        {
+            float ha = h0 + (0.92f - h0) * i / N, hb = h0 + (0.92f - h0) * (i + 1) / N;
+            float rad = rr * MathF.Sqrt(MathF.Max(0, 1 - ha * ha)) * 0.96f; if (rad < 0.25f) continue;
+            AddStatic(new Static { Kind = CYLK, X = cx, Z = cz, R = rad, Bottom = i == 0 ? groundY - 2 : cy + ry * ha, Top = cy + ry * hb });
+        }
     }
     bool InsideBuilding(float x, float z, float margin) { foreach (var B in BLDG) if (MathF.Abs(x - B.x) < B.w / 2 + margin && MathF.Abs(z - B.z) < B.d / 2 + margin) return true; return false; }
     // ---- interiors
@@ -316,7 +331,7 @@ public sealed partial class World
     }
 
     // ---- the layout
-    public readonly List<Place> OUTPOSTS = new(), TOWNS = new(); public readonly List<BigCell> BIGCELLS = new(); public readonly List<Bone> BONES = new();
+    public readonly List<Place> OUTPOSTS = new(), TOWNS = new(); public readonly List<BigCell> BIGCELLS = new(); public readonly List<Cyst> CYSTS = new();
     readonly List<(float x, float z, float yaw, string kind)> PARKED = new();
     void BuildLayout()
     {
@@ -426,12 +441,12 @@ public sealed partial class World
             if (!ok) continue;
             var ts = TerrainSample(x, z); float y = ts.h, slope = Hypot(ts.gx, ts.gz); if (slope > 0.35f) continue;
             if (LAYOUT.Organic)
-            {   // loose bones lying in the flesh: cover, and something to climb on
-                float a = r() * 3.14f, L = 5 + r() * 7, rr = 0.55f + r() * 0.35f, ca = MathF.Cos(a), sa = MathF.Sin(a);
-                BONES.Add(new Bone { x = x, z = z, y = y + rr * 0.6f, a = a, L = L, r = rr });
-                for (int k = -2; k <= 2; k++) { float px = x + ca * L * k / 5, pz = z + sa * L * k / 5; AddStatic(new Static { Kind = CYLK, X = px, Z = pz, R = rr * 1.15f, Bottom = y - 1, Top = y + rr * 1.5f }); }
-                AddCoverPts(x - rr, z - rr, x + rr, z + rr);
-                if (r() < 0.15f) StashAt(x + 2, z + 2, y, new[] { "weapon", "ammo" }, RACK_POOLS["town"]);
+            {   // cysts swelling out of the flesh: domed cover, solid all the way to their skin
+                float cr = 1.4f + r() * 1.6f, ch = cr * (0.7f + r() * 0.5f);
+                CYSTS.Add(new Cyst { x = x, z = z, y = y, r = cr, h = ch, ph = r() * 6.28f });
+                SolidDome(x, y, z, cr, ch, y);
+                AddCoverPts(x - cr * 0.7f, z - cr * 0.7f, x + cr * 0.7f, z + cr * 0.7f);
+                if (r() < 0.15f) StashAt(x + cr + 1.2f, z + 1, y, new[] { "weapon", "ammo" }, RACK_POOLS["town"]);
                 continue;
             }
             if (r() < 0.12f) { CoverWall(x, z, 4, true, y); StashAt(x + 1, z + 1.6f, y, new[] { "weapon", "ammo" }, RACK_POOLS["town"]); }   // an abandoned stash behind a wall

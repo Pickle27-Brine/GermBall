@@ -50,8 +50,20 @@ public sealed partial class World
         Material Glow(uint c, float op = 0) { var m = BasicM(c); if (op > 0) { m.Transparent = true; m.Opacity = op; m.DepthWrite = false; } return m; }
         Mesh Add(Mesh m, bool shadow = false) { m.CastShadow = shadow; m.ReceiveShadow = true; scene.Add(m); return m; }
         float Gy(float x, float z) => TerrainH(x, z);
-        Mesh Tube(IList<float[]> pts, float rad, Material mat, int seg = 0, bool closed = false)
-            => Add(new Mesh(Geo.Tube(pts.Select(p => new Vector3(p[0], p[1], p[2])).ToList(), seg > 0 ? seg : pts.Count * 6, rad, 8, closed), mat), true);
+        Mesh Tube(IList<float[]> pts, float rad, Material mat, int seg = 0, bool closed = false, bool solid = true)
+        {
+            var vp = pts.Select(p => new Vector3(p[0], p[1], p[2])).ToList();
+            if (solid && rad > 0.12f)
+            {   // wherever the tube runs within reach of the floor it's solid (sampled along its length)
+                int ns = Math.Max(6, vp.Count * 4);
+                for (int q = 0; q <= ns; q++)
+                {
+                    var c = Geo.CatmullRom(vp, q / (float)ns, closed); float g = Gy(c.X, c.Z);
+                    if (c.Y - rad < g + 2.4f && c.Y + rad > g - 0.5f) AddStatic(new Static { Kind = CYLK, X = c.X, Z = c.Z, R = rad + 0.1f, Bottom = g - 2, Top = c.Y + rad });
+                }
+            }
+            return Add(new Mesh(Geo.Tube(vp, seg > 0 ? seg : pts.Count * 6, rad, 8, closed), mat), true);
+        }
 
         // ---- the roof: a squashed dome of flesh, veined and glowing faintly, fading into the haze
         roofRX = arena ? 140 : 560; roofRY = arena ? 70 : 180; roofPY = arena ? 10 : -10;
@@ -59,42 +71,27 @@ public sealed partial class World
         ORG.roof = new Mesh(Geo.Sphere(1, 72, 36), roofMat) { Scale = new Vector3(roofRX, roofRY, roofRX), Position = new Vector3(0, roofPY, 0), RenderOrder = -1, FrustumCulled = false };
         scene.Add(ORG.roof);
 
-        // ---- ribs arching overhead, and a spine of vertebrae along the top
-        var boneMat = Wet(0xf2e4c8, 40, 0x553322);
-        int nRib = arena ? 5 : 9; float ribW = arena ? 95 : 360, ribZ = arena ? 70 : 280;
-        for (int i = 0; i < nRib; i++)
-        {
-            float z0 = -ribZ + (i + 0.5f) / nRib * ribZ * 2; var pts = new List<float[]>();
-            for (int k = 0; k <= 16; k++) { float a = PI * k / 16, x = -MathF.Cos(a) * ribW; pts.Add(new[] { x, MathF.Min(RoofY(x, z0) - 6, Gy(Clamp(x, -LIM, LIM), z0) + MathF.Sin(a) * roofRY * 1.1f), z0 + MathF.Sin(a * 2) * 6 }); }
-            Tube(pts, arena ? 2.2f : 4.5f, boneMat, 80);
-            foreach (int k in new[] { 0, 16 }) { float x = pts[k][0], z = pts[k][2]; if (MathF.Abs(x) < LIM) AddStatic(new Static { Kind = CYLK, X = x, Z = z, R = (arena ? 2.2f : 4.5f) + 0.3f, Bottom = Gy(x, z) - 2, Top = Gy(x, z) + 14 }); }
-        }
-        var vertGeo = Geo.Cylinder(arena ? 3 : 7, arena ? 3.5f : 8, arena ? 4 : 9, 9); var spGeo = Geo.Cone(arena ? 1.5f : 3.5f, arena ? 6 : 14, 6);
-        for (int i = -12; i <= 12; i++)
-        {   // vertebrae
-            float z = i * (arena ? 12 : 26), y = RoofY(0, z) - 8;
-            var v = new Mesh(vertGeo, boneMat) { Position = new Vector3(0, y, z) }; v.SetEuler(PI / 2, 0, 0); Add(v);
-            Add(new Mesh(spGeo, boneMat) { Position = new Vector3(0, y + (arena ? 4 : 9), z) });
-        }
+        // (no bones: the ribs and vertebrae that arched overhead are gone, like the loose bones on the floor)
 
         // ---- organs
         var S = Geo.Sphere(1, 28, 18);
         foreach (var o in LAYOUT.Organs)
         {
             float y0 = Gy(o.X, o.Z); var G = new Node { Position = new Vector3(o.X, y0 - o.H * 0.55f, o.Z) }; G.SetEuler(0, -o.Ang, 0); scene.Add(G);
-            Mesh Piece(Geometry geo, Material mat, float x, float y, float z, float sx, float sy, float sz, float rx = 0, float ry = 0, float rz = 0)
-            { var m = new Mesh(geo, mat) { Position = new Vector3(x, y, z), Scale = new Vector3(sx, sy, sz), CastShadow = true, ReceiveShadow = true }; m.SetEuler(rx, ry, rz); G.Add(m); return m; }
-            float w = o.W, h = o.H;
-            // every organ is solid: a core you can't walk through (the mound under it is terrain you can climb)
+            float ca0 = MathF.Cos(-o.Ang), sa0 = MathF.Sin(-o.Ang);
+            Mesh Piece(Geometry geo, Material mat, float x, float y, float z, float sx, float sy, float sz, float rx = 0, float ry = 0, float rz = 0, bool solid = true)
             {
-                float cr = o.Kind == "lung" ? w * 0.75f : o.Kind == "kidney" ? w * 0.55f : w * 0.62f;
-                AddStatic(new Static { Kind = CYLK, X = o.X, Z = o.Z, R = cr, Bottom = y0 - 2, Top = y0 + h * 0.9f });
-                if (o.Kind is "lung" or "stomach" or "liver") foreach (float sd in new[] { -1f, 1f })
-                {   // long organs: two more cores along their length
-                    float ca = MathF.Cos(-o.Ang), sa = MathF.Sin(-o.Ang), ox = o.Kind == "lung" ? 0 : sd * w * 0.5f, oz = o.Kind == "lung" ? sd * w * 0.6f : 0;
-                    AddStatic(new Static { Kind = CYLK, X = o.X + ox * ca - oz * sa, Z = o.Z + ox * sa + oz * ca, R = cr * 0.75f, Bottom = y0 - 2, Top = y0 + h * 0.8f });
+                var m = new Mesh(geo, mat) { Position = new Vector3(x, y, z), Scale = new Vector3(sx, sy, sz), CastShadow = true, ReceiveShadow = true }; m.SetEuler(rx, ry, rz); G.Add(m);
+                if (solid)
+                {   // collision shaped to the piece: its centre in the world, a dome as wide and tall as the piece (turned pieces use their largest size)
+                    float wx = o.X + x * ca0 + z * sa0, wz = o.Z - x * sa0 + z * ca0, wy = y0 - o.H * 0.55f + y;
+                    bool turned = MathF.Abs(rx) + MathF.Abs(rz) > 0.3f;
+                    float across = turned ? MathF.Max(sx, MathF.Max(sy, sz)) * 0.85f : MathF.Max(sx, sz), up = turned ? across : sy;
+                    SolidDome(wx, wy, wz, across, up, Gy(wx, wz));
                 }
+                return m;
             }
+            float w = o.W, h = o.H;
             void Solid(IList<float[]> pts, float rad)
             {   // the low parts of a vessel rising out of the floor get collision too
                 for (int q = 0; q < pts.Count; q++) { var p = pts[q]; float g = Gy(p[0], p[2]); if (p[1] - g < 3) AddStatic(new Static { Kind = CYLK, X = p[0], Z = p[2], R = rad + 0.2f, Bottom = g - 2, Top = p[1] + rad }); }
@@ -124,7 +121,7 @@ public sealed partial class World
             {
                 var m = Wet(0x6a1420, 90);
                 Piece(S, m, -w * 0.25f, h * 0.6f, 0, w * 0.75f, h * 0.8f, w * 0.5f, 0, 0, 0.15f); Piece(S, m, w * 0.45f, h * 0.45f, w * 0.1f, w * 0.45f, h * 0.6f, w * 0.35f, 0, 0, -0.2f);
-                Piece(S, Wet(0x4a6a20), w * 0.1f, h * 0.25f, w * 0.42f, w * 0.12f, h * 0.2f, w * 0.12f);   // gallbladder
+                Piece(S, Wet(0x4a6a20), w * 0.1f, h * 0.25f, w * 0.42f, w * 0.12f, h * 0.2f, w * 0.12f, solid: false);   // gallbladder
             }
             else if (o.Kind == "kidney")
             {
@@ -137,7 +134,7 @@ public sealed partial class World
             {
                 var m = Wet(0xe88a90);
                 Piece(S, m, 0, h * 0.6f, 0, w * 0.9f, h * 0.85f, w * 0.6f, 0, 0, 0.25f);
-                var fold = Matte(0xc0505c); for (int k = 0; k < 7; k++) Piece(S, fold, -w * 0.6f + k * w * 0.2f, h * 1.25f, 0, w * 0.06f, h * 0.12f, w * 0.5f);
+                var fold = Matte(0xc0505c); for (int k = 0; k < 7; k++) Piece(S, fold, -w * 0.6f + k * w * 0.2f, h * 1.25f, 0, w * 0.06f, h * 0.12f, w * 0.5f, solid: false);
                 ORG.anim.Add(new OrgAnim { kind = "churn", G = G, ph = o.Ph });
             }
             else
@@ -145,7 +142,7 @@ public sealed partial class World
                 var m = Matte(0xf0b8c4); var dk = Matte(0xd28a9a);
                 Piece(S, m, 0, h * 0.6f, 0, w * 0.8f, h * 0.8f, w * 0.6f);
                 var g2 = Geo.Sphere(1, 10, 8);
-                for (int k = 0; k < 70; k++) { float a = r() * 6.28f, e = r() * 1.2f; Piece(g2, k % 3 != 0 ? m : dk, MathF.Cos(a) * MathF.Cos(e) * w * 0.78f, h * 0.6f + MathF.Sin(e) * h * 0.78f, MathF.Sin(a) * MathF.Cos(e) * w * 0.58f, 1.2f + r() * 1.5f, 0.8f, 4 + r() * 4, r() * 3, a, 0); }
+                for (int k = 0; k < 70; k++) { float a = r() * 6.28f, e = r() * 1.2f; Piece(g2, k % 3 != 0 ? m : dk, MathF.Cos(a) * MathF.Cos(e) * w * 0.78f, h * 0.6f + MathF.Sin(e) * h * 0.78f, MathF.Sin(a) * MathF.Cos(e) * w * 0.58f, 1.2f + r() * 1.5f, 0.8f, 4 + r() * 4, r() * 3, a, 0, solid: false); }
                 ORG.anim.Add(new OrgAnim { kind = "throb", G = G, ph = o.Ph });
             }
         }
@@ -154,7 +151,7 @@ public sealed partial class World
         foreach (var g in LAYOUT.Guts)
         {
             var pts = g.Pts.Select(p => new[] { p.x, Gy(p.x, p.z) - g.R * 0.6f, p.z }).ToList();
-            Tube(pts, g.R, gutMat, pts.Count * 8);
+            Tube(pts, g.R, gutMat, pts.Count * 8, solid: false);   // (the terrain already rises over the intestines)
             var tg = Geo.Torus(g.R * 1.01f, 0.25f, 6, 18);
             for (int i = 0; i < pts.Count - 1; i++)
             {
@@ -167,8 +164,8 @@ public sealed partial class World
         ORG.veinMats.Add((artMat, artMat.Emissive)); ORG.veinMats.Add((venMat, venMat.Emissive));
         void Vein(float x, float z, float a, int len, float rad, Material mat, int depth)
         {
-            var pts = new List<float[]>(); for (int k = 0; k <= len; k++) { pts.Add(new[] { x, Gy(x, z) - rad * 0.45f, z }); a += (r() - 0.5f) * 0.7f; x += MathF.Cos(a) * 4; z += MathF.Sin(a) * 4; }
-            if (pts.Count > 2) Tube(pts, rad, mat, pts.Count * 4);
+            var pts = new List<float[]>(); for (int k = 0; k <= len; k++) { pts.Add(new[] { x, Gy(x, z) - rad * 0.78f, z }); /* sunk nearly flush: ground markings you walk over */ a += (r() - 0.5f) * 0.7f; x += MathF.Cos(a) * 4; z += MathF.Sin(a) * 4; }
+            if (pts.Count > 2) Tube(pts, rad, mat, pts.Count * 4, solid: false);
             if (depth < 2) for (int b = 0; b < 2; b++) { int k = 2 + (int)MathF.Floor(r() * (len - 2)); if (k < pts.Count) Vein(pts[k][0], pts[k][2], a + (r() < 0.5f ? 1 : -1) * (0.6f + r() * 0.6f), Math.Max(3, len >> 1), rad * 0.6f, mat, depth + 1); }
         }
         for (int i = 0; i < (arena ? 8 : 26); i++) Vein((r() * 2 - 1) * LIM * 0.9f, (r() * 2 - 1) * LIM * 0.9f, r() * 6.28f, 8 + (int)MathF.Floor(r() * 10), 0.45f + r() * 0.4f, i % 2 != 0 ? artMat : venMat, 0);
@@ -177,7 +174,6 @@ public sealed partial class World
             float x = (r() * 2 - 1) * LIM * 0.85f, z = (r() * 2 - 1) * LIM * 0.85f; if (PADS.Any(p => Hypot(x - p.X, z - p.Z) < p.R + 6)) continue;
             float top = RoofY(x, z), y0 = Gy(x, z), rad = 0.7f + r() * 0.9f, sw = 4 + r() * 6, a = r() * 6.28f;
             Tube(new[] { new[] { x, y0 - 1, z }, new[] { x + MathF.Cos(a) * sw * 0.3f, y0 + (top - y0) * 0.3f, z + MathF.Sin(a) * sw * 0.3f }, new[] { x + MathF.Cos(a) * sw, y0 + (top - y0) * 0.7f, z + MathF.Sin(a) * sw }, new[] { x + MathF.Cos(a) * sw * 1.4f, top + 2, z + MathF.Sin(a) * sw * 1.4f } }, rad, i % 2 != 0 ? artMat : venMat, 40);
-            AddStatic(new Static { Kind = CYLK, X = x, Z = z, R = rad + 0.2f, Bottom = y0 - 2, Top = y0 + 12 });
         }
         // mucus strands hanging from the roof
         // (the mucus strands that hung from the roof are gone: they passed through everything)
@@ -192,21 +188,23 @@ public sealed partial class World
             for (int k = 0; k < 4; k++) { var mm = new Mesh(s8, mito) { Scale = new Vector3(c.r * 0.08f, c.r * 0.08f, c.r * 0.22f), Position = new Vector3((r() - 0.5f) * c.r * 1.1f, (r() - 0.3f) * c.h * 0.8f, (r() - 0.5f) * c.r * 1.1f) }; mm.SetEuler(r() * 3, r() * 3, 0); G.Add(mm); }
             ORG.anim.Add(new OrgAnim { kind = "cell", G = G, ph = c.ph });
         }
-        // ---- loose bones: a shaft with knuckled ends
-        foreach (var b in BONES)
+        // ---- cysts: glossy domes swelling out of the floor, with a few glowing pores
         {
-            var G = new Node { Position = new Vector3(b.x, b.y, b.z) }; G.SetEuler(0, -b.a, 0); scene.Add(G);
-            var sh = new Mesh(Geo.Cylinder(b.r * 0.8f, b.r * 0.8f, b.L, 10), boneMat) { CastShadow = true, ReceiveShadow = true }; sh.SetEuler(0, 0, PI / 2); G.Add(sh);
-            var kg = Geo.Sphere(b.r * 1.15f, 12, 8);
-            foreach (float s in new[] { -1f, 1f }) foreach (float t in new[] { -1f, 1f }) G.Add(new Mesh(kg, boneMat) { Position = new Vector3(s * b.L / 2, 0, t * b.r * 0.6f), CastShadow = true, ReceiveShadow = true });
+            var cystMat = Wet(0xd86a8a, 90, 0x8a4a5a); var poreMat = BasicM(0xffd0a0); var s20 = Geo.Sphere(1, 20, 12);
+            foreach (var c in CYSTS)
+            {
+                var G = new Node { Position = new Vector3(c.x, c.y, c.z) }; scene.Add(G);
+                G.Add(new Mesh(s20, cystMat) { Scale = new Vector3(c.r, c.h, c.r), CastShadow = true, ReceiveShadow = true });
+                for (int k = 0; k < 4; k++) { float a = c.ph + k * 1.7f, e = 0.35f + (k % 2) * 0.3f; G.Add(new Mesh(s8, poreMat) { Scale = new Vector3(c.r * 0.07f), Position = new Vector3(MathF.Cos(a) * MathF.Cos(e) * c.r, MathF.Sin(e) * c.h, MathF.Sin(a) * MathF.Cos(e) * c.r) }); }
+            }
         }
         // ---- acid in the stomach pits: a glowing surface that heaves, bubbles, and burns
         var acidMat = new Material { Kind = MatKind.Phong, Color = C(0x9aff3a), Emissive = C(0x3a7a00), Transparent = true, Opacity = 0.75f, Shininess = 120, DepthWrite = false };
         foreach (var d in CRATERS)
             if (d.Acid)
             {
-                float level = Gy(d.X, d.Z) + d.D * 0.45f; var m = new Mesh(Geo.Circle(d.R + 2, 40), acidMat) { Position = new Vector3(d.X, level, d.Z), RenderOrder = 1 }; m.SetEuler(-PI / 2, 0, 0); scene.Add(m);
-                ORG.acid.Add(new AcidPool { d = d, level = level, m = m });
+                var P = MakePool(d, acidMat);   // a simulated surface that sits inside the pit (see World.Fluids)
+                if (P != null) ORG.acid.Add(new AcidPool { d = d, level = P.level, m = P.mesh });
             }
         // blood in the artery trench
         foreach (var ch in CHANNELS)
@@ -225,18 +223,14 @@ public sealed partial class World
             }
         // ---- villi: soft fingers carpeting the floor in patches, swaying in the current
         {
-            var fg = MergeGeo((Geo.Cylinder(0.16f, 0.24f, 1, 6), Mtx(0, 0.5f, 0, 1, 1, 1)), (Geo.Sphere(0.2f, 8, 6), Mtx(0, 1, 0, 1, 1, 1)));
-            var vm = Matte(0xff8aa0); vm.Shader = "villi"; vm.UArr = new Vector4[8]; for (int k = 0; k < 4; k++) vm.UArr[k] = new Vector4(0, -999, 0, 0);
-            ORG.villiMat = vm;
+            var vm = Matte(0xff8aa0);
             var list = new List<float[]>();
             for (int p = 0; p < (arena ? 14 : 60); p++)
             {
                 float cx = (r() * 2 - 1) * LIM * 0.9f, cz = (r() * 2 - 1) * LIM * 0.9f; if (PADS.Any(q => Hypot(cx - q.X, cz - q.Z) < q.R + 4)) continue;
                 for (int k = 0; k < 60; k++) { float a = r() * 6.28f, d = MathF.Sqrt(r()) * 9, x = cx + MathF.Cos(a) * d, z = cz + MathF.Sin(a) * d; if (InsideStatic(x, z, Gy(x, z), 0.3f)) continue; list.Add(new[] { x, Gy(x, z) - 0.1f, z, 0.8f + r() * 1.4f, r() * 6 }); }
             }
-            var im = new InstancedMesh(fg, vm, Math.Max(1, list.Count)) { ReceiveShadow = true };
-            for (int i = 0; i < list.Count; i++) { var e = list[i]; im.Matrices[i] = Mtx(e[0], e[1], e[2], e[3] * 0.9f, e[3] * 1.6f, e[3] * 0.9f, (r() - 0.5f) * 0.3f, e[4], (r() - 0.5f) * 0.3f); }
-            im.Count = list.Count; im.Touch(); scene.Add(im); ORG.villi = im; ORG.villiN = list.Count;
+            BuildVilli(list, vm); ORG.villi = VF.lower; ORG.villiN = list.Count;   // simulated: see World.Villi
         }
         // glowing nodules dotting the floor
         {
@@ -270,7 +264,7 @@ public sealed partial class World
         if (!ORG.built) return;
         int d = SET.decor;
         foreach (var F in ORG.floaters) { F.im.Visible = d > 0; F.im.Count = d >= 2 ? F.L.Count : (F.L.Count + 1) / 2; }
-        if (ORG.villi != null) { ORG.villi.Visible = d > 0; ORG.villi.Count = d >= 2 ? ORG.villiN : (ORG.villiN + 1) / 2; }
+        if (VF != null) { VF.lower.Visible = VF.upper.Visible = d > 0; VF.lower.Count = VF.upper.Count = d >= 2 ? ORG.villiN : (ORG.villiN + 1) / 2; }
         if (ORG.nodules != null) ORG.nodules.Visible = d > 0;
     }
     // ---- per frame: beats, breaths, currents
@@ -297,7 +291,7 @@ public sealed partial class World
         }
         float pulse = 0.5f + 0.5f * Beat(t * 1.1f);
         foreach (var (m, e) in ORG.veinMats) m.Emissive = e * (0.4f + 0.9f * pulse);
-        foreach (var A in ORG.acid) { A.m.Position = new Vector3(A.d.X, A.level + 0.15f * MathF.Sin(t * 1.4f + A.d.X), A.d.Z); A.m.SetEuler(-PI / 2, 0, t * 0.05f); }
+        if (fdt > 0) { UpdatePoolMeshes(t); UpdateFluidMeshes(t); }
         // the drifters (only those near the camera are moved; the rest keep their last place)
         float cx = camPos.X, cz = camPos.Z, LIM = ORG.LIM;
         // who's pushing through the decor: the camera (so nothing ever sits in your face), you, and the fighters nearest you
@@ -309,10 +303,8 @@ public sealed partial class World
             foreach (var A in actors) { var G = A.P; if (!G.alive || A.dormant || A.hidden) continue; float d = MathF.Abs(G.x - me.x) + MathF.Abs(G.z - me.z); if (d < 40) near.Add((d, A)); }
             near.Sort((p, q) => p.Item1.CompareTo(q.Item1));
             for (int k = 0; k < Math.Min(6, near.Count); k++) { var G = near[k].Item2.P; float rr = (G.vehicle != null ? 2.4f : 1) * MathF.Max(0.8f, G.R * 1.6f); PU.Add(new[] { G.x, G.y + G.H * 0.5f, G.z, rr, Hypot(G.vx, G.vz) }); }
-            var vp = ORG.villiMat?.UArr;
-            if (vp != null) for (int k = 0; k < 4; k++) { var p = k + 1 < PU.Count ? PU[k + 1] : null; vp[k] = p != null ? new Vector4(p[0], p[1] - p[3] * 0.4f - 0.3f, p[2], 2.2f + p[3] * 0.9f) : new Vector4(0, -999, 0, 0); }
         }
-        if (ORG.villiMat != null) ORG.villiMat.U0 = new Vector4(t, 0, 0, 0);
+        StepVilli(t, fdt, camPos);
         float fd = MathF.Min(fdt, 1 / 20f); var E = new Q4();
         foreach (var F in ORG.floaters)
         {
@@ -383,6 +375,7 @@ public sealed partial class World
     float acidTick;
     void StepOrganic(float dt)
     {
+        StepFluids(dt);
         if (!ORG.built) return;
         acidTick -= dt; bool tick = acidTick <= 0; if (tick) acidTick = 0.4f;
         foreach (var A in ORG.acid)
@@ -392,7 +385,7 @@ public sealed partial class World
             foreach (var B in actors.ToArray())
             {
                 var G = B.P; if (!G.alive || B.dormant || B.hidden) continue;
-                if (Hypot(G.x - A.d.X, G.z - A.d.Z) < A.d.R && G.y < A.level + 0.25f) { DamageActor(B, B.team == "hero" ? 7 : 14, new Dmg { kind = "blast" }); if (B.human) ShowHint("ACID! GET OUT"); }
+                if (PoolAt(G.x, G.z, G.y, 0.25f) != null && Hypot(G.x - A.d.X, G.z - A.d.Z) < A.d.R + 12) { DamageActor(B, B.team == "hero" ? 7 : 14, new Dmg { kind = "blast" }); if (B.human) ShowHint("ACID! GET OUT"); }
             }
         }
     }

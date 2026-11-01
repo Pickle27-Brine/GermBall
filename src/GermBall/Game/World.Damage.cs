@@ -52,6 +52,8 @@ public sealed partial class World
         if (src != null && src != B && src.team == B.team && (kind == "bullet" || kind == "melee")) return 0;
         // knockback happens whatever the damage
         if (o.knock != 0) { float l = Hypot(o.fx, o.fz); if (l == 0) l = 1; G.vx += o.fx / l * o.knock; G.vz += o.fz / l * o.knock; if (o.up != 0) { G.vy = MathF.Max(G.vy, o.up); G.ground = false; } }
+        // germs bleed where they're hit
+        if (B.team != "hero" && !G.rolling) { float hx = o.hasHit ? o.hx : G.x, hy = o.hasHit ? o.hy : G.y + G.H * 0.6f, hz = o.hasHit ? o.hz : G.z; Bleed(B, hx, hy, hz, (int)Clamp(dmg / 5, 1, kind == "blast" ? 12 : 6), o.fx, o.fz, kind == "blast" ? 6 : 3); }
         if (B.team == "hero") { if (src == null || src.team != "hero") dmg *= ENEMY_DMG * SET.dmgTaken; if (G.guardT > 0 && kind == "melee") dmg *= 0.5f; }
         else if (src != null && src.team == "hero") dmg *= 2 * SET.dmgDealt;
         if (G.rolling)
@@ -123,7 +125,7 @@ public sealed partial class World
         PosePartsNow(B);
         foreach (var i in chain) { BlowPieces(B, i, o, 1.2f); SpawnDebris(B, i, o, 1); B.has[i] = false; }
         var G = B.P; Sfx("sever", G.x, G.y + 1, G.z);
-        if (B.poseT >= 0) { int k = p * 13; GooBurst(B.pose[k], B.pose[k + 1], B.pose[k + 2]); }
+        if (B.poseT >= 0) { int k = p * 13; GooBurst(B.pose[k], B.pose[k + 1], B.pose[k + 2]); Bleed(B, B.pose[k], B.pose[k + 1], B.pose[k + 2], 16, o.fx, o.fz, 4); }
         for (int i = 0; i < 6; i++) Puff(G.x, G.y + G.H * 0.6f, G.z, 3, 2, 0.08f);
         if (ArmsOf(B) == 0 || (!B.has[PART.handR] && !B.has[PART.handL])) DropHeld(B);
         if (B.human && PART_NAMES.TryGetValue(p, out var nm)) ShowHint("LOST " + nm);
@@ -137,6 +139,7 @@ public sealed partial class World
         if (B.pilot) UnboardMecha(B, true);
         PosePartsNow(B);
         G.alive = false; G.deadT = 0; DropHeld(B); if (G.vehicle != null) Dismount(B, true);
+        Bleed(B, G.x, G.y + G.H * 0.5f, G.z, 24, o.fx, o.fz, 4.5f);   // a burst of fluid as it goes
         foreach (var pc in B.armor) if (pc.hp > 0) PopArmor(B, pc, o, 2);
         if (G.grabbed != null) { var H = G.grabbed; if (H.P.holdA == B) H.P.holdA = null; G.grabbed = null; }
         for (int i = 0; i < NPART; i++) if (B.has[i]) { BlowPieces(B, i, o, 2); SpawnDebris(B, i, o, 2.2f, true); B.has[i] = false; }

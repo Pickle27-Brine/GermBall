@@ -184,6 +184,26 @@ public static class Shots
             world.camera.Near = near0;
             world.SetFreeCam(false);
         }
+        if (Want("fluids"))
+        {   // the acid pool's surface after a splash, and germs bleeding beside it
+            var world = new World(new BootConfig { Mode = "waves", Map = "bowl", Seed = 7, Custom = GermDraw.DefaultCustom() }, new Settings { res = 0, density = 1 }, World.DefaultBinds());
+            var gs = new GameScreen(app, world); world.playing = true;
+            for (int i = 0; i < 10; i++) Frame(gs);
+            var pools = (System.Collections.IList)typeof(World).GetField("POOLS", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(world);
+            Console.WriteLine($"fluids: {pools.Count} pool(s)");
+            var craters = (List<Crater>)typeof(World).GetField("CRATERS", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(world);
+            var crater = craters.FirstOrDefault(c => c.Acid);
+            float px = crater?.X ?? 0, pz = crater?.Z ?? 0, gy = world.TerrainH(px, pz);
+            world.Splash(px, pz, gy + 2, 6, 3); world.Splash(px + 5, pz + 3, gy + 2, 4, 2);
+            world.DebugEnemy("squad");
+            int hit = 0;
+            foreach (var A in world.actors) if (A.team == "enemy" && A.P.alive && hit < 6) { A.P.x = px + 12 + hit * 1.5f; A.P.z = pz + 6; A.P.y = world.GroundY(A.P.x, A.P.z); world.DamageActor(A, 30, new Dmg { kind = "blast" }); hit++; }
+            for (int i = 0; i < 40; i++) Frame(gs);
+            world.SetFreeCam(true); world.FREECAM.x = px + 22; world.FREECAM.z = pz + 22; world.FREECAM.y = gy + 12; world.FREECAM.yaw = MathF.Atan2(22, 22); world.FREECAM.pitch = -0.45f; world.FREECAM.fov = 60;
+            for (int i = 0; i < 6; i++) Frame(gs);
+            Frame(gs, name: "fluids");
+            world.SetFreeCam(false);
+        }
         if (Want("cast")) { Lineup.Run(sr, Path.Combine(dir, "cast-raw.png"), false, 18, false); }
         if (Want("heroes"))
             foreach (var k in MedDraw.PRESETS.Keys)
