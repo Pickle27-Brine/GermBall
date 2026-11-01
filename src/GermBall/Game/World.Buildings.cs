@@ -369,7 +369,7 @@ public sealed partial class World
             {
                 var T = new Place { x = p.X, z = p.Z, r = R2, y = y, name = p.Name };
                 // a loose grid of blocks with 7 m streets
-                bool small = R2 < 30; float cell = small ? 16 : R2 > 50 ? 28 : 26, bk = small ? 0.62f : 1; int nb0 = BLDG.Count;
+                bool small = R2 < 30; float cell = small ? 15 : R2 > 50 ? 28 : 26, bk = small ? 0.62f : 1; int nb0 = BLDG.Count;
                 int span = Math.Max(1, (int)MathF.Floor((R2 - (small ? 4 : 6)) / cell));
                 var plaza = PADS.FirstOrDefault(q => q != p && q.Kind == "base" && Hypot(q.X - p.X, q.Z - p.Z) < R2);   // a base inside the town keeps its square clear
                 for (int gi = -span; gi <= span; gi++) for (int gj = -span; gj <= span; gj++)

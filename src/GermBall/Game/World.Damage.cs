@@ -20,6 +20,8 @@ public sealed class Chip { public V3 pos, pp, vel, w, ell; public Q4 q, pq; publ
 
 public sealed partial class Actor
 {
+    /// <summary>Jump dashes landed on this germ recently, and when the last one landed.</summary>
+    public int dashHits; public float dashHitT = -99;
     public string lastHurtKind; public Actor lastTarget; public float lastTargetT; public bool[] lost; public Actor pilotBy, mech; public bool pilot => pilotBy != null;
     public Body lastProp; public float lastPropT;
     public float hitByVeh; public bool hidden; public float needleT; public Actor needleSrc; public float flatMax, animFlatT, animFlatMax, animSwingDur; public string animSwingStyle; public bool animSwingFin;
@@ -357,15 +359,23 @@ public sealed partial class World
                     Sfx("slam", Vp.x, Vp.y + 1, Vp.z, 1); if (victim.human) cam.shake = MathF.Max(cam.shake, 0.6f);
                     return;
                 }
-                bool homingHit = H.homingT > 0 && H.homeTgt == victim;
-                if (homingHit)
-                {   // the homing strike: small germs burst outright, everything else takes a heavy hit and can't counter
-                    if (victim.type == "small" || victim.type == "assassin" || (TYPES[victim.type].Fragile)) KillActor(victim, new Dmg { src = hitter, fx = nx * dir * speed * 1.5f, fz = nz * dir * speed * 1.5f });
-                    else
+                bool homingHit = H.homingT > 0 && H.homeTgt == victim, airDash = !H.ground && H.dashT > 0 && hitter.team == "hero";
+                if (homingHit || airDash)
+                {   // a jump dash: it takes one to throw a coccus, bacillus or spirillum into a ragdoll, two for a brute, four for the giants.
+                    // Hits short of that stagger them (and can't be countered); the count runs out if you don't follow up
+                    var VG = victim.P; int need = victim.isBoss || TYPES[victim.type].Big || victim.type == "mech" ? 4 : victim.type == "brute" ? 2 : 1;
+                    if (clockT - victim.dashHitT > 8) victim.dashHits = 0;
+                    victim.dashHits++; victim.dashHitT = clockT;
+                    float dmgK = homingHit ? 1 : 0.6f;
+                    DamageActor(victim, (need >= 4 ? 30 : need == 2 ? 40 : 45) * dmgK * MathF.Max(1, speed / 25), new Dmg { src = hitter, kind = "melee", fx = nx * dir, fz = nz * dir, knock = big ? 3 : 6, up = 3 });
+                    if (VG.alive && victim.dashHits >= need)
                     {
-                        DamageActor(victim, (victim.type == "brute" ? 55 : victim.type == "mech" ? 40 : 70) * MathF.Max(1, speed / 25), new Dmg { src = hitter, kind = "melee", fx = nx * dir, fz = nz * dir, knock = big ? 3 : 6, up = 3 });
-                        if (victim.P.alive) Knockdown(victim, big ? 0.9f : 1.3f, nx * dir * speed * (big ? 0.25f : 0.6f), 5, nz * dir * speed * (big ? 0.25f : 0.6f));
+                        victim.dashHits = 0;
+                        float fling = need >= 4 ? 0.35f : need == 2 ? 0.55f : 0.8f;
+                        StartRagdoll(victim, nx * dir * speed * fling, 6 + speed * 0.12f, nz * dir * speed * fling, need >= 4 ? 2.2f : 1.6f);
+                        if (hitter.human && need > 1) ShowHint(need >= 4 ? "THE GIANT GOES DOWN" : "BRUTE FLOORED");
                     }
+                    else if (VG.alive) { VG.stunT = MathF.Max(VG.stunT, need >= 4 ? 0.35f : 0.6f); if (hitter.human && need > 1) ShowHint($"DASH {victim.dashHits}/{need}"); }
                     // bounce off upward so you can chain into the next target
                     H.vx = -nx * dir * 4; H.vz = -nz * dir * 4; H.vy = 11; H.homingT = 0; H.homeTgt = null; H.dashUsed = false; H.stunT = 0;
                     Sfx("supercombine", Vp.x, Vp.y + 1, Vp.z, 1); if (hitter.human) { Rumble(1, 1, 220); cam.shake = MathF.Max(cam.shake, 0.45f); HITSTOP = MathF.Max(HITSTOP, 0.06f); }

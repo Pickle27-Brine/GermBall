@@ -130,11 +130,11 @@ public sealed partial class World
         string[] all = { "small", "normal", "hero", "ally", "ally2", "ally3", "assassin" };
         var t = new Dictionary<string, ActorType>
         {
-            ["hero"] = new() { S = 1.05f, F = 1.32f, Km = 1, Hp = 1, Carry = 170, LiftMen = new[] { "small", "assassin" }, Label = "you" },
+            ["hero"] = new() { S = 0.93f, F = 1.32f, Km = 1, Hp = 1, Carry = 170, LiftMen = new[] { "small", "assassin" }, Label = "you" },
             // the companions: Volt the marksman (tall and lean), Brick the tank (wide and heavy), Wisp the scout (small and quick)
-            ["ally"] = new() { S = 1.1f, F = 1.1f, Km = 1, Hp = 1, Carry = 170, LiftMen = new[] { "small", "assassin" }, Label = "Volt" },
-            ["ally2"] = new() { S = 1.2f, F = 1.85f, Km = 0.92f, Hp = 1.5f, Carry = 900, LiftMen = new[] { "small", "assassin", "normal" }, Label = "Brick" },
-            ["ally3"] = new() { S = 0.94f, F = 0.92f, Km = 1.14f, Hp = 0.8f, Carry = 120, LiftMen = new[] { "small" }, Label = "Wisp" },
+            ["ally"] = new() { S = 0.97f, F = 1.1f, Km = 1, Hp = 1, Carry = 170, LiftMen = new[] { "small", "assassin" }, Label = "Volt" },
+            ["ally2"] = new() { S = 1.06f, F = 1.85f, Km = 0.92f, Hp = 1.5f, Carry = 900, LiftMen = new[] { "small", "assassin", "normal" }, Label = "Brick" },
+            ["ally3"] = new() { S = 0.84f, F = 0.92f, Km = 1.14f, Hp = 0.8f, Carry = 120, LiftMen = new[] { "small" }, Label = "Wisp" },
             ["small"] = new() { S = 0.92f, F = 1.7f, Km = 0.8f, Hp = 0.45f, Carry = 50, LiftMen = Array.Empty<string>(), Label = "coccus" },
             ["normal"] = new() { S = 1.2f, F = 1.36f, Km = 0.74f, Hp = 1, Carry = 170, LiftMen = new[] { "small", "assassin" }, Label = "bacillus trooper" },
             ["brute"] = new() { S = 1.68f, F = 1.55f, Km = 0.62f, Hp = 3.2f, Carry = 2600, LiftMen = all, Label = "amoeba brute" },
@@ -276,8 +276,8 @@ public sealed partial class World
             }
         }
         if (LAYOUT.Bowl != null)
-        {   // wave arenas: a soft wall a little way up the basin
-            float d = Hypot(P.x, P.z), R2 = LAYOUT.Bowl.R + 16;
+        {   // wave arenas: the cell membrane at the foot of the basin wall keeps the fight on the floor
+            float d = Hypot(P.x, P.z), R2 = ArenaR;
             if (d > R2) { P.x *= R2 / d; P.z *= R2 / d; float vn = (P.vx * P.x + P.vz * P.z) / (R2 * R2); if (vn > 0) { P.vx -= vn * P.x * 1.3f; P.vz -= vn * P.z * 1.3f; } }
         }
         float lim = HALF - 30;

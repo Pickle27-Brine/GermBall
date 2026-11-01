@@ -28,7 +28,7 @@ public sealed partial class World
         InitPropMats();
         BuildLayout(); BuildNerves(); Mark("buildings");
         PlaceProps();
-        BuildLeviathan(); Mark("leviathan");
+        BuildLeviathan(); BuildMembrane(); Mark("leviathan");
         InitSprites();
         InitWaves();
         BuildGerms(); InitDrawLists(); InitReticles(); Mark("germs");

@@ -230,7 +230,7 @@ public sealed partial class World
     {
         sens *= SET.sens; if (SET.invertY) dy = -dy;
         if (FREECAM.on) { float k = FREECAM.fov / 70; FREECAM.yaw -= dx * sens * k; FREECAM.pitch = Clamp(FREECAM.pitch - dy * sens * k, -1.5f, 1.5f); return; }
-        sens *= Lerp(1, SET.adsSens, cam.ads); cam.yaw -= dx * sens; cam.pitch = Clamp(cam.pitch + dy * sens, PitchMin, PitchMax); cam.lastLook = clockT;
+        sens *= Lerp(1, SET.adsSens * AimProfOf(ME).MouseAds / 0.75f, cam.ads); cam.yaw -= dx * sens; cam.pitch = Clamp(cam.pitch + dy * sens, PitchMin, PitchMax); cam.lastLook = clockT;
     }
 
     // =====================================================================
@@ -580,12 +580,13 @@ public sealed partial class World
     {
         assistOn = false;
         if (!padActive || !AIM.ok || !P.alive) return;
-        float cone = cam.ads > 0.5f ? 0.13f : 0.09f, ba = cone; float bx = 0, by = 0, bz = 0; bool found = false;
+        var ap = AimProfOf(ME);
+        float cone = cam.ads > 0.5f ? ap.ConeAds : ap.Cone, ba = cone; float bx = 0, by = 0, bz = 0; bool found = false;
         foreach (var B in actors)
         {
             if (B.team == "hero" || !B.P.alive || B.dormant) continue;
             var G = B.P; float dx = G.x - AIM.px, dy = G.y + G.H * 0.6f - AIM.py, dz = G.z - AIM.pz, d = Hypot(dx, dy, dz);
-            if (d > 85 || d < 2) continue;
+            if (d > ap.Range || d < 1.2f) continue;
             float a = MathF.Acos(Clamp((dx * AIM.fx + dy * AIM.fy + dz * AIM.fz) / d, -1, 1)) - MathF.Atan2(G.R, d);
             if (a < ba) { ba = a; bx = dx / d; by = dy / d; bz = dz / d; found = true; }
         }
@@ -593,7 +594,7 @@ public sealed partial class World
         assistOn = true;
         bool engaged = pad.rt > 0.3f || pad.lt > 0.4f || Hypot(pad.lx, pad.ly) > 0.2f || Hypot(pad.rx, pad.ry) > 0.1f;
         if (!engaged) return;
-        float k = MathF.Min(1, fdt * (cam.ads > 0.5f ? 3.2f : 2.2f)) * 0.45f;
+        float k = MathF.Min(1, fdt * (cam.ads > 0.5f ? 3.2f : 2.2f)) * ap.Pull;
         float wantYaw = MathF.Atan2(-bx, -bz), curYaw = MathF.Atan2(-AIM.fx, -AIM.fz);
         cam.yaw += WrapAngle(wantYaw - curYaw) * k;
         cam.pitch = Clamp(cam.pitch - (MathF.Asin(Clamp(by, -1, 1)) - MathF.Asin(Clamp(AIM.fy, -1, 1))) * k, PitchMin, PitchMax);
@@ -607,12 +608,17 @@ public sealed partial class World
         if (PadHit("back")) BackToBase();
         if (PadHit("y")) CycleWeapon(ME, 1);
         if (PadHit("rs")) { cam.yaw = P.facing; cam.pitch = SET.fp ? 0 : 0.3f; }
+        var ap = AimProfOf(ME);
         if (pad.rx != 0 || pad.ry != 0)
         {
-            float cx = MathF.Sign(pad.rx) * MathF.Pow(MathF.Abs(pad.rx), 1.5f), cy = MathF.Sign(pad.ry) * MathF.Pow(MathF.Abs(pad.ry), 1.5f);
-            float ks = Lerp(1, SET.adsSens * 0.9f, cam.ads) * (assistOn ? 0.62f : 1) * SET.padSens;
-            cam.yaw -= cx * 3.2f * ks * fdt; cam.pitch = Clamp(cam.pitch + cy * 2.0f * ks * fdt * (SET.invertY ? -1 : 1), PitchMin, PitchMax); cam.lastLook = clockT;
+            float cx = MathF.Sign(pad.rx) * MathF.Pow(MathF.Abs(pad.rx), ap.Curve), cy = MathF.Sign(pad.ry) * MathF.Pow(MathF.Abs(pad.ry), ap.Curve);
+            // a stick held hard over ramps the turn up after a moment (for whipping round), a gentle stick stays precise
+            stickPinnedT = Hypot(pad.rx, pad.ry) > 0.95f ? stickPinnedT + fdt : 0;
+            float ramp = 1 + (ap.Ramp - 1) * Clamp((stickPinnedT - 0.2f) / 0.35f, 0, 1) * (1 - cam.ads);
+            float ks = Lerp(1, SET.adsSens * ap.Ads / 0.7f * 0.9f, cam.ads) * (assistOn ? ap.Slow : 1) * SET.padSens * ramp;
+            cam.yaw -= cx * ap.Turn * ks * fdt; cam.pitch = Clamp(cam.pitch + cy * ap.Turn * 0.62f * ks * fdt * (SET.invertY ? -1 : 1), PitchMin, PitchMax); cam.lastLook = clockT;
         }
+        else stickPinnedT = 0;
         PadAimAssist(fdt);
     }
 

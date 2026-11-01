@@ -17,17 +17,8 @@ namespace GermBall.UI;
 public sealed class TitleScreen : IScreen
 {
     sealed class BootPrefs { public string smap = "random", wmap = "bowl", seed = ""; }
-    static readonly (string key, string name, string blurb)[] SMAPS =
-    {
-        ("random", "Random world", "Generated from a seed: terrain, cell towns, camps, canyons"),
-        ("classic", "Classic range", "The original hand-laid map"),
-        ("leviathan", "Inside the leviathan", "The guts of something enormous and alive"),
-    };
-    static readonly (string key, string name, string blurb)[] WMAPS =
-    {
-        ("bowl", "Spore Bowl", "A glowing basin ringed by four ruined cell hamlets"), ("city", "Glass City", "Dense cell towers and alleys; fights round corners"),
-        ("spires", "Spire Garden", "Needle peaks, two old forts and a canyon"), ("gut", "The Gullet", "A stomach chamber round an acid pit"),
-    };
+    static readonly (string key, string name, string blurb)[] SMAPS = World.SANDBOX_MAPS;
+    static readonly (string key, string name, string blurb)[] WMAPS = World.WAVE_MAPS;
 
     readonly App app; readonly Gui gui = new(); readonly BootPrefs boot;
     string loading = ""; Task<World> building; bool seedFocus; bool lopezFlip; float lopezK; float T;

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GermBall.Core;
+using GermBall.Render;
 using static GermBall.Core.M;
 
 namespace GermBall.Game;
@@ -41,13 +42,6 @@ public sealed partial class World
 {
     public const float HALF = 360; public const int SEG = 240; public const float CELL = HALF * 2 / SEG; public const int N = SEG + 1;
     public readonly BootConfig CFG;
-    public static readonly (string key, string name, string blurb)[] WAVE_MAPS =
-    {
-        ("bowl", "SPORE BOWL", "A glowing basin ringed by four ruined hamlets. Nowhere to hide for long."),
-        ("city", "GLASS CITY", "A dense grid of towers and alleys. Fights happen around corners."),
-        ("spires", "SPIRE GARDEN", "Needle peaks, two abandoned forts and a canyon cutting through."),
-        ("gut", "THE GULLET", "A churning stomach chamber inside the leviathan: an acid pit in the middle, ribs arching overhead, cells drifting past."),
-    };
 
     Layout LAYOUT; List<Pad> PADS; List<Crater> CRATERS; Mogul MOG; Pad HOMEPAD; float SPAWNX, SPAWNZ; List<Channel> CHANNELS;
 
@@ -122,6 +116,22 @@ public sealed partial class World
         return new Gut { Pts = pts, R = 3 + r() * 1.2f, MinX = minX - 6, MaxX = maxX + 6, MinZ = minZ - 6, MaxZ = maxZ + 6 };
     }
 
+    // the maps: every one is a place inside a host body
+    public static readonly (string key, string name, string blurb)[] SANDBOX_MAPS =
+    {
+        ("random", "Bloodstream", "Grown from a seed: a living host with cell colonies, biofilm camps and vessel trenches"),
+        ("classic", "Host Zero", "The original hand-laid host: a clinic, colonies and four biofilm camps"),
+        ("leviathan", "Belly of the Beast", "Swallowed whole: organs, coiled gut and acid pits under a dome of flesh"),
+    };
+    public static readonly (string key, string name, string blurb)[] WAVE_MAPS =
+    {
+        ("bowl", "Lymph Node", "A glowing node ringed by four cell clusters; nowhere to hide for long"),
+        ("city", "Neural Cortex", "Dense neuron towers wired by nerves; fights round corners and through rooms"),
+        ("spires", "Villus Ridge", "Needle villi, two biofilm forts and a vessel trench"),
+        ("gut", "The Gullet", "A stomach chamber round an acid pit"),
+    };
+    public static string MapName(string key) { foreach (var m in SANDBOX_MAPS) if (m.key == key) return m.name; foreach (var m in WAVE_MAPS) if (m.key == key) return m.name; return key; }
+
     static Layout MakeLayout(BootConfig cfg)
     {
         var L = new Layout();
@@ -176,7 +186,7 @@ public sealed partial class World
         {
             PadA(0, 0, 17, 8, "base", "HOME BASE", 14);
             string[] dir = { "NORTH", "EAST", "SOUTH", "WEST" };
-            for (int i = 0; i < 4; i++) { float a = i / 4f * 6.28f + 0.6f; PadA(MathF.Cos(a) * 44, MathF.Sin(a) * 44, 15, 7 + i * 0.5f, "town", dir[i] + " HAMLET", 12); }
+            for (int i = 0; i < 4; i++) { float a = i / 4f * 6.28f + 0.6f; PadA(MathF.Cos(a) * 46, MathF.Sin(a) * 46, 19, 7 + i * 0.5f, "town", dir[i] + " CLUSTER", 12); }
             L.Craters = new() { new() { X = 30, Z = -24, R = 7, D = 3 }, new() { X = -32, Z = 26, R = 8, D = 3 } };
             L.Bowl = new Bowl { R = 74, H = 34 }; L.Spires = 8; L.SpireR = 70; L.Hue = 0.12f; L.Sky = 1; L.Amp = 0.6f;
         }
@@ -276,5 +286,25 @@ public sealed partial class World
         HOMEPAD = PADS.First(p => p.Kind == "base");
         SPAWNX = HOMEPAD.X; SPAWNZ = HOMEPAD.Z + 6;
         CHANNELS = LAYOUT.Chans.Select(c => c is string s ? (s == "canyon" ? Canyon() : Gully()) : MakeChannel((ChannelDef)c)).ToList();
+    }
+}
+
+public sealed partial class World
+{
+    /// <summary>The wave arena's bound: the foot of the basin wall.</summary>
+    public float ArenaR => LAYOUT.Bowl != null ? LAYOUT.Bowl.R + 4 : float.MaxValue;
+    Mesh membrane;
+    /// <summary>In wave mode the arena's edge is a visible cell membrane: a faint, glowing curtain you can see through.</summary>
+    void BuildMembrane()
+    {
+        if (LAYOUT.Bowl == null) return;
+        float R2 = ArenaR, lo = float.MaxValue;
+        for (int k = 0; k < 32; k++) { float a = k / 32f * TAU; lo = MathF.Min(lo, TerrainH(MathF.Cos(a) * R2, MathF.Sin(a) * R2)); }
+        var mat = new Material { Kind = MatKind.Basic, Color = C(0x9affef), Transparent = true, Opacity = 0.13f, Blending = Blend.Additive, DepthWrite = false, Side = Side.Double };
+        membrane = new Mesh(Geo.Cylinder(R2, R2, 34, 96, 1, true), mat) { Position = new System.Numerics.Vector3(0, lo + 15, 0), RenderOrder = 2, FrustumCulled = false };
+        scene.Add(membrane);
+        // a brighter seam where it meets the floor
+        var seam = new Material { Kind = MatKind.Basic, Color = C(0xff9ae8), Transparent = true, Opacity = 0.5f, Blending = Blend.Additive, DepthWrite = false };
+        scene.Add(new Mesh(Geo.Torus(R2, 0.25f, 6, 128).RotateX(PI / 2), seam) { Position = new System.Numerics.Vector3(0, lo + 0.3f, 0), FrustumCulled = false });
     }
 }

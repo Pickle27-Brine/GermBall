@@ -382,7 +382,7 @@ public sealed partial class World
         WAVES.on = CFG.Mode == "waves";
         WAVES.best = Saves.Best(CFG.Map);
         if (!WAVES.on) return;
-        float Rr = LAYOUT.Bowl != null ? LAYOUT.Bowl.R + 4 : 130;   // up on the rim of the basin
+        float Rr = LAYOUT.Bowl != null ? ArenaR - 3 : 130;   // they come in through the membrane at the edge of the arena
         for (int i = 0; i < 12; i++)
         {
             float a = i / 12f * TAU, x = MathF.Cos(a) * Rr, z = MathF.Sin(a) * Rr; int k = 0;
