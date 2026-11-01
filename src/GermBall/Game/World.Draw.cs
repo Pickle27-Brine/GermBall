@@ -29,7 +29,9 @@ public sealed partial class World
         var t = Geo.Cylinder(0.5f, 0.5f, 1, 3).RotateX(PI / 2);
         var o = Geo.Sphere(0.5f, 10, 8);
         var p = Geo.Cone(0.5f, 1, 4).RotateX(-PI / 2).RotateZ(PI / 4);
-        WSHAPE = new() { ['b'] = bx, ['c'] = c, ['t'] = t, ['o'] = o, ['p'] = p };
+        // r: a ring (a red cell's rim), d: a flat disc, i: a faceted capsid
+        var rg = Geo.Torus(0.34f, 0.16f, 12, 32).RotateX(PI / 2); var dg = Geo.Cylinder(0.5f, 0.5f, 1, 28); var ig = Geo.Icosahedron(0.5f, 1);
+        WSHAPE = new() { ['b'] = bx, ['c'] = c, ['t'] = t, ['o'] = o, ['p'] = p, ['r'] = rg, ['d'] = dg, ['i'] = ig };
     }
     // grown, not forged: chitin, bone, cartilage, membrane and bioluminescent glands
     static readonly Dictionary<char, (uint c, float sh)> WMAT_DEF = new()
@@ -37,6 +39,7 @@ public sealed partial class World
         ['d'] = (0x4a1e3a, 90), ['s'] = (0xf0e4d2, 120), ['w'] = (0xc8946a, 20), ['k'] = (0x2a1020, 60), ['y'] = (0xe0ff5a, 110), ['v'] = (0xb04a9a, 80), ['r'] = (0xff3a5a, 80), ['m'] = (0x4ac08a, 70),
         ['g'] = (0x7affd0, -1), ['p'] = (0xff5ce1, -1), ['o'] = (0xffb04a, -1), ['b'] = (0x6ad0ff, -1), ['n'] = (0xb4ff3a, -1),
         ['u'] = (0x2a1420, 6), ['c'] = (0xfff0e4, 150), ['q'] = (0x7a3a5e, 50), ['h'] = (0xff8a5a, 70), ['e'] = (0x9a4ac4, 70),
+        ['R'] = (0xc8102a, 95), ['P'] = (0xf05a6e, 60), ['V'] = (0x7a4ad8, 85), ['X'] = (0x3a2a6a, 60), ['G'] = (0x7affb0, -1),
     };
     static Material Wmat(char k) { var (c, sh) = WMAT_DEF.TryGetValue(k, out var v) ? v : (0xffffffu, 30f); return sh < 0 ? BasicM(c) : Phong(c, sh, sh > 80 ? 0xffffffu : 0x333344u); }
     sealed class WPiece { public string key; public char shape, mat; public float x, y, z, sx, sy, sz; public Q4 q; }
@@ -322,7 +325,58 @@ public sealed partial class World
                 InstAdd(key, w.x, w.y, w.z, w.q.x, w.q.y, w.q.z, w.q.w, p.Sx * fl, p.Sy * fl, p.Sz * fl);
             }
             if (Vh.beams != null) foreach (var b in Vh.beams) InstBeam("beam", b[0], b[1], b[2], b[3], b[4], b[5], 0.07f + R() * 0.05f);
+            if (Vh.kind == "chair") DrawVirusLegs(Vh, alpha);
             if (Vh.kind == "rover" && Vh.boostT > 0) { var f = Vfwd(Vh); InstAdd("mflash", x - f.x * 2.1f, Lerp(Vh.py, Vh.y, alpha) + 1, z - f.z * 2.1f, 0, 0, 0, 1, 0.5f, 0.5f, 0.5f); }
+        }
+    }
+    // the virus chair's spider legs: planted when it hovers low (each foot steps when it falls too far behind), dangling when it climbs
+    readonly Q4 LGQ = new(); readonly V3 LGV = new(), LGO = new();
+    void DrawVirusLegs(Vehicle Vh, float alpha)
+    {
+        const int N = 6; const float L1 = 0.85f, L2 = 1.05f, ROOT = 0.5f, REACH = 1.35f;
+        Vh.feet ??= new float[N * 3]; Vh.stepT ??= new float[N];
+        float ldt = Clamp(clockT - Vh.legClock, 0, 0.05f); Vh.legClock = clockT;
+        float x = Lerp(Vh.px, Vh.x, alpha), y = Lerp(Vh.py, Vh.y, alpha), z = Lerp(Vh.pz, Vh.z, alpha);
+        VehicleQuat(Vh, LGQ, alpha);
+        float g = GroundAt(x, z, y + 1, true).h, height = y - g, dangle = Smooth(1.3f, 2.6f, height);
+        string key = Vh.team == "enemy" || (Vh.rider != null && Vh.rider.team == "enemy") ? "wtX" : "wtX"; EnsureW(key); EnsureW("woV");
+        for (int k = 0; k < N; k++)
+        {
+            float a = (k + 0.5f) / N * TAU;
+            LGV.Set(MathF.Cos(a) * ROOT, 0.62f, MathF.Sin(a) * ROOT); QRot(LGQ, LGV, LGO);
+            float hx = x + LGO.x, hy = y + LGO.y, hz = z + LGO.z;
+            // where this foot wants to be on the ground: out from the hip, a little ahead when moving
+            LGV.Set(MathF.Cos(a) * REACH, 0, MathF.Sin(a) * REACH); QRot(LGQ, LGV, LGO);
+            float tx = x + LGO.x + Vh.vx * 0.12f, tz = z + LGO.z + Vh.vz * 0.12f, ty = GroundAt(tx, tz, y + 1, true).h;
+            int o = k * 3; ref float fx = ref Vh.feet[o], fy = ref Vh.feet[o + 1], fz = ref Vh.feet[o + 2];
+            if (fx == 0 && fz == 0) { fx = tx; fy = ty; fz = tz; }
+            // alternate legs step in two groups so it always stands on three
+            bool group = (k & 1) == 0, others = false; for (int j = 0; j < N; j++) if (((j & 1) == 0) != group && Vh.stepT[j] > 0) others = true;
+            if (Vh.stepT[k] <= 0 && !others && Hypot(fx - tx, fz - tz) > 0.55f) Vh.stepT[k] = 1;
+            float px = fx, py = fy, pz = fz;
+            if (Vh.stepT[k] > 0)
+            {
+                Vh.stepT[k] = MathF.Max(0, Vh.stepT[k] - ldt * 7); float u = 1 - Vh.stepT[k];
+                px = Lerp(fx, tx, u); pz = Lerp(fz, tz, u); py = Lerp(fy, ty, u) + MathF.Sin(u * PI) * 0.35f;
+                if (Vh.stepT[k] <= 0) { fx = tx; fy = ty; fz = tz; px = fx; py = fy; pz = fz; }
+            }
+            // dangling: the foot hangs below the hip and sways
+            float sw = MathF.Sin(clockT * 2.2f + k * 1.3f) * 0.18f;
+            LGV.Set(MathF.Cos(a) * (ROOT + 0.35f) + sw, -(L1 + L2) * 0.88f, MathF.Sin(a) * (ROOT + 0.35f)); QRot(LGQ, LGV, LGO);
+            float dx = x + LGO.x, dy = y + LGO.y, dz = z + LGO.z;
+            px = Lerp(px, dx, dangle); py = Lerp(py, dy, dangle); pz = Lerp(pz, dz, dangle);
+            if (dangle > 0.5f) { fx = px; fy = py; fz = pz; Vh.stepT[k] = 0; }
+            // two-bone IK, the knee up and outward
+            float ex = px - hx, ey = py - hy, ez = pz - hz, d = Hypot(ex, ey, ez); if (d < 1e-3f) d = 1e-3f;
+            float D = Clamp(d, 0.2f, L1 + L2 - 0.01f), ca = (L1 * L1 - L2 * L2 + D * D) / (2 * D), hh = MathF.Sqrt(MathF.Max(0, L1 * L1 - ca * ca));
+            float ux = ex / d, uy = ey / d, uz = ez / d, ox = MathF.Cos(a), oz = MathF.Sin(a);
+            float pvx = ox * 0.4f, pvy = 1, pvz = oz * 0.4f, pd = pvx * ux + pvy * uy + pvz * uz; pvx -= pd * ux; pvy -= pd * uy; pvz -= pd * uz; float pl = Hypot(pvx, pvy, pvz); if (pl == 0) pl = 1;
+            float kx = hx + ux * ca + pvx / pl * hh, ky = hy + uy * ca + pvy / pl * hh, kz = hz + uz * ca + pvz / pl * hh;
+            float fx2 = hx + ux * D, fy2 = hy + uy * D, fz2 = hz + uz * D;
+            InstBeam(key, hx, hy, hz, kx, ky, kz, 0.075f);
+            InstBeam(key, kx, ky, kz, fx2, fy2, fz2, 0.055f);
+            InstAdd("woV", kx, ky, kz, 0, 0, 0, 1, 0.13f, 0.13f, 0.13f);
+            InstAdd("woV", fx2, fy2, fz2, 0, 0, 0, 1, 0.09f, 0.09f, 0.09f);
         }
     }
     int frameNo;

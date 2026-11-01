@@ -62,6 +62,19 @@ public static class Shots
         if (Want("title")) { var t = new TitleScreen(app); for (int i = 0; i < 3; i++) Frame(t); Frame(t, name: "title"); }
         if (Want("custom")) { var c = new CustomizeScreen(app, GermDraw.DefaultCustom()); for (int i = 0; i < 30; i++) Frame(new Wrap(c)); Frame(new Wrap(c), name: "custom"); }
         if (Want("lineup")) { Lineup.Run(sr, Path.Combine(dir, "lineup-heroes.png"), false); Lineup.Run(sr, Path.Combine(dir, "lineup-heroes-back.png"), false, 200); Lineup.Run(sr, Path.Combine(dir, "lineup-heroes-bare.png"), false, 25, false); Lineup.Run(sr, Path.Combine(dir, "lineup-germs.png"), true); }
+        if (Want("vehicles"))
+        {
+            var world = new World(new BootConfig { Mode = "waves", Map = "bowl", Seed = 7, Custom = GermDraw.DefaultCustom() }, new Settings { res = 0, density = 0 }, World.DefaultBinds());
+            var gs = new GameScreen(app, world); world.playing = true;
+            var H = world.HUMAN.P; float fx = -MathF.Sin(H.facing), fz = -MathF.Cos(H.facing);
+            var rov = world.MakeVehicle("rover", H.x + fx * 7 - fz * 3, H.z + fz * 7 + fx * 3, H.facing);
+            var ch = world.MakeVehicle("chair", H.x + fx * 6 + fz * 3, H.z + fz * 6 - fx * 3, H.facing);
+            var ch2 = world.MakeVehicle("chair", H.x + fx * 10 + fz * 1, H.z + fz * 10 - fx * 1, H.facing); ch2.alt = 4;
+            for (int i = 0; i < 90; i++) { ch2.y = world.GroundY(ch2.x, ch2.z) + 3.5f; ch2.py = ch2.y; Frame(gs); }
+            world.SetFreeCam(true); world.FREECAM.x = H.x - fx * 2 + fz * 4; world.FREECAM.y = H.y + 3; world.FREECAM.z = H.z - fz * 2 - fx * 4; world.FREECAM.yaw = H.facing - 0.4f; world.FREECAM.pitch = -0.25f; world.FREECAM.fov = 55;
+            for (int i = 0; i < 12; i++) { ch2.y = world.GroundY(ch2.x, ch2.z) + 3.5f; ch2.py = ch2.y; Frame(gs); }
+            Frame(gs, name: "vehicles");
+        }
         if (Want("heroes"))
             foreach (var k in MedDraw.PRESETS.Keys)
             {

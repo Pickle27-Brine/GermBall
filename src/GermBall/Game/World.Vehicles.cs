@@ -22,6 +22,8 @@ public sealed class Vehicle
     public VPieceState[] pieces; public float turretYaw, turretPitch, gunCD, boostCD, boostT, heat; public float[] susp = new float[4], suspV = new float[4]; public bool prevJump, prevRoll;
     public float[] wc, wv, wheelY; public float? lastTy, lastG; public float flipT, alt, beamAcc, respawnT, idleT, t, doorOpen, lx, lz; public bool over, unloaded; public int gunSide = 1;
     public List<float[]> beams; public Squad squad; public SquadComp comp;
+    /// <summary>The virus chair's six planted feet (x, y, z each) and how far each is through a step.</summary>
+    public float[] feet, stepT; public float legClock;
     public object vis;
 }
 
@@ -50,27 +52,24 @@ public sealed partial class World
                     Pc("og", 0, 1.08f, -0.94f, 0.24f, 0.24f, 0.15f, null, 15), Pc("cc", 0.22f, 0.42f, 0.45f, 0.11f, 0.11f, 1.2f, null, 25), Pc("cc", -0.22f, 0.42f, 0.45f, 0.11f, 0.11f, 1.2f, null, 25),
                     Pc("oT", 0, 0.78f, 0.86f, 0.42f, 0.24f, 0.9f, null, 30), Pc("oT", 0, 0.82f, -1.25f, 0.24f, 0.12f, 0.5f, null, 20), Pc("cc", 0, 0.35f, -0.55f, 0.05f, 0.05f, 0.85f, Rt(0, 90, 0), 20),
                 } },
-            ["rover"] = new() { Kind = "rover", Hp = 420, HitR = 1.25f, HitL = 1.7f, HitY = 1.0f, CamK = 1.7f, Seat = new VSeat { Hip = new[] { 1.12f, 0.25f }, Foot = new[] { 0.3f, 0.75f, -0.75f }, Hand = new[] { 0.25f, 1.38f, -0.3f }, Lean = 0.05f },
-                Wheels = new[] { new[] { 1.15f, -1.25f }, new[] { -1.15f, -1.25f }, new[] { 1.15f, 1.25f }, new[] { -1.15f, 1.25f } },
+            // the rover is a red blood cell: a fat ring with a dimpled middle you sit in, hovering and sliding over the ground
+            ["rover"] = new() { Kind = "rover", Hp = 420, HitR = 1.6f, HitL = 1.6f, HitY = 1.0f, CamK = 1.7f, Seat = new VSeat { Hip = new[] { 1.18f, 0.15f }, Foot = new[] { 0.32f, 0.95f, -0.75f }, Hand = new[] { 0.42f, 1.42f, -0.45f }, Lean = 0.1f },
                 Pieces = new[] {
-                    Pc("bT", 0, 0.78f, 0, 2.0f, 0.5f, 3.6f, null, 260), Pc("bT", 0, 1.08f, -1.25f, 1.8f, 0.3f, 1.1f, Rt(-8, 0, 0), 80), Pc("bk", 0, 1.08f, 0.3f, 0.62f, 0.16f, 0.62f, null, 40),
-                    Pc("cc", 0.85f, 1.6f, 0.15f, 0.09f, 0.09f, 1.7f, null, 40), Pc("cc", -0.85f, 1.6f, 0.15f, 0.09f, 0.09f, 1.7f, null, 40),
-                    Pc("cc", 0.85f, 1.3f, -0.68f, 0.09f, 0.09f, 0.62f, Rt(90, 0, 0), 30), Pc("cc", -0.85f, 1.3f, -0.68f, 0.09f, 0.09f, 0.62f, Rt(90, 0, 0), 30), Pc("cc", 0.85f, 1.3f, 0.98f, 0.09f, 0.09f, 0.62f, Rt(90, 0, 0), 30), Pc("cc", -0.85f, 1.3f, 0.98f, 0.09f, 0.09f, 0.62f, Rt(90, 0, 0), 30),
-                    Pc("cu", 1.15f, 0.55f, -1.25f, 1.1f, 1.1f, 0.5f, Rt(0, 90, 0), 60, w: 0), Pc("cu", -1.15f, 0.55f, -1.25f, 1.1f, 1.1f, 0.5f, Rt(0, 90, 0), 60, w: 1), Pc("cu", 1.15f, 0.55f, 1.25f, 1.1f, 1.1f, 0.5f, Rt(0, 90, 0), 60, w: 2), Pc("cu", -1.15f, 0.55f, 1.25f, 1.1f, 1.1f, 0.5f, Rt(0, 90, 0), 60, w: 3),
-                    Pc("oT", 1.15f, 1.02f, -1.25f, 0.32f, 0.18f, 0.62f, null, 35), Pc("oT", -1.15f, 1.02f, -1.25f, 0.32f, 0.18f, 0.62f, null, 35), Pc("oT", 1.15f, 1.02f, 1.25f, 0.32f, 0.18f, 0.62f, null, 35), Pc("oT", -1.15f, 1.02f, 1.25f, 0.32f, 0.18f, 0.62f, null, 35),
-                    Pc("bk", 0, 0.66f, -1.95f, 2.1f, 0.26f, 0.26f, null, 60), Pc("bk", 0, 0.66f, 1.95f, 2.1f, 0.26f, 0.26f, null, 60),
-                    Pc("og", 0.65f, 1.02f, -1.86f, 0.2f, 0.2f, 0.1f, null, 10), Pc("og", -0.65f, 1.02f, -1.86f, 0.2f, 0.2f, 0.1f, null, 10),
-                    Pc("cu", 0, 1.18f, 1.86f, 0.82f, 0.82f, 0.3f, Rt(90, 0, 0), 30), Pc("cc", 0.95f, 1.55f, 0.95f, 0.12f, 0.12f, 0.8f, Rt(90, 0, 0), 20), Pc("cc", -0.95f, 1.55f, 0.95f, 0.12f, 0.12f, 0.8f, Rt(90, 0, 0), 20),
-                    Pc("ck", 0, 1.78f, 0.75f, 0.75f, 0.75f, 0.24f, Rt(90, 0, 0), 80), Pc("bT", 0, 2.02f, 0.75f, 0.6f, 0.34f, 0.8f, null, 80, t: true),
+                    Pc("rR", 0, 1.0f, 0, 3.4f, 2.6f, 3.4f, null, 260), Pc("dP", 0, 0.98f, 0, 2.7f, 0.22f, 2.7f, null, 120), Pc("dP", 0, 0.9f, 0, 2.2f, 0.2f, 2.2f, null, 60),
+                    Pc("oG", 1.45f, 1.05f, 0, 0.22f, 0.22f, 0.22f, null, 15), Pc("oG", -1.45f, 1.05f, 0, 0.22f, 0.22f, 0.22f, null, 15), Pc("oG", 0, 1.05f, -1.45f, 0.26f, 0.26f, 0.26f, null, 15),
+                    Pc("oG", 1.02f, 1.05f, 1.02f, 0.2f, 0.2f, 0.2f, null, 15), Pc("oG", -1.02f, 1.05f, 1.02f, 0.2f, 0.2f, 0.2f, null, 15), Pc("oG", 1.02f, 1.05f, -1.02f, 0.2f, 0.2f, 0.2f, null, 15), Pc("oG", -1.02f, 1.05f, -1.02f, 0.2f, 0.2f, 0.2f, null, 15),
+                    Pc("oP", 0, 0.62f, 0, 1.4f, 0.4f, 1.4f, null, 40),
+                    Pc("oR", 0, 1.78f, 0.75f, 0.75f, 0.5f, 0.75f, null, 80), Pc("bT", 0, 2.02f, 0.75f, 0.6f, 0.34f, 0.8f, null, 80, t: true),
                     Pc("ck", 0.13f, 2.05f, 0.05f, 0.1f, 0.1f, 1.3f, null, 40, tb: true), Pc("ck", -0.13f, 2.05f, 0.05f, 0.1f, 0.1f, 1.3f, null, 40, tb: true), Pc("cy", 0, 2.05f, 0.5f, 0.42f, 0.24f, 0.12f, null, 30, tb: true),
                 } },
-            ["chair"] = new() { Kind = "chair", Hp = 180, HitR = 0.75f, HitL = 0.45f, HitY = 0.95f, CamK = 1.2f, Seat = new VSeat { Hip = new[] { 0.86f, 0.1f }, Foot = new[] { 0.18f, 0.42f, -0.55f }, Hand = new[] { 0.42f, 1.06f, -0.15f }, Lean = -0.05f },
+            // the hover chair is a virus: a spiked capsid you ride on top of, held up by spider legs that dangle when it climbs
+            ["chair"] = new() { Kind = "chair", Hp = 180, HitR = 0.8f, HitL = 0.5f, HitY = 0.9f, CamK = 1.25f, Seat = new VSeat { Hip = new[] { 1.42f, 0.05f }, Foot = new[] { 0.32f, 1.1f, -0.42f }, Hand = new[] { 0.45f, 1.5f, -0.3f }, Lean = -0.02f },
                 Pieces = new[] {
-                    Pc("bT", 0, 0.76f, 0.05f, 0.72f, 0.16f, 0.66f, null, 60), Pc("bT", 0, 1.26f, 0.38f, 0.72f, 0.92f, 0.12f, Rt(-10, 0, 0), 50),
-                    Pc("bk", 0.42f, 0.96f, -0.05f, 0.12f, 0.12f, 0.75f, null, 30), Pc("bk", -0.42f, 0.96f, -0.05f, 0.12f, 0.12f, 0.75f, null, 30),
-                    Pc("cs", 0.42f, 1.08f, -0.36f, 0.17f, 0.17f, 0.7f, null, 40, gun: 1), Pc("cs", -0.42f, 1.08f, -0.36f, 0.17f, 0.17f, 0.7f, null, 40, gun: -1),
-                    Pc("cg", 0.42f, 1.08f, -0.73f, 0.2f, 0.2f, 0.06f, null, 15), Pc("cg", -0.42f, 1.08f, -0.73f, 0.2f, 0.2f, 0.06f, null, 15),
-                    Pc("ck", 0, 0.46f, 0, 0.95f, 0.95f, 0.26f, Rt(90, 0, 0), 80), Pc("cb", 0, 0.3f, 0, 1.05f, 1.05f, 0.06f, Rt(90, 0, 0), 30), Pc("cT", 0, 0.62f, -0.42f, 0.25f, 0.25f, 0.35f, Rt(90, 0, 0), 20),
+                    Pc("iV", 0, 0.82f, 0, 1.25f, 1.15f, 1.25f, null, 80), Pc("oX", 0, 0.82f, 0, 0.9f, 0.85f, 0.9f, null, 40), Pc("dX", 0, 1.38f, 0.05f, 0.7f, 0.14f, 0.7f, null, 40),
+                    Pc("pV", 0.62f, 1.02f, -0.18f, 0.2f, 0.2f, 0.5f, Rt(-20, -60, 0), 15), Pc("pV", -0.62f, 1.02f, -0.18f, 0.2f, 0.2f, 0.5f, Rt(-20, 60, 0), 15),
+                    Pc("pV", 0.45f, 0.62f, 0.5f, 0.18f, 0.18f, 0.45f, Rt(30, -140, 0), 15), Pc("pV", -0.45f, 0.62f, 0.5f, 0.18f, 0.18f, 0.45f, Rt(30, 140, 0), 15), Pc("pV", 0, 1.25f, 0.62f, 0.18f, 0.18f, 0.45f, Rt(-40, 180, 0), 15),
+                    Pc("cs", 0.55f, 1.02f, -0.42f, 0.16f, 0.16f, 0.62f, null, 40, gun: 1), Pc("cs", -0.55f, 1.02f, -0.42f, 0.16f, 0.16f, 0.62f, null, 40, gun: -1),
+                    Pc("oG", 0.55f, 1.02f, -0.76f, 0.16f, 0.16f, 0.16f, null, 15), Pc("oG", -0.55f, 1.02f, -0.76f, 0.16f, 0.16f, 0.16f, null, 15),
                 } },
             ["dropship"] = new() { Kind = "dropship", Hp = 1800, HitR = 2.8f, HitL = 5.8f, HitY = 0, CamK = 1,
                 Pieces = new[] {
@@ -98,7 +97,7 @@ public sealed partial class World
         var Vh = new Vehicle { kind = kind, def = D, x = x, y = y, z = z, px = x, py = y, pz = z, yaw = yaw, pyaw = yaw, hp = D.Hp, max = D.Hp, team = team ?? "neutral", home = (x, z, yaw), pieces = D.Pieces.Select(p => new VPieceState { p = p, hp = p.Hp }).ToArray() };
         vehicles.Add(Vh); return Vh;
     }
-    static readonly Dictionary<string, string> VEH_NAME = new() { ["bike"] = "CHOPPER", ["rover"] = "ROVER", ["chair"] = "HOVER CHAIR" };
+    static readonly Dictionary<string, string> VEH_NAME = new() { ["bike"] = "CHOPPER", ["rover"] = "BLOOD CELL", ["chair"] = "VIRUS" };
     void Mount(Actor A, Vehicle Vh)
     {
         if (Vh.rider != null || Vh.dead || Vh.kind == "dropship") return;
@@ -107,7 +106,7 @@ public sealed partial class World
         if (Vh.crashT > 0 || MathF.Abs(Vh.roll) > 0.6f || MathF.Abs(Vh.pitch) > 0.6f) { Vh.crashT = 0; Vh.roll = 0; Vh.pitch = 0; Vh.wp = Vh.wr = 0; }   // set it back on its wheels
         Vh.rider = A; P.vehicle = Vh; P.x = Vh.x; P.y = Vh.y; P.z = Vh.z; P.facing = Vh.yaw; P.vx = P.vz = 0;
         Sfx("engine", Vh.x, Vh.y, Vh.z);
-        if (A.human) ShowHint(VEH_NAME[Vh.kind] + " · INTERACT TO GET OFF" + (Vh.kind == "rover" ? " · ROLL TO BOOST" : Vh.kind == "bike" ? " · JUMP TWICE TO DASH" : " · RB / SPACE UP · LB / C DOWN"));
+        if (A.human) ShowHint(VEH_NAME[Vh.kind] + " · INTERACT TO GET OFF" + (Vh.kind == "rover" ? " · ROLL TO BOOST · JUMP TO HOP" : Vh.kind == "bike" ? " · JUMP TWICE TO DASH" : " · RB / SPACE UP · LB / C DOWN"));
     }
     void Dismount(Actor A, bool forced = false)
     {
@@ -212,70 +211,48 @@ public sealed partial class World
     // each wheel rides the ground on its own stiff spring, and the chassis floats on the four of them on softer springs,
     // so it sits tall, follows the terrain, and bounces and pitches over bumps
     const float ROVER_OFF = 0.45f, ROVER_WR = 0.55f;
+    /// <summary>The red-cell rover: hovers a metre off the ground on a soft cushion, glides with little sideways grip
+    /// (it drifts through turns), banks into them, and tilts with the slope. Jump hops it; boost shoves it forward.</summary>
     void RoverPhysics(Vehicle Vh, float dt, float thr, float steer, bool driven)
     {
-        var D = Vh.def; float cy = MathF.Cos(Vh.yaw), sy = MathF.Sin(Vh.yaw), fwx = -sy, fwz = -cy, rxx = cy, rxz = -sy;
-        if (Vh.wc == null) { Vh.wc = new float[4]; Vh.wv = new float[4]; Vh.wheelY = new[] { ROVER_OFF, ROVER_OFF, ROVER_OFF, ROVER_OFF }; for (int i = 0; i < 4; i++) Vh.wc[i] = Vh.y + ROVER_OFF; }
-        float sum = 0, front = 0, rear = 0, left = 0, right = 0, gmax = -1e9f; int n = 0, touching = 0;
-        for (int i = 0; i < 4; i++)
-        {
-            float lx = D.Wheels[i][0], lz = D.Wheels[i][1]; var wpc = Vh.pieces.FirstOrDefault(q => q.p.W == i); bool on = !(wpc != null && !wpc.on);
-            float wx = Vh.x + rxx * lx - fwx * lz, wz = Vh.z + rxz * lx - fwz * lz, g = GroundAt(wx, wz, Vh.y + 2.5f, true).h, floor = g + ROVER_WR * (on ? 1 : 0.4f);
-            gmax = MathF.Max(gmax, floor);
-            if (Vh.air) { Vh.wc[i] = MathF.Max(floor, Vh.y + ROVER_OFF); Vh.wv[i] = Vh.vy; if (Vh.wc[i] <= floor + 0.02f) touching++; }
-            else
-            {
-                Vh.wv[i] += ((floor - Vh.wc[i]) * 420 - Vh.wv[i] * 26) * dt; Vh.wc[i] += Vh.wv[i] * dt;
-                if (Vh.wc[i] < floor - 0.08f) { Vh.wc[i] = floor - 0.08f; Vh.wv[i] = MathF.Max(0, Vh.wv[i]); }
-            }
-            Vh.susp[i] = Vh.wc[i] - floor;
-            sum += Vh.wc[i]; n++;
-            if (lz < 0) front += Vh.wc[i]; else rear += Vh.wc[i];
-            if (lx < 0) left += Vh.wc[i]; else right += Vh.wc[i];
-        }
-        float mean = sum / n, ty = mean - ROVER_OFF;
+        float cy = MathF.Cos(Vh.yaw), sy = MathF.Sin(Vh.yaw), fwx = -sy, fwz = -cy, rxx = cy, rxz = -sy;
+        float hoverH = driven ? 1.05f : 0.35f, R2 = 1.5f;
+        float gC = GroundAt(Vh.x, Vh.z, Vh.y + 2.5f, true).h;
+        float gF = GroundAt(Vh.x + fwx * R2, Vh.z + fwz * R2, Vh.y + 2.5f, true).h, gB = GroundAt(Vh.x - fwx * R2, Vh.z - fwz * R2, Vh.y + 2.5f, true).h;
+        float gR = GroundAt(Vh.x + rxx * R2, Vh.z + rxz * R2, Vh.y + 2.5f, true).h, gL = GroundAt(Vh.x - rxx * R2, Vh.z - rxz * R2, Vh.y + 2.5f, true).h;
+        float g = MathF.Max(gC, (gF + gB + gL + gR) * 0.25f);
+        float bob = MathF.Sin(simT * 2.1f + Vh.home.x) * 0.06f, target = g + hoverH + bob;
         if (Vh.air)
-        {
-            Vh.vy -= GRV * 1.35f * dt; Vh.y += Vh.vy * dt;   // a heavy rover: short hops, quick landings
-            Vh.wp += -Vh.pitch * 1.6f * dt; Vh.wr += -Vh.roll * 1.6f * dt;   // a gyro keeps it roughly level in the air
-            Vh.pitch += Vh.wp * dt; Vh.roll += Vh.wr * dt; Vh.wp *= MathF.Exp(-dt * 1.2f); Vh.wr *= MathF.Exp(-dt * 1.2f);
-            if (touching >= 2 && Vh.vy <= 0) { Vh.air = false; if (Vh.vy < -12) DamageVehicle(Vh, (-Vh.vy - 12) * 5, null); Vh.vy *= 0.4f; }
+        {   // a hop: falls back onto its cushion
+            Vh.vy -= GRV * 1.1f * dt; Vh.y += Vh.vy * dt;
+            if (Vh.y <= target && Vh.vy <= 0) { Vh.air = false; if (Vh.vy < -14) DamageVehicle(Vh, (-Vh.vy - 14) * 4, null); Vh.vy *= 0.3f; }
         }
         else
         {
-            // the body follows the wheels on soft springs: it squats, rebounds and wallows
-            float tvy = Vh.lastTy != null ? Clamp((ty - Vh.lastTy.Value) / dt, -30, 30) : 0;
-            Vh.vy += ((ty - Vh.y) * 70 - (Vh.vy - tvy) * 7.5f) * dt; Vh.y += Vh.vy * dt;
-            float tp = MathF.Atan2(front / 2 - rear / 2, 2.5f), trr = MathF.Atan2(right / 2 - left / 2, 2.3f);   // roll > 0 lifts the right side (as the chassis is drawn)
-            Vh.wp += ((tp - Vh.pitch) * 55 - Vh.wp * 7) * dt; Vh.wr += ((trr - Vh.roll) * 55 - Vh.wr * 7) * dt;
-            Vh.pitch += Vh.wp * dt; Vh.roll += Vh.wr * dt;
-            // over a crest the ground falls away faster than the springs can follow: airborne
-            if (Vh.y > ty + 0.9f && Vh.vy > -2 && gmax < Vh.y + ROVER_OFF - 0.5f) Vh.air = true;
+            float gv = Vh.lastG != null ? Clamp((g - Vh.lastG.Value) / dt, -25, 25) : 0;
+            Vh.vy += ((target - Vh.y) * 48 - (Vh.vy - gv) * 8) * dt; Vh.y += Vh.vy * dt;
+            if (Vh.y < g + 0.25f) { Vh.y = g + 0.25f; Vh.vy = MathF.Max(0, Vh.vy); }
         }
-        Vh.lastTy = ty;
-        // drive: strong pull, tyres that grip sideways, steering that tightens at low speed; hills slow you
+        Vh.lastG = g;
+        // drive: forward thrust, a slippery sideways grip (it drifts), turning that works at any speed
         float hv = Vh.vx * fwx + Vh.vz * fwz, lv = Vh.vx * rxx + Vh.vz * rxz;
-        if (!Vh.air)
-        {
-            float top = (driven ? 32 : 0) * SET.speed * (Vh.boostT > 0 ? 1.55f : 1), acc = (Vh.boostT > 0 ? 42 : 22) * SET.speed;
-            float nhv = hv;
-            if (MathF.Abs(thr) > 0.05f) nhv += Clamp(thr * top - hv, -acc * dt * 1.8f, acc * dt);
-            else nhv -= MathF.Sign(hv) * MathF.Min(MathF.Abs(hv), 7 * dt);
-            nhv -= MathF.Sin(Clamp(Vh.pitch, -0.8f, 0.8f)) * GRV * 0.45f * dt;
-            float nlv = lv * MathF.Exp(-dt * 9);
-            Vh.vx = fwx * nhv + rxx * nlv; Vh.vz = fwz * nhv + rxz * nlv;
-            float turn = steer * dt * Clamp(MathF.Abs(nhv) / 4, 0, 1) * (2.4f - MathF.Min(1.3f, MathF.Abs(nhv) * 0.035f)) * (nhv < 0 ? -1 : 1);
-            Vh.yaw += turn; Vh.wr += -turn / dt * MathF.Abs(nhv) * 0.003f;   // lean out of the turn
-        }
-        else Vh.yaw += steer * dt * 0.6f;
+        float top = (driven ? 30 : 0) * SET.speed * (Vh.boostT > 0 ? 1.55f : 1), acc = (Vh.boostT > 0 ? 40 : 18) * SET.speed;
+        float nhv = hv;
+        if (MathF.Abs(thr) > 0.05f) nhv += Clamp(thr * top - hv, -acc * dt * 1.6f, acc * dt);
+        else nhv -= MathF.Sign(hv) * MathF.Min(MathF.Abs(hv), (driven ? 4 : 10) * dt);
+        nhv -= Clamp((gF - gB) / (2 * R2), -0.8f, 0.8f) * GRV * 0.35f * dt;   // slopes slow you going up
+        float nlv = lv * MathF.Exp(-dt * (driven ? 1.6f : 4));
+        Vh.vx = fwx * nhv + rxx * nlv; Vh.vz = fwz * nhv + rxz * nlv;
+        float turn = steer * dt * (2.2f - MathF.Min(1.0f, MathF.Abs(nhv) * 0.03f));
+        Vh.yaw += turn;
+        // tilt: follow the slope, bank into the turn and the drift, nose up when accelerating
+        float tp = MathF.Atan2(gF - gB, 2 * R2) + Clamp(-(nhv - hv) / dt * 0.004f, -0.12f, 0.12f), trr = MathF.Atan2(gR - gL, 2 * R2) - turn / dt * MathF.Min(1, MathF.Abs(nhv) / 20) * 0.12f + Clamp(nlv * 0.02f, -0.2f, 0.2f);
+        Vh.wp += ((tp - Vh.pitch) * 30 - Vh.wp * 7) * dt; Vh.wr += ((trr - Vh.roll) * 30 - Vh.wr * 7) * dt;
+        Vh.pitch += Vh.wp * dt; Vh.roll += Vh.wr * dt;
         Vh.x += Vh.vx * dt; Vh.z += Vh.vz * dt;
-        float gh = GroundAt(Vh.x, Vh.z, Vh.y + 1.5f, true).h; if (Vh.y < gh - 0.05f) { Vh.y = gh - 0.05f; if (Vh.vy < 0) Vh.vy = 0; }
-        VehicleWalls(Vh, 1.7f, 0.6f, 1.8f);
-        // each wheel's drop in the chassis' own frame (the drawn chassis is already pitched and rolled)
-        float spp = MathF.Sin(Vh.pitch), sr = MathF.Sin(Vh.roll);
-        for (int i = 0; i < 4; i++) { float lx = D.Wheels[i][0], lz = D.Wheels[i][1]; Vh.wheelY[i] = Clamp(Vh.wc[i] - Vh.y + lz * spp - lx * sr, 0.05f, 0.95f); }
+        VehicleWalls(Vh, 1.6f, 0.4f, 1.6f);
         Vh.speed = Hypot(Vh.vx, Vh.vz);
-        Vh.wheel += hv * dt / ROVER_WR;
+        Vh.wheel += Vh.speed * dt * 0.15f;   // the cell slowly turns as it slides
     }
     // circle-vs-statics for a chassis; smashes through building panels at speed
     void VehicleWalls(Vehicle Vh, float R2, float y0, float y1)
@@ -313,7 +290,7 @@ public sealed partial class World
         if (boostPress && Vh.boostCD <= 0) { Vh.boostCD = 5; Vh.boostT = 0.9f; var f = Vfwd(Vh); Vh.vx += f.x * 14; Vh.vz += f.z * 14; Sfx("launch", Vh.x, Vh.y, Vh.z, 1); if (CUR.human) ShowHint("BOOST"); }
         if (Vh.boostT > 0) { var f = Vfwd(Vh); for (int i = 0; i < 2; i++) Fx("flash", Vh.x - f.x * 2.2f + (R() - 0.5f) * 0.6f, Vh.y + 1, Vh.z - f.z * 2.2f, 1, 0.1f); }
         const int subs = 3; for (int i = 0; i < subs; i++) RoverPhysics(Vh, dt / subs, thr, steer, true);
-        if (jumpPress && !Vh.air) { Vh.vy += 7; Vh.wp += 0.5f; }
+        if (jumpPress && !Vh.air) { Vh.vy = 9; Vh.air = true; Vh.wp += 0.4f; Sfx("boing", Vh.x, Vh.y, Vh.z, 0.8f); }
         // flipped over: the driver is thrown out
         Vh.flipT = (MathF.Abs(Vh.roll) > 1.35f || MathF.Abs(Vh.pitch) > 1.4f) && !Vh.air ? Vh.flipT + dt : 0;
         if (Vh.flipT > 0.6f) { CrashVehicle(Vh, CUR); return; }
@@ -435,6 +412,7 @@ public sealed partial class World
         PQL.Identity();
         if (p.Rot != null) { p.Qr ??= QEulerDeg(p.Rot[0], p.Rot[1], p.Rot[2]); PQL.Copy(p.Qr); }
         if (p.W >= 0 && Vh.def.Wheels != null && Vh.wheelY != null) ly = Vh.wheelY[p.W];
+        if (Vh.kind == "rover" && !p.T && !p.Tb) { float a = Vh.wheel; float c0 = MathF.Cos(a), s0 = MathF.Sin(a), nx = lx * c0 + lz * s0, nz = -lx * s0 + lz * c0; lx = nx; lz = nz; QMul(TMPQ.Set(0, MathF.Sin(a / 2), 0, MathF.Cos(a / 2)), PQL, PQL); }   // the cell's slow spin
         if (p.W >= 0) { float a = Vh.wheel / 2; QMul(TMPQ.Set(MathF.Sin(a), 0, 0, MathF.Cos(a)), PQL, PQL); }
         if (p.T || p.Tb)
         {   // about the turret pivot
@@ -516,11 +494,11 @@ public sealed partial class World
             // empty enemy machines far from you are cleared away after a while
             if (Vh.team == "enemy" && (Vh.idleT += dt) > 40 && Hypot(HUMAN.P.x - Vh.x, HUMAN.P.z - Vh.z) > 90) { vehicles.RemoveAt(i); continue; }
             Vh.ppitch = Vh.pitch; Vh.proll = Vh.roll;
-            if (Vh.kind == "rover") { for (int k = 0; k < 2; k++) RoverPhysics(Vh, dt / 2, 0, 0, false); continue; }
+            if (Vh.kind == "rover") { for (int k = 0; k < 2; k++) RoverPhysics(Vh, dt / 2, 0, 0, false); Vh.ppitch = Vh.pitch; continue; }
             if (Vh.kind == "chair")
             {   // an empty chair sinks to rest on the ground
                 Vh.alt = 0.55f;
-                float g0 = GroundAt(Vh.x, Vh.z, Vh.y + 1, true).h; Vh.y += (g0 + 0.12f - Vh.y) * MathF.Min(1, dt * 3); Vh.vx *= MathF.Exp(-dt * 3); Vh.vz *= MathF.Exp(-dt * 3); Vh.x += Vh.vx * dt; Vh.z += Vh.vz * dt; Vh.pitch *= 0.95f; Vh.roll *= 0.95f; continue;
+                float g0 = GroundAt(Vh.x, Vh.z, Vh.y + 1, true).h; Vh.y += (g0 + 0.3f - Vh.y) * MathF.Min(1, dt * 3); Vh.vx *= MathF.Exp(-dt * 3); Vh.vz *= MathF.Exp(-dt * 3); Vh.x += Vh.vx * dt; Vh.z += Vh.vz * dt; Vh.pitch *= 0.95f; Vh.roll *= 0.95f; continue;
             }
             // bikes
             if (Vh.crashT > 0)
