@@ -212,6 +212,20 @@ public static class Shots
             Frame(gs, name: "fluids");
             world.SetFreeCam(false);
         }
+        if (Want("villi"))
+        {   // a villi patch up close, after it has swayed a while and someone has walked through it
+            var world = new World(new BootConfig { Mode = "waves", Map = "bowl", Seed = 7, Custom = GermDraw.DefaultCustom() }, new Settings { res = 0, density = 1 }, World.DefaultBinds());
+            var gs = new GameScreen(app, world); world.playing = true;
+            var vfo = typeof(World).GetField("VF", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(world);
+            var vx = (float[])vfo.GetType().GetField("x").GetValue(vfo); var vz = (float[])vfo.GetType().GetField("z").GetValue(vfo); var vy = (float[])vfo.GetType().GetField("y").GetValue(vfo);
+            int pick = vx.Length / 3; float px = vx[pick], pz = vz[pick], py = vy[pick];
+            world.HUMAN.P.x = px + 1.5f; world.HUMAN.P.z = pz; world.HUMAN.P.y = py + 1; world.HUMAN.P.px = world.HUMAN.P.x; world.HUMAN.P.pz = pz;
+            for (int i = 0; i < 90; i++) Frame(gs);
+            world.SetFreeCam(true); world.FREECAM.x = px + 6; world.FREECAM.z = pz + 6; world.FREECAM.y = py + 2.6f; world.FREECAM.yaw = MathF.Atan2(6, 6); world.FREECAM.pitch = -0.2f; world.FREECAM.fov = 55;
+            for (int i = 0; i < 6; i++) Frame(gs);
+            Frame(gs, name: "villi");
+            world.SetFreeCam(false);
+        }
         if (Want("collide"))
         {   // the collision audit: every static mesh's surface in the band a body can reach (0.3..2.2 m above the ground under it)
             // is checked against the collision world; anything you'd phase through is listed, worst first
@@ -219,6 +233,8 @@ public static class Shots
             {
                 var world = new World(new BootConfig { Mode = mode, Map = map, Seed = 12345, Custom = GermDraw.DefaultCustom() }, new Settings { res = 0, density = 1 }, World.DefaultBinds());
                 var stats = new Dictionary<string, (int bad, int all, float x, float y, float z)>();
+                var vfo = typeof(World).GetField("VF", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(world);
+                var villiMeshes = new HashSet<object>(vfo == null ? Array.Empty<object>() : ((Array)vfo.GetType().GetField("seg").GetValue(vfo)).Cast<object>());   // foliage on purpose
                 void Probe(string key, System.Numerics.Matrix4x4 M, Geometry g)
                 {
                     int nv = g.VertexCount, step = Math.Max(1, nv / 60);
@@ -239,7 +255,7 @@ public static class Shots
                 void Walk(Node n)
                 {
                     if (!n.Visible) return;
-                    if (n is InstancedMesh im) { if (im.Geo != null && !(im.Mat?.Color == new System.Numerics.Vector3(1, 138 / 255f, 160 / 255f))) { string k = $"inst v{im.Geo.VertexCount} col{im.Mat?.Color} n{im.Count}"; for (int i = 0; i < Math.Min(im.Count, im.Capacity); i++) Probe(k, im.Matrices[i] * im.World, im.Geo); } }
+                    if (n is InstancedMesh im) { if (im.Geo != null && !villiMeshes.Contains(im)) { string k = $"inst v{im.Geo.VertexCount} col{im.Mat?.Color} n{im.Count}"; for (int i = 0; i < Math.Min(im.Count, im.Capacity); i++) Probe(k, im.Matrices[i] * im.World, im.Geo); } }
                     else if (n is Mesh m && m.Geo != null && !(m.Mat?.Transparent ?? false)) Probe($"mesh v{m.Geo.VertexCount} col{m.Mat?.Color}", m.World, m.Geo);
                     foreach (var ch in n.Children) Walk(ch);
                 }
@@ -255,6 +271,7 @@ public static class Shots
             foreach (var k in MedDraw.PRESETS.Keys)
             {
                 var c = new CustomizeScreen(app, new GermCustom { Preset = k }); c.C.Preset = k; typeof(CustomizeScreen).GetMethod("Changed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(c, null);
+                { var fl2 = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance; typeof(CustomizeScreen).GetField("spin", fl2).SetValue(c, false); typeof(CustomizeScreen).GetField("yaw", fl2).SetValue(c, MathF.PI + 0.35f); }
                 for (int i = 0; i < 6; i++) Frame(new Wrap(c), 0.5f); Frame(new Wrap(c), name: "hero-" + k);
             }
         foreach (var (mode, map) in new[] { ("sandbox", "random"), ("waves", "bowl"), ("sandbox", "leviathan") })

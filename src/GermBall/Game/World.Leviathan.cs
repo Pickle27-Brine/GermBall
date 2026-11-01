@@ -234,7 +234,7 @@ public sealed partial class World
                 float cx = (r() * 2 - 1) * LIM * 0.9f, cz = (r() * 2 - 1) * LIM * 0.9f; if (PADS.Any(q => Hypot(cx - q.X, cz - q.Z) < q.R + 4)) continue;
                 for (int k = 0; k < 60; k++) { float a = r() * 6.28f, d = MathF.Sqrt(r()) * 9, x = cx + MathF.Cos(a) * d, z = cz + MathF.Sin(a) * d; if (InsideStatic(x, z, Gy(x, z), 0.3f)) continue; list.Add(new[] { x, Gy(x, z) - 0.1f, z, 0.8f + r() * 1.4f, r() * 6 }); }
             }
-            BuildVilli(list, vm); ORG.villi = VF.lower; ORG.villiN = list.Count;   // simulated: see World.Villi
+            BuildVilli(list, vm); ORG.villi = VF.seg[0]; ORG.villiN = list.Count;   // simulated: see World.Villi
         }
         // glowing nodules dotting the floor
         {
@@ -268,7 +268,7 @@ public sealed partial class World
         if (!ORG.built) return;
         int d = SET.decor;
         foreach (var F in ORG.floaters) { F.im.Visible = d > 0; F.im.Count = d >= 2 ? F.L.Count : (F.L.Count + 1) / 2; }
-        if (VF != null) { VF.lower.Visible = VF.upper.Visible = d > 0; VF.lower.Count = VF.upper.Count = d >= 2 ? ORG.villiN : (ORG.villiN + 1) / 2; }
+        if (VF != null) foreach (var vm in VF.seg) { vm.Visible = d > 0; vm.Count = d >= 2 ? ORG.villiN : (ORG.villiN + 1) / 2; }
         if (ORG.nodules != null) ORG.nodules.Visible = d > 0;
     }
     // ---- per frame: beats, breaths, currents

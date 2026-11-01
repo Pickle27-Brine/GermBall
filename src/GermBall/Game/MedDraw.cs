@@ -152,6 +152,28 @@ public static class MedDraw
             Att = Mirror(At(3, "pauldron", -0.25f, 0.9f, 0, 1.6f, 1.15f, 1.6f, 'b', rz: 18), At(1, "cross", 0, 0.25f, -1.05f, 0.5f, 0.5f, 0.1f, 'c')),
         },
     };
+    /// <summary>
+    /// The heroic standard every design starts from: broad shoulders and a V-shaped chest, a narrow waist, long legs, a smaller
+    /// head, limbs that taper away from the body (shoulders and thighs full, wrists and ankles lean) with gauntlets at the wrist.
+    /// </summary>
+    static MedDraw()
+    {
+        foreach (var (k, sp) in PRESETS)
+        {
+            bool stocky = k is "bottle" or "gummy";
+            sp.Bulk = MathF.Max(sp.Bulk, stocky ? 1.4f : 1.32f) + (k == "medmech" ? 0.05f : 0);
+            sp.LegLen = stocky ? 1.06f : 1.13f; sp.ArmLen = 1.05f; sp.Height = k == "gummy" ? 0.98f : 1.04f;
+            var seg = sp.Seg;
+            seg[0].Thick *= 0.88f;                                                    // a smaller head reads as heroic
+            seg[1].Taper += 0.15f;                                                     // more V in the chest
+            if (!stocky) { seg[2].Thick *= 0.84f; seg[2].Taper += 0.3f; }              // a narrow, wedge-shaped waist
+            foreach (int a in new[] { 3, 6 }) { seg[a].Thick *= 1.12f; seg[a].Taper += 0.22f; }   // full shoulders/upper arms
+            foreach (int a in new[] { 4, 7 }) seg[a].Taper -= 0.12f;                  // forearms flare into gauntlets at the wrist
+            foreach (int a in new[] { 9, 12 }) { seg[a].Thick *= 1.06f; seg[a].Taper += 0.26f; }  // thighs full at the hip
+            foreach (int a in new[] { 10, 13 }) seg[a].Taper += 0.18f;                // calves under the knee, lean at the ankle
+        }
+    }
+
     /// <summary>The presets offered for the player (the companions' and the mecha's looks aren't in the customizer list twice).</summary>
     public static readonly string[] PLAYER_PRESETS = { "gelcap", "tablet", "bottle", "syringe", "caplet", "lozenge", "gummy" };
     public static readonly string[] SHAPES = { "capsule", "pill", "cylinder", "box", "hex", "sphere", "cone", "disc", "tablet", "vial", "bottle" };
@@ -176,6 +198,8 @@ public static class MedDraw
     static MedSpec cur;
     /// <summary>Offset of the current virtual segment inside its bone (the chest and abdomen share the torso bone), in the bone's frame.</summary>
     static float sox, soy, soz;
+    /// <summary>Per-segment stretch across (x) and through (z): broad shoulders widen the chest without making it deep.</summary>
+    static float skx = 1, skz = 1;
 
     // the chest takes the top 58% of the torso bone and the abdomen the rest, unless the abdomen is merged into the chest
     const float CHEST_C = 0.42f, CHEST_H = 0.58f, ABD_C = -0.58f, ABD_H = 0.42f;
@@ -186,6 +210,8 @@ public static class MedDraw
     static void Part(int i)
     {
         int b = Bone(i); pk = b * 13; PQ.Set(ps[pk + 3], ps[pk + 4], ps[pk + 5], ps[pk + 6]); sox = soy = soz = 0;
+        skx = skz = 1;
+        if (cur != null && (i == 1 || i == 15)) { skx = cur.Bulk; skz = MathF.Max(0.8f, 1 - (cur.Bulk - 1) * 0.25f); }   // wide and shallow: a heroic chest
         if (cur != null && (i == 1 || i == 15) && !Merged(cur))
         {
             float Lt = ps[13 + 8] * (cur.Seg[1]?.Len ?? 1); soy = (i == 1 ? CHEST_C : ABD_C) * Lt;
@@ -195,8 +221,13 @@ public static class MedDraw
     /// <summary>Emits a shape positioned in the current segment's local frame, optionally with a local rotation.</summary>
     static void Put(char sh, char tone, float lx, float ly, float lz, float sx, float sy, float sz, Q4 local = null)
     {
-        QRot(PQ, lx + sox, ly + soy, lz + soz, TV);
+        QRot(PQ, lx * skx + sox, ly + soy, lz * skz + soz, TV);
         var q = local != null ? QMul(PQ, local, WQ) : PQ;
+        if (skx != 1 || skz != 1)
+        {   // stretch the shape's size along the segment's x and z (for a shape turned about x, its own z is the segment's y)
+            bool turnedX = local != null && MathF.Abs(local.x) > 0.6f && MathF.Abs(local.y) < 0.2f && MathF.Abs(local.z) < 0.2f;
+            sx *= skx; if (turnedX) sy *= skz; else sz *= skz;
+        }
         em(sh, flashTone != 0 ? flashTone : tone, ps[pk] + TV.x, ps[pk + 1] + TV.y, ps[pk + 2] + TV.z, q.x, q.y, q.z, q.w, sx, sy, sz);
     }
     static Q4 Rx90 => QAxis(1, 0, 0, PI / 2, LQ);
@@ -271,9 +302,9 @@ public static class MedDraw
         if (i == 1 || i == 15)
         {
             float Lt = pose[k + 8] * (sp.Seg[1]?.Len ?? 1);
-            if (i == 1 && Merged(sp)) return (avg * st.Thick * sp.Bulk, MathF.Max(Lt, avg * st.Thick * sp.Bulk));
-            if (i == 1) return (avg * st.Thick * sp.Bulk, Lt * CHEST_H);
-            return (avg * st.Thick * sp.Bulk * 0.85f, Lt * ABD_H * st.Len);
+            if (i == 1 && Merged(sp)) return (avg * st.Thick, MathF.Max(Lt, avg * st.Thick));
+            if (i == 1) return (avg * st.Thick, Lt * CHEST_H);
+            return (avg * st.Thick * 0.85f, Lt * ABD_H * st.Len);
         }
         float r = avg * st.Thick, L = pose[k + 8] * st.Len;
         return (r, MathF.Max(L, r));
@@ -297,7 +328,9 @@ public static class MedDraw
     {
         Part(i); var (r, L) = Dims(ps, i, st, sp); char a = st.Tone, b = st.Tone2;
         bool core = i is 1 or 2 or 15;
-        float te = Math.Clamp(st.Taper + (i == 1 && st.Shape is "capsule" or "pill" ? 0.35f : 0), -0.8f, 0.8f);   // the chest has a built-in heroic V
+        // taper: positive = wider at the top. Limb bones run toward the hand/foot along +y, so for them "top" (toward the body) is -y
+        float tp = i is >= 3 and <= 14 ? -st.Taper : st.Taper;
+        float te = Math.Clamp(tp + (i == 1 && st.Shape is "capsule" or "pill" ? 0.35f : 0), -0.8f, 0.8f);   // the chest has a built-in heroic V
         float rt = r * (1 + te * 0.5f), rb = r * (1 - te * 0.5f);
         bool ownVisor = st.Visor == "default";
         switch (st.Shape)
@@ -558,7 +591,7 @@ public static class MedDraw
         }
         bool chitin = style == "shell", sharp = style == "angular";
         char plate = sharp ? 'J' : 'U';
-        float te = Math.Clamp(st.Taper + (part == 1 && st.Shape is "capsule" or "pill" ? 0.35f : 0), -0.8f, 0.8f);
+        float te = Math.Clamp((limb ? -st.Taper : st.Taper) + (part == 1 && st.Shape is "capsule" or "pill" ? 0.35f : 0), -0.8f, 0.8f);
         float RadAt(float y) => r * (1 + te * 0.5f * Math.Clamp(y / MathF.Max(1e-4f, L), -1, 1));
         bool flat = st.Shape is "box" or "trapezoid" or "tablet" or "tablethead" or "hex" or "disc" or "cap";
         float ya = y0 * L, yb = y1 * L, H = yb - ya;
@@ -685,7 +718,7 @@ public static class MedDraw
         if (c.Col != null) foreach (var (k, v) in c.Col) switch (k) { case "a": sp.Col.A = v; break; case "b": sp.Col.B = v; break; case "c": sp.Col.C = v; break; case "e": sp.Col.E = v; break; }
         sp.Col.D = c.ArmorCol;
         if (c.Seg != null) foreach (var (i, s) in c.Seg) if (i >= 0 && i < 16 && s != null) sp.Seg[i] = s.Clone();
-        sp.Height = Math.Clamp(c.Height, 0.8f, 1.2f); sp.ArmLen = Math.Clamp(c.ArmLen, 0.75f, 1.3f); sp.LegLen = Math.Clamp(c.LegLen, 0.75f, 1.3f);
+        sp.Height = bse.Height * Math.Clamp(c.Height, 0.8f, 1.2f); sp.ArmLen = bse.ArmLen * Math.Clamp(c.ArmLen, 0.75f, 1.3f); sp.LegLen = bse.LegLen * Math.Clamp(c.LegLen, 0.75f, 1.3f);
         if (c.Att != null) sp.Att = c.Att.Select(a => a.Clone()).ToList();
         if (c.Bulk > 0) sp.Bulk = c.Bulk;
         sp.ArmorStyle = string.IsNullOrEmpty(c.Armor) || !ARMOR_STYLES.Contains(c.Armor) ? "plate" : c.Armor;
