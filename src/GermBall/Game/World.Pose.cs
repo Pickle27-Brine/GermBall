@@ -154,6 +154,7 @@ public sealed partial class World
         float rx = Lerp(G.px, G.x, alpha), ry = Lerp(G.py, G.y, alpha), rz = Lerp(G.pz, G.z, alpha);
         float hs = riding != null ? 0 : Hypot(G.vx, G.vz), menace = A.type == "normal" || A.type == "brute" || A.type == "mech" ? 1 : A.type == "small" ? 0.55f : A.type == "assassin" ? 0.7f : 0;
         bool hero = A.team == "hero" || TYPES[A.type].Mimic != null;
+        var HS = StyleOf(A);
         // smooth state blends
         if (G.rolling && G.curl < 0.04f) { float h = G.facing / 2; G.ballQ.Set(0, MathF.Sin(h), 0, MathF.Cos(h)); G.pBallQ.Copy(G.ballQ); }
         if (fdt > 0)
@@ -165,7 +166,7 @@ public sealed partial class World
             an.holdK += ((G.hold != null || G.holdA != null ? 1 : 0) - an.holdK) * MathF.Min(1, fdt * 9);
             if (an.throwT > 0) an.throwT -= fdt; if (an.punchT > 0) an.punchT -= fdt; if (an.hurtT > 0) an.hurtT -= fdt; if (an.swingT > 0) an.swingT -= fdt; if (an.squashT > 0) an.squashT -= fdt;
             G.squash += (0 - G.squash) * MathF.Min(1, fdt * 10);
-            float stride = s * Clamp(0.62f + 0.085f * hs, 0.62f, 1.9f) * (A.type == "small" ? 0.75f : A.type == "brute" ? 1.15f : A.type == "mech" ? 1.25f : A.type == "mecha" ? 2.4f : 1);
+            float stride = s * Clamp(0.62f + 0.085f * hs, 0.62f, 1.9f) * (A.type == "small" ? 0.75f : A.type == "brute" ? 1.15f : A.type == "mech" ? 1.25f : A.type == "mecha" ? 2.4f : 1) * (HS?.Stride ?? 1);
             float before = MathF.Sin(an.phase);
             if (G.ground && !G.rolling) an.phase += hs * fdt / stride * PI;
             else if (!G.ground) an.phase += fdt * 6;
@@ -232,11 +233,13 @@ public sealed partial class World
         // ---- legs and hips
         int legs = LegsOf(A); float runK = Smooth(2.5f, 8, hs), walkK = Clamp(hs / 1.2f, 0, 1);
         bool airborne = !G.ground && G.grabbed == null && riding == null; float ph = an.phase;
-        float hipW = 0.1f * s * f * (1 + 0.25f * menace), L1 = 0.44f * s, L2 = 0.44f * s, ank = 0.07f * s;
+        float hipW = 0.1f * s * f * (1 + 0.25f * menace) * (HS?.Stance ?? 1), L1 = 0.44f * s, L2 = 0.44f * s, ank = 0.07f * s;
         float crouch = 0.94f - 0.06f * menace - 0.05f * runK - (an.throwT > 0 ? 0.04f : 0) + G.squash * -0.3f - (berserk ? 0.2f : 0) - (A.type == "assassin" ? 0.06f : 0);
         float hipY = (L1 + L2) * crouch + ank;
         if (seat != null) hipY = seat.Hip[0];
-        float bob = (0.025f + 0.012f * hs) * s * walkK * (1 + menace * 0.6f);
+        float bob = (0.025f + 0.012f * hs) * s * walkK * (1 + menace * 0.6f) * (HS?.Bob ?? 1);
+        bool idle = walkK < 0.15f && G.ground && riding == null && an.aimK < 0.2f && an.holdK < 0.1f && an.swingT <= 0 && down < 0.1f && !G.rolling;
+        if (HS != null && idle && HS.Bounce > 0) hipY += HS.Bounce * s * MathF.Abs(MathF.Sin(clockT * 5.5f + A.uid));   // light on its feet
         hipY -= bob * MathF.Abs(MathF.Cos(ph));
         if (legs == 0) hipY = 0.32f * s;
         if (legs == 1) hipY -= MathF.Abs(MathF.Sin(ph * 2)) * 0.12f * s * walkK;
@@ -249,7 +252,7 @@ public sealed partial class World
         float sway = (A.type == "small" ? 0.1f + 0.04f * fear : A.type == "brute" ? 0.04f : 0.02f) * s * MathF.Sin(ph) * walkK + trA;
         ToW(sway, hipY, 0, J["hipC"]);
         // feet: stride targets in local space
-        float strideL = s * Clamp(0.26f + 0.04f * hs, 0.26f, 0.6f) * (A.type == "small" ? 0.7f : 1), lift = s * Clamp(0.1f + 0.03f * hs, 0.1f, 0.36f);
+        float strideL = s * Clamp(0.26f + 0.04f * hs, 0.26f, 0.6f) * (A.type == "small" ? 0.7f : 1) * (HS?.Stride ?? 1), lift = s * Clamp(0.1f + 0.03f * hs, 0.1f, 0.36f) * (HS?.Lift ?? 1);
         for (int side = -1; side <= 1; side += 2)
         {
             string L = side < 0 ? "L" : "R"; float p = ph + (side < 0 ? 0 : PI); var hip = J["hip" + L]; var knee = J["knee" + L]; var ankle = J["ank" + L]; var toe = J["toe" + L];
@@ -269,7 +272,7 @@ public sealed partial class World
         }
         // ---- spine, chest, head
         float leanF = D.lf + (T == "normal" ? -0.08f : 0) + (T == "brute" ? 0.12f * rage + MathF.Sin(clockT * 3.4f * A.animBreath) * 0.03f : 0) + fear * 0.25f + (hero ? 0.03f : 0.07f) + 0.2f * menace + 0.28f * runK + (airborne ? -0.1f : 0) + (berserk ? 0.85f : 0)
-            + (seat != null ? seat.Lean + Clamp(-riding.speed * 0.008f, -0.2f, 0) * -1 : 0) + (an.holdK * -0.1f) + (an.hurtT > 0 ? -0.25f : 0) + (an.throwT > 0 ? (an.throwT > 0.18f ? -0.35f : 0.45f) : 0) + (legs == 0 ? 1.0f : 0);
+            + (HS?.Lean ?? 0) + (seat != null ? seat.Lean + Clamp(-riding.speed * 0.008f, -0.2f, 0) * -1 : 0) + (an.holdK * -0.1f) + (an.hurtT > 0 ? -0.25f : 0) + (an.throwT > 0 ? (an.throwT > 0.18f ? -0.35f : 0.45f) : 0) + (legs == 0 ? 1.0f : 0);
         // the chest turns to the aim before the legs do
         float aimTw = Clamp(-WrapAngle(D.upYaw - G.facing), -1.1f, 1.1f) * (G.rolling ? 0 : 1);
         // a melee swing drives the whole torso: coil back on the wind-up, unwind through the strike
@@ -316,7 +319,7 @@ public sealed partial class World
         {
             string L = side < 0 ? "L" : "R"; var sh = J["sh" + L]; var el = J["el" + L]; var wr = J["wr" + L]; float p = ph + (side < 0 ? PI : 0);
             float tx, ty, tz;
-            float swing = -MathF.Cos(p) * ((hero ? 0.5f : 0.35f) + 0.35f * runK) * walkK;
+            float swing = -MathF.Cos(p) * ((hero ? 0.5f : 0.35f) + 0.35f * runK) * walkK * (HS?.Swing ?? 1);
             // relaxed: hang down and out, swinging opposite the legs, elbows bent more at speed
             float hx = crx * side * MathF.Sin(abd), hyy = -MathF.Cos(abd), hzF = MathF.Sin(swing);
             tx = sh[0] + hx * (uaL + faL * 0.9f) + cfx * hzF * (uaL + faL) * 0.8f; ty = sh[1] + hyy * (uaL + faL * (0.92f - 0.25f * runK)); tz = sh[2] + crz * side * MathF.Sin(abd) * (uaL + faL * 0.9f) + cfz * hzF * (uaL + faL) * 0.8f;
@@ -359,11 +362,23 @@ public sealed partial class World
             }
             if (an.throwT > 0) { float k2 = an.throwT > 0.18f ? -0.4f : 0.9f; tx = sh[0] + cfx * k2 * (uaL + faL) + BASu[0] * 0.3f * s; ty = sh[1] + 0.35f * s; tz = sh[2] + cfz * k2 * (uaL + faL) + BASu[2] * 0.3f * s; }
             if (an.punchT > 0 && side > 0) { float k2 = an.punchT > 0.2f ? -0.2f : 1; tx = sh[0] + AIMD[0] * k2 * (uaL + faL) * 0.98f; ty = sh[1] + AIMD[1] * k2 * (uaL + faL) * 0.98f + (k2 < 0 ? 0.1f * s : 0); tz = sh[2] + AIMD[2] * k2 * (uaL + faL) * 0.98f; }
-            if (an.aimK > 0.01f && an.holdK < 0.5f && an.throwT <= 0 && !(an.punchT > 0 && side > 0))
-            {   // right arm points the blaster, left arm braces
-                float reach = side > 0 ? (uaL + faL) * 0.97f : (uaL + faL) * 0.7f;
-                float ax2 = sh[0] + AIMD[0] * reach + (side < 0 ? crx * 0.12f * s : 0), ay2 = sh[1] + AIMD[1] * reach - (side < 0 ? 0.08f * s : 0), az2 = sh[2] + AIMD[2] * reach + (side < 0 ? crz * 0.12f * s : 0);
-                tx = Lerp(tx, ax2, an.aimK); ty = Lerp(ty, ay2, an.aimK); tz = Lerp(tz, az2, an.aimK);
+            if (HS != null && idle && cw == null)
+            {   // each hero idles its own way
+                var pel = J["pelC"]; float Lr2 = uaL + faL;
+                switch (HS.Idle)
+                {
+                    case "hips": tx = pel[0] + crx * side * 0.24f * s + BASu[0] * 0.08f * s; ty = pel[1] + 0.08f * s; tz = pel[2] + crz * side * 0.24f * s + BASu[2] * 0.08f * s; break;
+                    case "cross": { var osh = side > 0 ? J["shL"] : J["shR"]; tx = Lerp(sh[0], osh[0], 0.75f) + cfx * 0.22f * s - BASu[0] * 0.2f * s; ty = sh[1] - 0.2f * s + (side > 0 ? 0.03f * s : 0); tz = Lerp(sh[2], osh[2], 0.75f) + cfz * 0.22f * s - BASu[2] * 0.2f * s; break; }
+                    case "fists": { float hv2 = MathF.Sin(clockT * 2.4f + side) * 0.02f * s; tx = sh[0] + crx * side * 0.22f * s + cfx * 0.12f * s; ty = sh[1] - Lr2 * 0.78f + hv2; tz = sh[2] + crz * side * 0.22f * s + cfz * 0.12f * s; break; }
+                    case "bounce": { float bb = MathF.Sin(clockT * 5.5f + A.uid + side) * 0.04f * s; tx = sh[0] + cfx * 0.32f * s + crx * side * 0.08f * s; ty = sh[1] - 0.18f * s + bb; tz = sh[2] + cfz * 0.32f * s + crz * side * 0.08f * s; break; }
+                }
+            }
+            if (cw != null && riding == null && an.holdK < 0.5f && an.throwT <= 0 && !(an.punchT > 0 && side > 0) && G.grabbed == null && (hero || an.aimK > 0.01f))
+            {   // the weapon's own hold (both hands for long guns), its recoil, pump, bolt or draw, and reloading
+                GunHands(A, J["shR"], J["shL"], AIMD, BASu, CR3, CF3, s, uaL + faL, an.aimK, out var GR, out var GL, out float kR, out float kL);
+                float k = side > 0 ? kR : kL; var T2 = side > 0 ? GR : GL;
+                if (!hero) k *= an.aimK;   // germs keep their own low-ready and only take the hold when they aim
+                if (k > 0) { tx = Lerp(tx, T2[0], k); ty = Lerp(ty, T2[1], k); tz = Lerp(tz, T2[2], k); }
             }
             bool twoHand = TWO_HAND.Contains(cw?.id ?? "");
             if (SW is SwingP sw0 && (side > 0 || twoHand))
@@ -378,7 +393,7 @@ public sealed partial class World
             if (G.grabbed != null) { float fl = MathF.Sin(clockT * 18 + side) * 0.3f; tx = sh[0] + crx * side * 0.4f * s; ty = sh[1] + (0.2f + fl) * s; tz = sh[2] + crz * side * 0.4f * s; }
             // a free arm swings on a spring around the shoulder, so it lags, overshoots and settles
             int si = side > 0 ? 1 : 0; var Sx = D.wr[si]; var SV = D.wv[si]; float ox2 = tx - sh[0], oy2 = ty - sh[1], oz2 = tz - sh[2];
-            bool freeArm = an.aimK < 0.4f && an.holdK < 0.3f && an.throwT <= 0 && an.punchT <= 0 && an.swingT <= 0 && G.grabbed == null && riding == null && !(T == "normal" && cw != null);
+            bool freeArm = an.aimK < 0.4f && an.holdK < 0.3f && an.throwT <= 0 && an.punchT <= 0 && an.swingT <= 0 && G.grabbed == null && riding == null && !(T == "normal" && cw != null) && !(hero && cw != null && GripOf(WPN[cw.id]) != "melee" && (side > 0 || GripOf(WPN[cw.id]) != "onehand")) && !(HS != null && idle);
             if (!D.wInit || !freeArm || fdt <= 0) { if (fdt > 0 || !D.wInit) { Sx[0] = ox2; Sx[1] = oy2; Sx[2] = oz2; SV[0] = SV[1] = SV[2] = 0; } }
             else for (int k = 0; k < 3; k++) { float o = k == 0 ? ox2 : k == 1 ? oy2 : oz2; SV[k] += ((o - Sx[k]) * (T == "brute" ? 90 : 160) - SV[k] * (T == "brute" ? 9 : 13)) * fdt; Sx[k] += SV[k] * fdt; }
             if (freeArm && D.wInit) { tx = sh[0] + Sx[0]; ty = sh[1] + Sx[1]; tz = sh[2] + Sx[2]; }

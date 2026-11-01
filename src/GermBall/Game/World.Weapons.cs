@@ -256,6 +256,7 @@ public sealed partial class World
     void FireWeapon(WeaponDef def, Weapon w, float charge)
     {
         var A = CUR; var d = ShotDir(); bool enemy = A.team == "enemy";
+        RecoilKick(A, def);
         float sp = def.Spread * (enemy ? (A.brain != null && A.type == "small" ? 2.2f : 1.2f) : 1) * (P.ads ? 0.5f : 1);
         if (def.Type == "bow")
         {

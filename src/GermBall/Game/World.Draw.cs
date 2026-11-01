@@ -273,12 +273,19 @@ public sealed partial class World
         var w = A.W.slots[A.W.cur];
         if (w != null && A.has[PART.handR] && G.curl < 0.5f && G.ragdoll == null && !G.berserk)
         {
-            int k = PART.handR * 13, fk = PART.farmR * 13; var def = WPN[w.id]; float gsc = s * (A.type == "brute" ? 1.15f : A.type == "small" ? 1.3f : 1);
+            var def = WPN[w.id]; bool bowL = def.Id == "bow" && A.has[PART.handL];
+            int k = (bowL ? PART.handL : PART.handR) * 13, fk = (bowL ? PART.farmL : PART.farmR) * 13; float gsc = s * (A.type == "brute" ? 1.15f : A.type == "small" ? 1.3f : 1);
             float ax, ay, az;
             if (def.Type == "melee")
             {
                 ax = ps[fk + 10]; ay = ps[fk + 11] + 0.9f; az = ps[fk + 12]; float l = Hypot(ax, ay, az); if (l == 0) l = 1; ax /= l; ay /= l; az /= l;
                 if (A.anim.swingT > 0) { ax = ps[fk + 10]; ay = ps[fk + 11]; az = ps[fk + 12]; }
+            }
+            else if (GripOf(def) is "rifle" or "shotgun" or "scoped" or "heavy" or "launcher" or "beam" && A.has[PART.handL] && A.anim.aimK < 0.9f && A.W.reload <= 0)
+            {   // a long gun lies along the line from the trigger hand to the hand on the barrel
+                int hk = PART.handL * 13; ax = ps[hk] - ps[k]; ay = ps[hk + 1] - ps[k + 1]; az = ps[hk + 2] - ps[k + 2]; float l = Hypot(ax, ay, az);
+                if (l < 0.05f && A.AIM.ok) { ax = A.AIM.fx; ay = A.AIM.fy; az = A.AIM.fz; } else { if (l == 0) l = 1; ax /= l; ay /= l; az /= l; }
+                if (A.anim.aimK > 0.3f && A.AIM.ok) { float t2 = A.anim.aimK; ax = Lerp(ax, A.AIM.fx, t2); ay = Lerp(ay, A.AIM.fy, t2); az = Lerp(az, A.AIM.fz, t2); float l2 = Hypot(ax, ay, az); ax /= l2; ay /= l2; az /= l2; }
             }
             else if (A.anim.aimK > 0.3f && A.AIM.ok) { ax = A.AIM.fx; ay = A.AIM.fy; az = A.AIM.fz; }
             else { ax = ps[fk + 10] - MathF.Sin(G.facing) * 0.6f; ay = ps[fk + 11]; az = ps[fk + 12] - MathF.Cos(G.facing) * 0.6f; float l = Hypot(ax, ay, az); if (l == 0) l = 1; ax /= l; ay /= l; az /= l; }

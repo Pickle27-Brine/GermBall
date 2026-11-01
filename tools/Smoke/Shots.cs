@@ -75,6 +75,23 @@ public static class Shots
             for (int i = 0; i < 12; i++) { ch2.y = world.GroundY(ch2.x, ch2.z) + 3.5f; ch2.py = ch2.y; Frame(gs); }
             Frame(gs, name: "vehicles");
         }
+        if (Want("weapons"))
+        {
+            var world = new World(new BootConfig { Mode = "waves", Map = "bowl", Seed = 7, Custom = GermDraw.DefaultCustom() }, new Settings { res = 0, density = 0 }, World.DefaultBinds());
+            var gs = new GameScreen(app, world); world.playing = true; var H = world.HUMAN;
+            foreach (var (id, aimOn, tag2) in new[] { ("pistol", true, ""), ("rifle", true, ""), ("shotgun", true, ""), ("sniper", true, ""), ("hmg", true, ""), ("rocket", true, ""), ("bow", true, ""), ("armcannon", true, ""), ("rifle", false, "-ready"), ("rifle", true, "-reload") })
+            {
+                world.GiveWeapon(H, id); Input.KeyEvent("Mouse2", aimOn);
+                if (id == "bow") Input.KeyEvent("Mouse0", true);
+                for (int i = 0; i < 40; i++) { if (tag2 == "-reload" && i == 25) { H.W.slots[H.W.cur].clip = 1; Input.KeyEvent("KeyR", true); } if (i == 27) Input.KeyEvent("KeyR", false); Frame(gs); }
+                float fx = -MathF.Sin(H.P.facing), fz = -MathF.Cos(H.P.facing);
+                world.SetFreeCam(true); world.FREECAM.x = H.P.x + fz * 2.8f + fx * 1.2f; world.FREECAM.y = H.P.y + 1.4f; world.FREECAM.z = H.P.z - fx * 2.8f + fz * 1.2f;
+                world.FREECAM.yaw = MathF.Atan2(-(H.P.x - world.FREECAM.x), -(H.P.z - world.FREECAM.z)); world.FREECAM.pitch = -0.08f; world.FREECAM.fov = 45;
+                for (int i = 0; i < 3; i++) Frame(gs);
+                Frame(gs, name: "wpn-" + id + tag2);
+                world.SetFreeCam(false); Input.KeyEvent("Mouse0", false); Input.KeyEvent("Mouse2", false);
+            }
+        }
         if (Want("heroes"))
             foreach (var k in MedDraw.PRESETS.Keys)
             {
