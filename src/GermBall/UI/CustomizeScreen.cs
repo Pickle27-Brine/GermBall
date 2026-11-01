@@ -50,7 +50,7 @@ public sealed class CustomizeScreen
         scene.SunDir = Vector3.Normalize(new Vector3(2, 4, 3)); scene.SunIntensity = 0.85f; scene.SunColor = Vector3.One;
         scene.Add(new Mesh(Geo.Cylinder(1.1f, 1.25f, 0.12f, 40), new Material { Kind = MatKind.Phong, Color = Material.Hex(0x5a1a40), Emissive = Material.Hex(0x2a0818), Shininess = 80, Fog = false }) { Position = new Vector3(0, -0.06f, 0) });
         GEO = new() { ['Z'] = Geo.Sphere(1, 18, 12), ['I'] = Geo.Icosahedron(1, 1), ['B'] = Geo.Box(1, 1, 1), ['P'] = Geo.Cone(1, 1, 12), ['C'] = Geo.Cylinder(1, 1, 1, 16), ['T'] = Geo.Torus(1, 0.18f, 8, 24).RotateX(MathF.PI / 2), ['F'] = Geo.Cylinder(1, 0.72f, 1, 16) };
-        selMesh = scene.Add(new InstancedMesh(Geo.Torus(1, 0.05f, 6, 32).RotateX(MathF.PI / 2), new Material { Kind = MatKind.Basic, Color = Material.Hex(0x7affef), Transparent = true, Opacity = 0.75f, Blending = Blend.Additive, DepthWrite = false, Fog = false }, 8) { Count = 0, RenderOrder = 4 });
+        selMesh = scene.Add(new InstancedMesh(Geo.Sphere(1, 16, 10), new Material { Kind = MatKind.Basic, Color = Material.Hex(0x7affef), Transparent = true, Opacity = 0.22f, Blending = Blend.Additive, DepthWrite = false, Fog = false }, 4) { Count = 0, RenderOrder = 4 });
         opt = new DrawOpts { T = 0, Fdt = 1 / 60f, Lod = 2, Has = has, St = st, S = 1 };
         Changed();
     }
@@ -153,22 +153,14 @@ public sealed class CustomizeScreen
             if (tab == "attach" && att >= 0 && att < Atts.Count)
             {
                 var a = Atts[att]; var w = AttachWorld(a); var (r, _) = MedDraw.Dims(apose, a.Part, SP.Seg[a.Part] ?? new SegStyle(), SP);
-                float s = r * MathF.Max(a.Sx, MathF.Max(a.Sy, a.Sz)) * 1.15f * pulse;   // a thin ring facing the camera around the attachment
-                selMesh.Matrices[selMesh.Count++] = Matrix4x4.CreateScale(s) * Matrix4x4.CreateFromQuaternion(cam.Rotation) * Matrix4x4.CreateTranslation(w);
+                float s = r * MathF.Max(a.Sx, MathF.Max(a.Sy, a.Sz)) * 1.4f * pulse; selMesh.Matrices[selMesh.Count++] = Matrix4x4.CreateScale(s) * Matrix4x4.CreateTranslation(w);
             }
             else if (tab == "segments")
             {
                 foreach (int i in mirror && MedDraw.MirrorPart(seg) != seg ? new[] { seg, MedDraw.MirrorPart(seg) } : new[] { seg })
                 {
-                    // two thin bands around the segment, near its ends: they mark it without hiding it
                     int k = i * 13; var (r, L) = MedDraw.Dims(apose, i, SP.Seg[i] ?? new SegStyle(), SP); var q = new Quaternion(apose[k + 3], apose[k + 4], apose[k + 5], apose[k + 6]);
-                    float rr = r * 1.25f * pulse; var c = PartCenter(i);
-                    foreach (float e in new[] { -0.7f, 0.7f })
-                    {
-                        if (selMesh.Count >= 8) break;
-                        var o = Vector3.Transform(new Vector3(0, e * L, 0), q);
-                        selMesh.Matrices[selMesh.Count++] = Matrix4x4.CreateScale(rr, rr, rr) * Matrix4x4.CreateFromQuaternion(q) * Matrix4x4.CreateTranslation(c + o);
-                    }
+                    selMesh.Matrices[selMesh.Count++] = Matrix4x4.CreateScale(r * 1.5f * pulse, L * 1.25f * pulse, r * 1.5f * pulse) * Matrix4x4.CreateFromQuaternion(q) * Matrix4x4.CreateTranslation(PartCenter(i));
                 }
             }
         }
@@ -449,7 +441,7 @@ public sealed class CustomizeScreen
         if ((r = gui.Chips("arm", x, y, w, names, i => (C.Armor ?? "plate") == MedDraw.ARMOR_STYLES[i], out h)) >= 0) { C.Armor = MedDraw.ARMOR_STYLES[r]; Changed(); }
         y += h + 8;
         y += ColorRow(d, "armc", "Armor colour", C.ArmorCol, v => C.ArmorCol = v, x, y, w);
-        y += Note(d, "One slim plate per segment, none overlapping. Every style protects the same: shots chip plates off whatever they look like.", x, y, w);
+        y += Note(d, "A medic's kit: V-cut breastplate, vial-carrying back plate, crest helmet, stepped pauldrons, bracers, tassets and greaves. Plates are flat panels, Shells the same kit rounded, Angular adds spikes. Every style protects the same: shots chip pieces off whatever they look like.", x, y, w);
         return y - y0;
     }
 

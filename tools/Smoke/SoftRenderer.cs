@@ -48,6 +48,7 @@ public sealed class SoftRenderer : IRenderer
             Item? it = n switch
             {
                 InstancedMesh im when im.Geo != null && im.Mat != null && im.Count > 0 => new Item { Node = im, Geo = im.Geo, Mat = im.Mat, World = im.World, Kind = 1 },
+                InstancedMesh => null,   // empty: draws nothing (mirrors the renderer)
                 Mesh m when m.Geo != null && m.Mat != null => new Item { Node = m, Geo = m.Geo, Mat = m.Mat, World = m.World, Kind = 0 },
                 Points p when p.Geo != null && p.Mat != null => new Item { Node = p, Geo = p.Geo, Mat = p.Mat, World = p.World, Kind = 2 },
                 Lines l when l.Geo != null && l.Mat != null => new Item { Node = l, Geo = l.Geo, Mat = l.Mat, World = l.World, Kind = 3 },

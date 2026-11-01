@@ -339,7 +339,8 @@ public static class MedDraw
         }
     }
 
-    static readonly Q4 AQ = new();
+    static readonly Q4 AQ = new(), XQ = new(), YQ = new(), YQ2 = new(), ZQ = new();
+    static readonly V3 TV2 = new();
     static void DrawAttach(Attach at, MedSpec sp)
     {
         Part(at.Part); var st = sp.Seg[at.Part] ?? new SegStyle(); var (r, L) = Dims(ps, at.Part, st, sp);
@@ -361,25 +362,123 @@ public static class MedDraw
         }
     }
 
-    /// <summary>One armor plate: a single thin piece on the side of its segment given by phi, covering y0..y1 of it.
-    /// Plates sit just off the surface and never cover more than about half the segment, so the body shows through.</summary>
+    /// <summary>
+    /// One armor piece: a small designed kit for each spot on the body, in a medical-tech style. The chest gets a V-shaped
+    /// breastplate split by a glowing spine, the back a spine plate carrying two serum vials, the belt a band with a lit
+    /// buckle, the helmet a crest and ear discs, the shoulders stepped pauldrons, the forearms bracer sleeves with a lit
+    /// cuff, the thighs tassets and the shins greaves with knee guards. "plate" is that kit in flat panels, "shell" the
+    /// same kit rounded, "angular" adds spikes and sharper cuts; "ring", "studs" and "none" stay minimal.
+    /// Pieces sit just off the surface and cover part of a segment, so the body still shows.
+    /// </summary>
     public static void Armor(MedSpec sp, float[] pose, int part, float y0, float y1, float phi, string style, char tone, Emit emit, bool anchored = false)
     {
         ps = anchored ? pose : Anchored(sp, pose); em = emit; flashTone = '\0'; Part(part);
         var st = sp.Seg[part] ?? new SegStyle(); var (r, L) = Dims(ps, part, st, sp);
         bool flatFront = st.Shape is "tablet" or "tablethead";
-        float yc = (y0 + y1) * 0.5f * L, hh = MathF.Max(r * 0.35f, (y1 - y0) * 0.5f * L * 0.85f), a = phi * PI / 180;
-        float nx = MathF.Sin(a), nz = -MathF.Cos(a), off = flatFront ? MathF.Max(r * 1.15f, L) * 0.55f : r * (part == 1 ? 1.08f : 0.97f);
-        hh *= 0.75f;   // slim plates: they cover a band of the segment, never the whole thing
+        float yc = (y0 + y1) * 0.5f * L, hh = MathF.Max(r * 0.35f, (y1 - y0) * 0.5f * L * 0.85f) * 0.75f, a = phi * PI / 180;
+        float nx = MathF.Sin(a), nz = -MathF.Cos(a), off = flatFront ? MathF.Max(r * 1.15f, L) * 0.55f : r * (part == 1 ? 1.06f : 0.96f);
         QAxis(0, 1, 0, -a, AQ);
+        char d = tone, g = tone == 'f' ? 'f' : 'c', k = tone == 'f' ? 'f' : 'k';   // armor colour, glow trim, dark detail
         switch (style)
         {
             case "none": return;
-            case "shell": Put('Z', tone, nx * off, yc, nz * off, r * 0.75f, hh * 1.05f, r * 0.3f, AQ); break;
-            case "angular": Put('B', tone, nx * off, yc, nz * off, r * 1.0f, hh * 1.5f, r * 0.14f, AQ); break;
-            case "ring": Put('T', tone, 0, yc + hh * 0.4f, 0, r * 1.12f, r * 0.7f, r * 1.12f); Put('T', tone, 0, yc - hh * 0.4f, 0, r * 1.12f, r * 0.7f, r * 1.12f); break;
-            case "studs": for (int m = -1; m <= 1; m++) Put('Z', tone, nx * off, yc + m * hh * 0.6f, nz * off, r * 0.3f, r * 0.3f, r * 0.2f, AQ); break;
-            default: Put('Z', tone, nx * off, yc, nz * off, r * 0.6f, hh, r * 0.2f, AQ); break;
+            case "ring": Put('T', d, 0, yc + hh * 0.4f, 0, r * 1.12f, r * 0.7f, r * 1.12f); Put('T', d, 0, yc - hh * 0.4f, 0, r * 1.12f, r * 0.7f, r * 1.12f); return;
+            case "studs": for (int m = -1; m <= 1; m++) Put('Z', d, nx * off, yc + m * hh * 0.6f, nz * off, r * 0.3f, r * 0.3f, r * 0.2f, AQ); return;
+        }
+        bool round = style == "shell", sharp = style == "angular";
+        float cx = nx * off, cz = nz * off, t = r * 0.13f;
+        // a piece in the plate's own frame: u across, v along the segment, w outward from the surface
+        void PP(char sh, char tn, float u, float v, float w, float sx, float sy, float sz, Q4 extra = null)
+        {
+            QRot(AQ, u, v, -w, TV2); var q = extra != null ? QMul(AQ, extra, XQ) : AQ;
+            Put(sh, tn, cx + TV2.x, TV2.y, cz + TV2.z, sx, sy, sz, q);
+        }
+        // a main panel: a flat slab, or a rounded shell
+        void Panel(float u, float v, float w, float wd, float ht, float th, Q4 extra = null)
+        {
+            if (round) PP('Z', d, u, v, w, wd * 0.55f, ht * 0.55f, th * 0.9f, extra); else PP('B', d, u, v, w, wd, ht, th, extra);
+        }
+        void Spike(float u, float v, float w, float len) => PP('P', d, u, v, w + len * 0.5f, len * 0.28f, len, len * 0.28f, QAxis(1, 0, 0, -PI / 2, YQ));
+        Q4 Tilt(float ax, float ay, float az, float deg) => QAxis(ax, ay, az, deg * PI / 180, ZQ);
+
+        if (part == 1 && MathF.Abs(phi) < 90)
+        {   // chest: two angled plates meeting in a V, a glowing spine down the middle, a dark keel under it
+            float vy = yc - hh * 0.45f;
+            foreach (float sd in new[] { -1f, 1f })
+            {   // each half follows the curve of the chest (turned toward its side) and leans in at the bottom to make the V
+                QAxis(0, 0, 1, sd * 0.24f, TQ); QAxis(0, 1, 0, -sd * 0.5f, YQ2); QMul(YQ2, TQ, ZQ);
+                Panel(sd * r * 0.34f, vy, -r * 0.08f, r * 0.6f, hh * 2.1f, t, ZQ);
+                if (sharp) Spike(sd * r * 0.5f, vy + hh * 0.42f, -r * 0.05f, r * 0.26f);
+            }
+            PP('B', k, 0, vy, t * 0.35f, r * 0.2f, hh * 2.3f, t * 0.7f);
+            PP('B', g, 0, vy, t * 0.75f, r * 0.08f, hh * 2.0f, t * 0.4f);
+            PP('B', g, 0, vy + hh * 0.55f, t * 0.75f, r * 0.3f, r * 0.08f, t * 0.4f);   // the cross bar: a medic's cross
+        }
+        else if (part == 1)
+        {   // back: a spine plate carrying two serum vials
+            Panel(0, yc, 0, r * 0.5f, hh * 1.7f, t);
+            foreach (float sd in new[] { -1f, 1f })
+            {
+                PP('C', g, sd * r * 0.42f, yc, r * 0.16f, r * 0.13f, hh * 1.25f, r * 0.13f);
+                PP('C', d, sd * r * 0.42f, yc + hh * 0.68f, r * 0.16f, r * 0.17f, hh * 0.18f, r * 0.17f);
+                PP('C', d, sd * r * 0.42f, yc - hh * 0.68f, r * 0.16f, r * 0.17f, hh * 0.18f, r * 0.17f);
+            }
+            if (sharp) for (int m = -1; m <= 1; m++) Spike(0, yc + m * hh * 0.55f, t * 0.4f, r * 0.22f);
+        }
+        else if (part == 2)
+        {   // belt: a band round the hips, a lit buckle in front
+            Put('T', d, 0, yc, 0, r * 1.06f, r * 0.55f, r * 1.06f);
+            PP('B', d, 0, yc, t * 0.3f, r * 0.42f, r * 0.3f, t * 1.2f);
+            PP('B', g, 0, yc, t * 0.95f, r * 0.24f, r * 0.14f, t * 0.4f);
+        }
+        else if (part == 0)
+        {   // helmet: a crest along the top, ear discs with a glowing core
+            if (round) Put('Z', d, 0, L * 0.86f, r * 0.05f, r * 0.14f, r * 0.24f, r * 0.75f); else Put('B', d, 0, L * 0.88f, r * 0.05f, r * 0.12f, r * 0.32f, r * 1.25f);
+            if (sharp) Put('P', d, 0, L * 0.98f, -r * 0.45f, r * 0.12f, r * 0.45f, r * 0.12f, QAxis(1, 0, 0, -0.5f, TQ));
+            foreach (float sd in new[] { -1f, 1f })
+            {
+                QAxis(0, 0, 1, PI / 2, TQ);
+                Put('C', d, sd * r * 0.98f, L * 0.05f, 0, r * 0.34f, r * 0.14f, r * 0.34f, TQ);
+                Put('C', g, sd * r * 1.06f, L * 0.05f, 0, r * 0.16f, r * 0.06f, r * 0.16f, TQ);
+            }
+        }
+        else if (part is 3 or 6)
+        {   // shoulders: three stepped plates over the top of the arm, each edged with light
+            for (int m = 0; m < 3; m++)
+            {
+                float v = L * 0.8f - m * hh * 0.55f, wd = r * (1.55f - m * 0.22f), w = t * (1.3f - m * 0.35f);
+                var tl = Tilt(1, 0, 0, -14 - m * 6);
+                Panel(0, v, w, wd, hh * 0.75f, t, tl);
+                PP('B', g, 0, v - hh * 0.36f, w + t * 0.3f, wd * 0.8f, r * 0.05f, t * 0.35f, tl);
+            }
+            if (sharp) { Spike(0, L * 0.85f, t * 1.4f, r * 0.45f); Spike(0, L * 0.85f - hh * 0.55f, t, r * 0.3f); }
+        }
+        else if (part is 4 or 7)
+        {   // bracers: a sleeve round the forearm, a lit cuff, a raised plate on the outside
+            Put(round ? 'Z' : 'C', d, 0, yc, 0, r * 1.12f, round ? hh * 0.9f : hh * 1.5f, r * 1.12f);
+            Put('T', g, 0, yc - hh * 0.72f, 0, r * 1.14f, r * 0.45f, r * 1.14f);
+            Panel(0, yc + hh * 0.1f, t * 0.6f, r * 0.62f, hh * 1.1f, t);
+            if (sharp) Spike(0, yc + hh * 0.3f, t * 1.2f, r * 0.35f);
+        }
+        else if (part is 9 or 12)
+        {   // thighs: a tasset hanging over the front, a glowing seam across it
+            var tl = Tilt(1, 0, 0, 10);
+            Panel(0, yc + hh * 0.1f, t * 0.4f, r * 1.15f, hh * 1.45f, t, tl);
+            PP('B', g, 0, yc - hh * 0.25f, t * 1.0f, r * 0.9f, r * 0.06f, t * 0.35f, tl);
+            if (sharp) Spike(0, yc + hh * 0.35f, t * 0.8f, r * 0.25f);
+        }
+        else if (part is 10 or 13)
+        {   // shins: a greave with a glowing strip, a knee guard on top
+            Panel(0, yc - hh * 0.1f, 0, r * 0.95f, hh * 1.55f, t);
+            if (!round) PP('B', g, 0, yc - hh * 0.1f, t * 0.6f, r * 0.12f, hh * 1.2f, t * 0.4f);
+            float kv = L * 0.85f;
+            if (round) PP('Z', d, 0, kv, t * 0.4f, r * 0.8f, r * 0.26f, r * 0.34f); else { PP('B', d, 0, kv, t * 0.6f, r * 0.85f, r * 0.55f, t * 1.6f, Tilt(1, 0, 0, -12)); PP('B', k, 0, kv - r * 0.3f, t * 1.2f, r * 0.7f, r * 0.06f, t * 0.6f); }
+            if (sharp) Spike(0, kv, t * 1.6f, r * 0.4f);
+        }
+        else
+        {   // anything else: one slim panel with a glow strip
+            Panel(0, yc, 0, r * 0.9f, hh * 1.4f, t);
+            PP('B', g, 0, yc, t * 0.6f, r * 0.12f, hh, t * 0.4f);
         }
     }
 

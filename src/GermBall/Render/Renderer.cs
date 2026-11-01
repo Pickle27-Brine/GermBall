@@ -340,6 +340,7 @@ public sealed unsafe class Renderer : IDisposable, IRenderer
         {
             case InstancedMesh im when im.Geo != null && im.Mat != null && im.Count > 0:
                 Add(new Item { Node = im, Geo = im.Geo, Mat = im.Mat, World = im.World, Kind = 1 }, im.CastShadow, view); break;
+            case InstancedMesh: break;   // empty (or incomplete) instanced meshes draw nothing; without this they fell through to the plain-mesh case and drew their unit-size geometry at the origin
             case Mesh m when m.Geo != null && m.Mat != null:
                 {
                     if (m.Geo.BoundRadius < 0) m.Geo.ComputeBounds();

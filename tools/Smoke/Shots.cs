@@ -62,6 +62,23 @@ public static class Shots
         if (Want("title")) { var t = new TitleScreen(app); for (int i = 0; i < 3; i++) Frame(t); Frame(t, name: "title"); }
         if (Want("custom"))
         {
+            {   // regression: change options mid-session; shapes that fall out of use must draw nothing (they once drew at unit size)
+                var c0 = new CustomizeScreen(app, GermDraw.DefaultCustom()); for (int i = 0; i < 10; i++) Frame(new Wrap(c0));
+                var fl = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                c0.C.Seg[1] = new SegStyle { Shape = "cylinder", Tone = 'b' }; typeof(CustomizeScreen).GetMethod("Changed", fl).Invoke(c0, null);
+                for (int i = 0; i < 6; i++) Frame(new Wrap(c0)); Frame(new Wrap(c0), name: "custom-changed");
+            }
+            foreach (var style in MedDraw.ARMOR_STYLES)
+            {   // every armor style, front and back
+                var ca = new CustomizeScreen(app, GermDraw.DefaultCustom()); ca.C.Armor = style;
+                var fl = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                typeof(CustomizeScreen).GetMethod("Changed", fl).Invoke(ca, null); typeof(CustomizeScreen).GetField("tab", fl).SetValue(ca, "armor"); typeof(CustomizeScreen).GetField("spin", fl).SetValue(ca, false);
+                foreach (var (yaw, nm) in new[] { (MathF.PI, "front"), (0f, "back") })
+                {
+                    typeof(CustomizeScreen).GetField("yaw", fl).SetValue(ca, yaw);
+                    for (int i = 0; i < 8; i++) Frame(new Wrap(ca)); Frame(new Wrap(ca), name: $"armor-{style}-{nm}");
+                }
+            }
             var c = new CustomizeScreen(app, GermDraw.DefaultCustom()); for (int i = 0; i < 30; i++) Frame(new Wrap(c)); Frame(new Wrap(c), name: "custom");
             foreach (var tb in new[] { "segments", "attach", "colors", "armor" })
             {
