@@ -225,6 +225,37 @@ public static class Shots
             Console.WriteLine($"fbx: wrote {parts.Count} parts, {parts.Sum(p => p.Pos.Count / 3)} vertices, {new FileInfo(f).Length} bytes; read back {pos.Length / 3} vertices, {idx.Length / 3} triangles");
             ModelLibrary.Load(fdir); Console.WriteLine("fbx: model shapes " + string.Join(", ", ModelLibrary.Names) + (ModelLibrary.Errors.Count > 0 ? " errors " + string.Join("; ", ModelLibrary.Errors) : ""));
         }
+        if (Want("walkinto"))
+        {   // walk the hero straight at big solids (organs, cysts, vessel bases, giant cells) with the key held: it must stop at the
+            // surface (never end up inside) and never jump more than a metre in one frame (no teleporting out)
+            foreach (var (mode, map) in new[] { ("sandbox", "leviathan"), ("waves", "gut"), ("sandbox", "random"), ("waves", "bowl") })
+            {
+                var world = new World(new BootConfig { Mode = mode, Map = map, Seed = 12345, Custom = GermDraw.DefaultCustom() }, new Settings { res = 0 }, World.DefaultBinds());
+                var gs = new GameScreen(app, world); world.playing = true; for (int i = 0; i < 5; i++) Frame(gs);
+                world.aiFrozen = true;
+                var statics = (System.Collections.IList)typeof(World).GetField("statics", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(world);
+                var big = new List<Static>(); foreach (Static o in statics) if (o.Kind == World.CYLK && o.R > 1.5f && o.Top - world.TerrainH(o.X, o.Z) > 1.5f && o.Bottom < world.TerrainH(o.X, o.Z) + 0.5f) big.Add(o);
+                var rnd = new Random(3); int tests = 0, inside = 0, jumps = 0; float worstJump = 0;
+                foreach (var o in big.OrderBy(_ => rnd.Next()).Take(16))
+                {
+                    var H = world.HUMAN.P; float a = (float)(rnd.NextDouble() * Math.PI * 2), sx = o.X + MathF.Cos(a) * (o.R + 5), sz = o.Z + MathF.Sin(a) * (o.R + 5);
+                    if (MathF.Abs(sx) > 320 || MathF.Abs(sz) > 320 || MathF.Abs(o.X) > 320 || MathF.Abs(o.Z) > 320) continue;   // keep the walk inside the map's edge
+                    if (world.SolidAt(sx, world.GroundY(sx, sz) + 1, sz, 0.6f)) continue;
+                    H.x = H.px = sx; H.z = H.pz = sz; H.y = H.py = world.GroundY(sx, sz) + 0.1f; H.vx = H.vy = H.vz = 0;
+                    world.cam.yaw = MathF.Atan2(-(o.X - sx), -(o.Z - sz));
+                    Input.KeyEvent("KeyW", true); float lx = H.x, lz = H.z; bool wasIn = false;
+                    for (int i = 0; i < 200; i++)
+                    {
+                        Frame(gs); float step = MathF.Sqrt((H.x - lx) * (H.x - lx) + (H.z - lz) * (H.z - lz)); lx = H.x; lz = H.z;
+                        if (step > 1.0f) { jumps++; worstJump = MathF.Max(worstJump, step); Console.WriteLine($"   jump {step:0.0} m at frame {i}: to {H.x:0.0},{H.y:0.0},{H.z:0.0} (target cyl {o.X:0.0},{o.Z:0.0} R{o.R:0.0} {o.Bottom:0.0}..{o.Top:0.0}) alive {H.alive} ragdoll {H.ragdoll != null}"); }
+                        float d = MathF.Sqrt((H.x - o.X) * (H.x - o.X) + (H.z - o.Z) * (H.z - o.Z));
+                        if (d < o.R - 0.3f && H.y < o.Top - 0.3f && !wasIn) { wasIn = true; Console.WriteLine($"   inside at frame {i}: hero {H.x:0.0},{H.y:0.0},{H.z:0.0} ground {H.ground} cyl {o.X:0.0},{o.Z:0.0} R{o.R:0.0} {o.Bottom:0.0}..{o.Top:0.0} terrain {world.TerrainH(H.x, H.z):0.0}"); }
+                    }
+                    Input.KeyEvent("KeyW", false); tests++; if (wasIn) inside++;
+                }
+                Console.WriteLine($"WALKINTO {mode}/{map}: {tests} solids walked into; ended up inside {inside}; frames jumping over 1 m: {jumps} (worst {worstJump:0.0} m)");
+            }
+        }
         if (Want("villi"))
         {   // a villi patch up close, after it has swayed a while and someone has walked through it
             var world = new World(new BootConfig { Mode = "waves", Map = "bowl", Seed = 7, Custom = GermDraw.DefaultCustom() }, new Settings { res = 0, density = 1 }, World.DefaultBinds());
@@ -255,7 +286,7 @@ public static class Shots
                     {
                         var p = System.Numerics.Vector3.Transform(new System.Numerics.Vector3(g.Position[i * 3], g.Position[i * 3 + 1], g.Position[i * 3 + 2]), M);
                         if (MathF.Abs(p.X) > 340 || MathF.Abs(p.Z) > 340) continue;
-                        float gy = world.TerrainH(p.X, p.Z), h = p.Y - gy; if (h < 0.3f || h > 2.2f) continue;
+                        float gy = world.TerrainH(p.X, p.Z), h = p.Y - gy; if (h < 0.3f || h > 15f) continue;   // anything you can reach on foot, jumping or hovering
                         // pull the sample a little toward the mesh's centre: a surface point sits exactly on the edge of a matching solid
                         if (g.BoundRadius < 0) g.ComputeBounds();
                         var c = System.Numerics.Vector3.Transform(g.BoundCenter, M); var dc = c - p; float dl = dc.Length();

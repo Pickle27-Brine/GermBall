@@ -63,7 +63,9 @@ public sealed partial class World
                     // the ground around the footprint, not just under the centre: on a slope the uphill side is closer
                     float g0 = Gy(c.X, c.Z), gHi = g0, gLo = g0;
                     for (int k = 0; k < 4; k++) { float gg = Gy(c.X + (k == 0 ? rad : k == 1 ? -rad : 0), c.Z + (k == 2 ? rad : k == 3 ? -rad : 0)); gHi = MathF.Max(gHi, gg); gLo = MathF.Min(gLo, gg); }
-                    if (c.Y - rad < gHi + 2.6f && c.Y + rad > gLo - 0.5f) AddStatic(new Static { Kind = CYLK, X = c.X, Z = c.Z, R = rad + 0.1f, Bottom = gLo - 2, Top = c.Y + rad });
+                    // solid along its whole length: down to the floor where it's low, a section of tube where it's up in the air
+                    bool low = c.Y - rad < gHi + 2.6f;
+                    if (c.Y + rad > gLo - 0.5f) AddStatic(new Static { Kind = CYLK, X = c.X, Z = c.Z, R = rad + 0.1f, Bottom = low ? gLo - 2 : c.Y - rad, Top = c.Y + rad });
                 }
             }
             return Add(new Mesh(Geo.Tube(vp, seg > 0 ? seg : pts.Count * 6, rad, 8, closed), mat), true);
@@ -90,7 +92,7 @@ public sealed partial class World
                 {   // collision shaped to the piece: its centre in the world, a dome as wide and tall as the piece (turned pieces use their largest size)
                     float wx = o.X + x * ca0 + z * sa0, wz = o.Z - x * sa0 + z * ca0, wy = y0 - o.H * 0.55f + y;
                     bool turned = MathF.Abs(rx) + MathF.Abs(rz) > 0.3f;
-                    float across = turned ? MathF.Max(sx, MathF.Max(sy, sz)) * 0.85f : MathF.Max(sx, sz), up = turned ? across : sy;
+                    float across = turned ? MathF.Max(sx, MathF.Max(sy, sz)) : MathF.Max(sx, sz), up = turned ? across : sy;   // turned pieces: their full size, so no part pokes out
                     SolidDome(wx, wy, wz, across, up, Gy(wx, wz));
                 }
                 return m;
@@ -145,6 +147,7 @@ public sealed partial class World
             {   // a brain, of something else that lives in here
                 var m = Matte(0xf0b8c4); var dk = Matte(0xd28a9a);
                 Piece(S, m, 0, h * 0.6f, 0, w * 0.8f, h * 0.8f, w * 0.6f);
+                { float wx = o.X, wz = o.Z; SolidDome(wx, y0 - o.H * 0.55f + h * 0.6f, wz, w * 0.98f, h * 0.98f, Gy(wx, wz)); }   // the folds on its surface stand proud of the core: the solid covers them too
                 var g2 = Geo.Sphere(1, 10, 8);
                 for (int k = 0; k < 70; k++) { float a = r() * 6.28f, e = r() * 1.2f; Piece(g2, k % 3 != 0 ? m : dk, MathF.Cos(a) * MathF.Cos(e) * w * 0.78f, h * 0.6f + MathF.Sin(e) * h * 0.78f, MathF.Sin(a) * MathF.Cos(e) * w * 0.58f, 1.2f + r() * 1.5f, 0.8f, 4 + r() * 4, r() * 3, a, 0, solid: false); }
                 ORG.anim.Add(new OrgAnim { kind = "throb", G = G, ph = o.Ph });
@@ -168,8 +171,8 @@ public sealed partial class World
         ORG.veinMats.Add((artMat, artMat.Emissive)); ORG.veinMats.Add((venMat, venMat.Emissive));
         void Vein(float x, float z, float a, int len, float rad, Material mat, int depth)
         {
-            var pts = new List<float[]>(); for (int k = 0; k <= len; k++) { pts.Add(new[] { x, Gy(x, z) - rad * 0.78f, z }); /* sunk nearly flush: ground markings you walk over */ a += (r() - 0.5f) * 0.7f; x += MathF.Cos(a) * 4; z += MathF.Sin(a) * 4; }
-            if (pts.Count > 2) Tube(pts, rad, mat, pts.Count * 4);   // solid where they rise out of the floor: low enough to step over, but nothing passes through
+            var pts = new List<float[]>(); for (int k = 0; k <= len; k++) { pts.Add(new[] { x, 0, z }); a += (r() - 0.5f) * 0.7f; x += MathF.Cos(a) * 4; z += MathF.Sin(a) * 4; }
+            if (pts.Count > 2) Add(new Mesh(VeinRibbon(pts, rad), mat));   // a flat ribbon laid on the ground: nothing to trip on, so no collision
             if (depth < 2) for (int b = 0; b < 2; b++) { int k = 2 + (int)MathF.Floor(r() * (len - 2)); if (k < pts.Count) Vein(pts[k][0], pts[k][2], a + (r() < 0.5f ? 1 : -1) * (0.6f + r() * 0.6f), Math.Max(3, len >> 1), rad * 0.6f, mat, depth + 1); }
         }
         for (int i = 0; i < (arena ? 8 : 26); i++) Vein((r() * 2 - 1) * LIM * 0.9f, (r() * 2 - 1) * LIM * 0.9f, r() * 6.28f, 8 + (int)MathF.Floor(r() * 10), 0.45f + r() * 0.4f, i % 2 != 0 ? artMat : venMat, 0);
@@ -392,5 +395,39 @@ public sealed partial class World
                 if (PoolAt(G.x, G.z, G.y, 0.25f) != null && Hypot(G.x - A.d.X, G.z - A.d.Z) < A.d.R + 12) { DamageActor(B, B.team == "hero" ? 7 : 14, new Dmg { kind = "blast" }); if (B.human) ShowHint("ACID! GET OUT"); }
             }
         }
+    }
+}
+
+public sealed partial class World
+{
+    /// <summary>A floor vein as a flat ribbon draped over the terrain: a gentle dome a few centimetres high in the middle,
+    /// flush with the ground at its edges. Nothing sticks up, so nothing needs collision and nothing snags a foot.</summary>
+    Geometry VeinRibbon(List<float[]> ctrl, float rad)
+    {
+        var vp = ctrl.ConvertAll(p => new System.Numerics.Vector3(p[0], 0, p[2]));
+        float len = 0; for (int i = 1; i < vp.Count; i++) len += System.Numerics.Vector3.Distance(vp[i - 1], vp[i]);
+        int n = Math.Max(4, (int)(len / 0.45f));
+        float w = rad * 1.6f; float[] ox = { -1, -0.5f, 0, 0.5f, 1 }, oy = { 0.012f, 0.045f, 0.065f, 0.045f, 0.012f };
+        var pos = new List<float>(); var idx = new List<uint>();
+        for (int i = 0; i <= n; i++)
+        {
+            float u = i / (float)n;
+            var c = Geo.CatmullRom(vp, u, false); var c2 = Geo.CatmullRom(vp, MathF.Min(1, u + 0.01f), false); var c1 = Geo.CatmullRom(vp, MathF.Max(0, u - 0.01f), false);
+            float dx = c2.X - c1.X, dz = c2.Z - c1.Z, l = MathF.Max(1e-4f, Hypot(dx, dz)), px = -dz / l, pz = dx / l;
+            float taper = MathF.Min(1, MathF.Min(u, 1 - u) * 8 + 0.15f);   // the ends narrow to a point
+            for (int k = 0; k < 5; k++)
+            {
+                float x = c.X + px * ox[k] * w * taper, z = c.Z + pz * ox[k] * w * taper;
+                pos.Add(x); pos.Add(TerrainH(x, z) + oy[k] * MathF.Min(1, rad * 1.4f) * taper); pos.Add(z);
+            }
+            if (i > 0)
+                for (int k = 0; k < 4; k++)
+                {
+                    uint a = (uint)((i - 1) * 5 + k), b = a + 1, c3 = a + 5, d = c3 + 1;
+                    idx.Add(a); idx.Add(c3); idx.Add(b); idx.Add(b); idx.Add(c3); idx.Add(d);
+                }
+        }
+        var g = new Geometry { Position = pos.ToArray(), Index = idx.ToArray() }; g.ComputeNormals();
+        return g;
     }
 }

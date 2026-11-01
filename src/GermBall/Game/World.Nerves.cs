@@ -38,7 +38,10 @@ public sealed partial class World
             // measured from the terrain around the footprint (GroundY would report a roof next to a building)
             float gHi = TerrainH(q.X, q.Z), gLo = gHi;
             for (int k = 0; k < 4; k++) { float gg = TerrainH(q.X + (k == 0 ? rad : k == 1 ? -rad : 0), q.Z + (k == 2 ? rad : k == 3 ? -rad : 0)); gHi = MathF.Max(gHi, gg); gLo = MathF.Min(gLo, gg); }
-            if (q.Y - rad - gHi < 2.6f && !InsideBuilding(q.X, q.Z, -0.3f)) AddStatic(new Static { Kind = CYLK, X = q.X, Z = q.Z, R = rad + 0.12f, Bottom = gLo - 1, Top = q.Y + rad });
+            // solid along the whole tendril: down to the floor where it's low, a section of it where it arches overhead
+            if (BLDG.Exists(B => MathF.Abs(q.X - B.x) < B.w / 2 - 0.3f && MathF.Abs(q.Z - B.z) < B.d / 2 - 0.3f && q.Y < B.y + B.h + 0.4f)) continue;   // inside a building's walls: the building is the solid there
+            bool low = q.Y - rad - gHi < 2.6f;
+            AddStatic(new Static { Kind = CYLK, X = q.X, Z = q.Z, R = rad + 0.12f, Bottom = low ? gLo - 1 : q.Y - rad, Top = q.Y + rad });
         }
     }
     void BuildNerves()
@@ -82,7 +85,7 @@ public sealed partial class World
                 var p0 = new Vector3(A.x, A.y + A.h + 0.2f, A.z); var p1 = new Vector3(Bb.x, Bb.y + Bb.h + 0.2f, Bb.z);
                 float lift = 3 + d * 0.12f; var m = (p0 + p1) * 0.5f + new Vector3(0, lift, 0);
                 var pts = new List<Vector3> { p0, Vector3.Lerp(p0, m, 0.5f) + new Vector3(0, lift * 0.3f, 0), m, Vector3.Lerp(m, p1, 0.5f) + new Vector3(0, lift * 0.3f, 0), p1 };
-                NerveTube(pts, 0.22f, axon, 36);
+                NerveTube(pts, 0.22f, axon, 36); SolidNerve(pts, 0.36f);   // solid (sized to the myelin beads on it)
                 // myelin sheath beads along it
                 for (int k = 1; k < 9; k++)
                 {

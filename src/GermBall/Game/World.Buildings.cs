@@ -130,14 +130,17 @@ public sealed partial class World
     /// each as wide as the shape at its base, so you meet the surface about where you see it. groundY is where it meets the floor.</summary>
     void SolidDome(float cx, float cy, float cz, float rr, float ry, float groundY)
     {
-        // bands from where the shape comes out of the floor up to near its top; each band is as wide as the shape at its bottom
-        float h0 = Clamp((groundY - cy) / MathF.Max(0.01f, ry), 0, 0.95f); if (h0 >= 0.9f) return;
-        const int N = 3;
+        // the whole ellipsoid, bottom to top (pieces that sit above the floor had an open underside), cut where it meets the floor;
+        // each band is as wide as the shape gets within it, and the lowest band reaches into the floor when the shape touches it
+        float h0 = Clamp((groundY - cy) / MathF.Max(0.01f, ry), -1, 1); if (h0 >= 0.97f) return;
+        bool touches = h0 > -1;
+        const int N = 10;
         for (int i = 0; i < N; i++)
         {
-            float ha = h0 + (0.92f - h0) * i / N, hb = h0 + (0.92f - h0) * (i + 1) / N;
-            float rad = rr * MathF.Sqrt(MathF.Max(0, 1 - ha * ha)) * 0.96f; if (rad < 0.25f) continue;
-            AddStatic(new Static { Kind = CYLK, X = cx, Z = cz, R = rad, Bottom = i == 0 ? groundY - 2 : cy + ry * ha, Top = cy + ry * hb });
+            float ha = h0 + (1 - h0) * i / N, hb = h0 + (1 - h0) * (i + 1) / N;
+            float hm = ha <= 0 && hb >= 0 ? 0 : MathF.Min(MathF.Abs(ha), MathF.Abs(hb));   // the widest point within the band
+            float rad = rr * MathF.Sqrt(MathF.Max(0, 1 - hm * hm)) * 0.97f; if (rad < 0.2f) continue;
+            AddStatic(new Static { Kind = CYLK, X = cx, Z = cz, R = rad, Bottom = i == 0 && touches ? groundY - 2 : cy + ry * ha, Top = cy + ry * hb });
         }
     }
     bool InsideBuilding(float x, float z, float margin) { foreach (var B in BLDG) if (MathF.Abs(x - B.x) < B.w / 2 + margin && MathF.Abs(z - B.z) < B.d / 2 + margin) return true; return false; }

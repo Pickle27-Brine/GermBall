@@ -223,7 +223,8 @@ public sealed partial class World
             }
             else if (o.Kind == CYLK)
             {
-                if (o.Top <= top && o.Top > G.h && Hypot(x - o.X, z - o.Z) < o.R * 0.8f) { G.h = o.Top; G.nx = 0; G.ny = 1; G.nz = 0; }
+                // the whole top is floor (it used to be only the inner 80%: step onto the rim and you sank in, then got shoved out)
+                if (o.Top <= top && o.Top > G.h && Hypot(x - o.X, z - o.Z) < o.R + 0.1f) { G.h = o.Top; G.nx = 0; G.ny = 1; G.nz = 0; }
             }
             else if (x >= o.MinX && x <= o.MaxX && z >= o.MinZ && z <= o.MaxZ)
             {
@@ -272,7 +273,16 @@ public sealed partial class World
             {
                 if (o.Top <= feet + P.STEP || o.Bottom >= head) continue;
                 float dx = P.x - o.X, dz = P.z - o.Z, d = Hypot(dx, dz), min = o.R + R;
-                if (d < min && d > 1e-6f) { P.x = o.X + dx / d * min; P.z = o.Z + dz / d * min; WallHit(dx / d, dz / d); }
+                if (d >= min) continue;
+                if (min - d > MathF.Max(0.5f, R))
+                {   // deep inside (never a normal bump): don't fling across to the far rim. A low solid takes you onto its top;
+                    // otherwise you go back to where you were before this step, against its side
+                    if (o.Top - feet < 1.0f) { P.y = o.Top; if (P.vy < 0) P.vy = 0; P.ground = true; continue; }
+                    float bx = P.px - o.X, bz = P.pz - o.Z, bd = Hypot(bx, bz);
+                    if (bd > d + 0.05f) { dx = bx; dz = bz; d = bd; }
+                }
+                if (d < 1e-6f) { dx = 1; dz = 0; d = 1; }
+                P.x = o.X + dx / d * min; P.z = o.Z + dz / d * min; WallHit(dx / d, dz / d);
             }
         }
         if (LAYOUT.Bowl != null)
