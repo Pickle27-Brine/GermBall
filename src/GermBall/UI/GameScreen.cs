@@ -160,21 +160,22 @@ public sealed class GameScreen : IScreen
     // ---- Controls
     static readonly (string, string)[] KEYS_HELP =
     {
-        ("W A S D", "Move. Reverse at speed to skid"), ("Mouse", "Orbit camera (look, in first person)"), ("Space", "Jump. Again in the air: dash (homing while you have charges)"),
+        ("W A S D", "Move. Reverse at speed to skid"), ("Mouse", "Orbit camera (look, in first person)"), ("Space", "Jump. Again in the air: dash. With homing charges the dash locks on, flies fast and bursts small germs outright"),
         ("Left click / F", "Fire or swing. Melee swings chain into a three-hit combo ending in a finisher, and step you in toward the nearest enemy; the squash hammer flattens germs like pancakes. Bows and charge weapons: hold, then release. Energy weapons overheat"),
-        ("1 2 3 / wheel / P", "Switch weapon (three slots; an empty slot is your fists)"), ("G", "Interact: take a weapon (swaps out the one in hand when full), get in or out of a vehicle or the battle mecha"),
-        ("C / Shift", "Roll. From a standstill, hold to charge a spin dash. In the air: ground pound"),
+        ("1 2 3 / wheel / P", "Switch weapon (three slots; an empty slot is your fists)"), ("G", "Interact: take a weapon (swaps out the one in hand when full), get in or out of a vehicle or the battle mecha"), ("R", "Reload. Guns hold a magazine; spare magazines are stored (shown as pips on the weapon slot)"),
+        ("Q / mouse 4", "Punch, whatever you're holding. Curled into a ball in the air: ground pound"),
+        ("C / Shift", "Roll. From a standstill, hold to charge a spin dash"),
         ("E / right click", "Pick up the thing or small germ in front of you. Then hold to wind up a throw (watch the meter and the arc) and release to throw at the crosshair"),
         ("Right mouse", "Aim down sights. In the air you hover and can still shoot; dashing ends the hover"),
         ("Vehicles", "Chopper: Space jumps, Space again in the air jump-dashes, W/S pitch and A/D roll it in the air; land on the wheels or you're thrown off. Rover: Shift boosts (5 s cooldown), the turret follows your aim and fires with the trigger. Hover chair: slides any way you push, Space / E rises and C / Shift sinks (rebind under Keys), fires its armrest beams"),
-        ("V", "Free camera on/off (also in Debug)"), ("R", "Back to base"), ("M", "Next song"), ("Esc", "Pause"), ("F11 / Alt+Enter", "Fullscreen"), ("F12", "Screenshot (saved under Documents\\My Games\\GermBall\\screenshots)"),
+        ("V", "Free camera on/off (also in Debug)"), ("B", "Back to base"), ("M", "Next song"), ("Esc", "Pause"), ("F11 / Alt+Enter", "Fullscreen"), ("F12", "Screenshot (saved under Documents\\My Games\\GermBall\\screenshots)"),
     };
     static readonly (string, string)[] PAD_HELP =
     {
         ("Left stick / D-pad", "Move"), ("Right stick", "Orbit camera. Click it to recenter"), ("A", "Jump. Again in the air to dash"), ("RT / LT", "Fire / aim down sights (hover in the air)"),
-        ("B", "Roll and spin dash"), ("X", "Interact: take a weapon, get in or out of a vehicle or the battle mecha"),
+        ("B", "Roll and spin dash"), ("X", "Tap: reload. Hold: interact (take a weapon, get in or out of a vehicle or the battle mecha)"),
         ("On vehicles", "Chopper: A jumps, A again in the air jump-dashes, the stick pitches and rolls it in the air. Rover: B boosts, RT fires the turret. Hover chair: RB rises, LB sinks, RT fires the beams"),
-        ("LB", "Ground pound (in the air)"), ("RB", "Pick up; hold to wind up a throw, release to throw"), ("Y", "Next weapon"), ("View / Menu", "Back to base / pause"),
+        ("RB", "Punch. Curled into a ball in the air: ground pound"), ("LB", "Pick up; hold to wind up a throw, release to throw"), ("Y", "Next weapon"), ("View / Menu", "Back to base / pause"),
         ("Free cam", "Left stick fly, right stick look, RT/LT zoom in/out, RB/LB focal in/out, A/X up/down, click the right stick to reset, View to leave"),
         ("In menus", "D-pad or stick to move, left/right on a slider to adjust, A to press, B to resume, LB/RB to switch tabs"),
     };

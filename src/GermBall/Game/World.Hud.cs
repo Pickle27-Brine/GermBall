@@ -185,7 +185,7 @@ public sealed partial class World
         var cw = CurWpn(ME); var cd = CurDef(ME);
         {
             float cx = Wd / 2, cy = Ht / 2, sc = (W.hitT > 0 ? (P.ads ? 1.1f : 1.35f) : 1) * (P.ads ? 0.7f : 1);
-            bool empty = (cw != null && ((cd.Energy && cw.over) || (!cd.Energy && float.IsFinite(cw.ammo) && cw.ammo < 1))) || !CanShoot(ME);
+            bool empty = (cw != null && ((cd.Energy && cw.over) || (!cd.Energy && float.IsFinite(cw.ammo) && cw.ammo < 1 && cw.clip < 1))) || !CanShoot(ME);
             float a = empty ? 0.35f : 1; var blue = Pal.A(Css(0x8fe3ff), a);
             Vector2 Pt(float x, float y) => new(cx + x * sc, cy + y * sc);
             switch (cd.Cls)
@@ -245,6 +245,14 @@ public sealed partial class World
                     string big; float bar; Vector4? grad = null;
                     if (def.Energy) { big = w.over ? "OVERHEAT" : w.heat > 0.75f ? "HOT" : "∞"; bar = w.heat; grad = Css(0xffe66d); }
                     else if (def.Type == "melee") { big = "MELEE"; bar = 0; }
+                    else if (def.Clip > 0)
+                    {   // the magazine in the gun, then the stored ones
+                        big = (on && W.reload > 0 ? "RELOAD" : MathF.Floor(w.clip).ToString()) + " | " + MathF.Floor(w.ammo);
+                        bar = on && W.reload > 0 && W.reloadMax > 0 ? 1 - W.reload / W.reloadMax : w.clip / def.Clip;
+                        int mags = (int)MathF.Ceiling(w.ammo / def.Clip);
+                        for (int mi = 0; mi < Math.Min(mags, 8); mi++) d.Rect(x + sw - 10 - mi * 6, y + 25, 4, 10, Pal.A(col, a * 0.85f));
+                        if (mags > 8) d.Text("+", x + sw - 10 - 8 * 6 - 6, y + 22, d.MonoSmall, Pal.A(col, a));
+                    }
                     else { big = MathF.Floor(w.ammo) + " / " + def.Max; bar = w.ammo / def.Max; }
                     d.Text(big, x + 7, y + 19, d.Display, Pal.A(col, a));
                     d.Rect(x + 7, y + 43, sw - 14, 3, Css(0x8fe3ff, 0.15f));
@@ -264,13 +272,14 @@ public sealed partial class World
             object near = P.alive && P.hold == null && P.holdA == null ? (ME.pilot ? ME : P.vehicle != null ? P.vehicle : WithActor(ME, () => NearestInteract(ME))) : null;
             if (near != null)
             {
-                string key = padActive ? "X" : Platform.Input.Label(BINDS["use"][0]);
+                string key = padActive ? "HOLD X" : Platform.Input.Label(BINDS["use"][0]);
                 string txt = near == ME ? "CLIMB OUT" : near is Actor M && M.type == "mecha" ? "PILOT BATTLE MECHA" : near == P.vehicle ? "GET OFF"
                     : near is Vehicle Vh ? (Vh.kind == "bike" ? "RIDE CHOPPER" : Vh.kind == "rover" ? "DRIVE ROVER" : "BOARD HOVER CHAIR")
                     : near is Item it ? (W.slots.Any(w => w != null && w.id == it.wid) ? "TAKE AMMO · " : W.slots.All(w => w != null) ? "SWAP FOR " : "TAKE ") + ItemLabel(it) : "";
                 var f = d.MonoSmall; float kw = f.Measure(key) + 10, tw = f.Measure(txt, 1.4f), w = kw + 6 + tw + 18, x = Wd / 2 - w / 2, y = Ht / 2 + 46;
                 d.Rect(x, y, w, 22, new Vector4(10 / 255f, 22 / 255f, 34 / 255f, 0.6f)); d.Frame(x, y, w, 22, Pal.Warn);
-                d.Frame(x + 9, y + 3, kw, 16, Pal.Warn); d.Text(key, x + 9 + kw / 2, y + 4, f, Pal.Warn, "center");
+                d.Frame(x + 9, y + 3, kw, 16, Pal.Warn); if (padActive && xHeldT > 0) d.Rect(x + 9, y + 3, kw * Math.Min(1, xHeldT / HOLD_USE), 16, Pal.A(Pal.Warn, 0.35f));
+                d.Text(key, x + 9 + kw / 2, y + 4, f, Pal.Warn, "center");
                 d.Text(txt, x + 9 + kw + 6, y + 4, f, Pal.Warn, "left", 1.4f);
             }
         }

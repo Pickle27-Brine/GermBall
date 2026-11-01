@@ -354,6 +354,21 @@ public sealed partial class World
                     Sfx("slam", Vp.x, Vp.y + 1, Vp.z, 1); if (victim.human) cam.shake = MathF.Max(cam.shake, 0.6f);
                     return;
                 }
+                bool homingHit = H.homingT > 0 && H.homeTgt == victim;
+                if (homingHit)
+                {   // the homing strike: small germs burst outright, everything else takes a heavy hit and can't counter
+                    if (victim.type == "small" || victim.type == "assassin" || (TYPES[victim.type].Fragile)) KillActor(victim, new Dmg { src = hitter, fx = nx * dir * speed * 1.5f, fz = nz * dir * speed * 1.5f });
+                    else
+                    {
+                        DamageActor(victim, (victim.type == "brute" ? 55 : victim.type == "mech" ? 40 : 70) * MathF.Max(1, speed / 25), new Dmg { src = hitter, kind = "melee", fx = nx * dir, fz = nz * dir, knock = big ? 3 : 6, up = 3 });
+                        if (victim.P.alive) Knockdown(victim, big ? 0.9f : 1.3f, nx * dir * speed * (big ? 0.25f : 0.6f), 5, nz * dir * speed * (big ? 0.25f : 0.6f));
+                    }
+                    // bounce off upward so you can chain into the next target
+                    H.vx = -nx * dir * 4; H.vz = -nz * dir * 4; H.vy = 11; H.homingT = 0; H.homeTgt = null; H.dashUsed = false; H.stunT = 0;
+                    Sfx("supercombine", Vp.x, Vp.y + 1, Vp.z, 1); if (hitter.human) { Rumble(1, 1, 220); cam.shake = MathF.Max(cam.shake, 0.45f); HITSTOP = MathF.Max(HITSTOP, 0.06f); }
+                    for (int i = 0; i < 12; i++) Puff(Vp.x, Vp.y + 1, Vp.z, 6, 3, 0.15f);
+                    return;
+                }
                 if (victim.type == "assassin" && (H.rolling || H.vehicle != null)) KillActor(victim, new Dmg { fx = nx * dir * speed, fz = nz * dir * speed });
                 else
                 {

@@ -14,6 +14,8 @@ public static class Prefs
         {
             if (binds != null) return binds;
             binds = Paths.Load<Dictionary<string, string[]>>(Paths.Keys) ?? World.DefaultBinds();
+            // key maps saved before punch and reload existed: R was "back to base"; it is now reload
+            if (!binds.ContainsKey("reload") && binds.TryGetValue("base", out var bb) && bb != null) for (int i = 0; i < bb.Length; i++) if (bb[i] == "KeyR") bb[i] = "KeyB";
             foreach (var d in World.BIND_DEF) if (!binds.TryGetValue(d.key, out var b) || b == null || b.Length < 2) binds[d.key] = new[] { d.a, d.b };
             return binds;
         }

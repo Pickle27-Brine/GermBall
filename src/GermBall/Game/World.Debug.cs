@@ -58,7 +58,7 @@ public sealed partial class World
             {
                 if (!A.P.alive) RespawnActor(A);
                 A.P.shield = 100; for (int i = 0; i < NPART; i++) { A.has[i] = true; A.hp[i] = A.hpMax[i]; }
-                foreach (var w in A.W.slots) if (w != null) { w.heat = 0; w.over = false; if (float.IsFinite(w.ammo)) w.ammo = WPN[w.id].Max; }
+                foreach (var w in A.W.slots) if (w != null) { w.heat = 0; w.over = false; if (float.IsFinite(w.ammo)) { w.ammo = WPN[w.id].Max; w.clip = WPN[w.id].Clip; } }
                 foreach (var a in A.armor) a.hp = a.max;
             }
         return "Body rebuilt, shield, ammo and heat reset.";

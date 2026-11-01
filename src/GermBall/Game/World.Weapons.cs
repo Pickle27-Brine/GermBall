@@ -16,7 +16,7 @@ public sealed class Weapon { public string id; public float ammo, clip, heat; pu
 public sealed class BeamFx { public float x0, y0, z0, x1, y1, z1, t; }
 public sealed class WState
 {
-    public Weapon[] slots = new Weapon[3]; public int cur; public float cd, since = 9, aimT; public Actor lockA; public Body lockBody; public float flash, hitT, empty, charge, reload; public int pat; public float patT, swingT; public int swingHit;
+    public Weapon[] slots = new Weapon[3]; public int cur; public float cd, since = 9, aimT; public Actor lockA; public Body lockBody; public float flash, hitT, empty, charge, reload, reloadMax, punchQ; public int pat; public float patT, swingT; public int swingHit;
     public BeamFx beam; public float beamAcc, laserT; public int combo; public float swingDur; public WeaponDef swingDef; public bool trig;
 }
 public sealed class Shot
@@ -55,9 +55,10 @@ public sealed partial class World
         Wd("mechmg", "WATER-BEAR CHAINGUN", "gun", 0, d => { d.Auto = true; d.Energy = true; d.Heat = 0.022f; d.Dmg = 11; d.Rate = 15; d.Spread = 0.035f; d.Speed = 200; d.Knock = 2; d.Proj = "bullet"; d.Snd = "eshot2"; }),
         Wd("mechhoming", "SEEKER SPORES", "gun", 2, d => { d.Auto = true; d.Energy = true; d.Heat = 0.15f; d.Dmg = 50; d.Radius = 4.5f; d.Blast = 1500; d.Rate = 3.2f; d.Spread = 0.18f; d.Speed = 30; d.Home = 1.8f; d.Life = 4; d.Proj = "rocket"; d.Snd = "missile"; }),
         Wd("mechbomb", "SPORE MORTAR", "gun", 2, d => { d.Auto = true; d.Energy = true; d.Heat = 0.24f; d.Dmg = 70; d.Radius = 6.5f; d.Blast = 2400; d.Rate = 1.3f; d.Spread = 0.02f; d.Speed = 36; d.Grav = 16; d.Life = 5; d.Proj = "rocket"; d.Snd = "boomshot"; }),
+        Wd("punch", "PUNCH", "melee", 3, d => { d.Dmg = 15; d.Rate = 3; d.Range = 1.35f; d.Arc = 1.0f; d.Knock = 7; d.Up = 2.5f; d.Snd = "punch"; }),
         Wd("fists", "PSEUDOPODS", "melee", 3, d => { d.Dmg = 8; d.Rate = 2.4f; d.Range = 1.2f; d.Arc = 1.1f; d.Knock = 5; d.Up = 2; d.Snd = "punch"; }),
     }.ToDictionary(d => d.Id);
-    public static readonly string[] WPN_IDS = WPN.Keys.Where(k => k != "fists").ToArray();
+    public static readonly string[] WPN_IDS = WPN.Keys.Where(k => k != "fists" && k != "punch").ToArray();
     static readonly Dictionary<string, (string, float)[]> LOADOUT = new()
     {
         ["small"] = new[] { ("pistol", 40f), ("smg", 30f), ("plasma", 15f), ("needler", 15f) },
@@ -70,7 +71,10 @@ public sealed partial class World
     static Weapon MakeWeapon(string id, float? ammo)
     {
         var d = WPN[id];
-        return new Weapon { id = id, ammo = d.Energy || d.Type == "melee" || d.Type == "beam" ? float.PositiveInfinity : ammo ?? d.Ammo, clip = d.Clip };
+        if (d.Energy || d.Type == "melee" || d.Type == "beam") return new Weapon { id = id, ammo = float.PositiveInfinity, clip = d.Clip };
+        // a found weapon comes loaded: a magazine in it, the rest stored
+        float total = ammo ?? d.Ammo + d.Clip, inMag = MathF.Min(d.Clip, total);
+        return new Weapon { id = id, ammo = MathF.Min(d.Max, total - inMag), clip = inMag };
     }
     static WState MakeW() => new();
     static Weapon CurWpn(Actor A) => A.W.slots[A.W.cur];
@@ -88,7 +92,7 @@ public sealed partial class World
     {
         var w = A.W.slots[i]; if (w == null) return;
         A.W.slots[i] = null;
-        var G = A.P; SpawnItem("weapon", G.x - MathF.Sin(G.facing) * 0.8f, G.y + G.H * 0.6f, G.z - MathF.Cos(G.facing) * 0.8f, vy: 3, wid: w.id, ammo: w.ammo, life: 60);
+        var G = A.P; SpawnItem("weapon", G.x - MathF.Sin(G.facing) * 0.8f, G.y + G.H * 0.6f, G.z - MathF.Cos(G.facing) * 0.8f, vy: 3, wid: w.id, ammo: (float.IsFinite(w.ammo) ? w.ammo : 0) + w.clip, life: 60);
     }
     static bool HasAmmo(Actor A) { foreach (var w in A.W.slots) if (w != null && WPN[w.id].Type != "melee" && (w.ammo > 0 || w.clip > 0)) return true; return false; }
     static int RangedSlot(Actor A) { for (int i = 0; i < 3; i++) { var w = A.W.slots[i]; if (w != null && WPN[w.id].Type != "melee" && (w.ammo > 0 || w.clip > 0)) return i; } return -1; }
@@ -322,7 +326,7 @@ public sealed partial class World
     sealed record MeleeFeel(float Dur, string[] Combo, float Lunge, float Stop);
     static readonly Dictionary<string, MeleeFeel> MELEE_FEEL = new()
     {
-        ["fists"] = new(0.26f, new[] { "jab", "hook", "upper" }, 3, 0.04f), ["knife"] = new(0.24f, new[] { "slash", "slash2", "stab" }, 4.5f, 0.04f),
+        ["fists"] = new(0.26f, new[] { "jab", "hook", "upper" }, 3, 0.04f), ["punch"] = new(0.22f, new[] { "jab", "hook", "upper" }, 3.5f, 0.05f), ["knife"] = new(0.24f, new[] { "slash", "slash2", "stab" }, 4.5f, 0.04f),
         ["bat"] = new(0.38f, new[] { "sweep", "sweep2", "chop" }, 3.5f, 0.07f), ["hammer"] = new(0.52f, new[] { "chop", "sweep", "slam" }, 2.6f, 0.12f),
         ["sledge"] = new(0.5f, new[] { "chop", "sweep", "slam" }, 2.6f, 0.1f),
     };
@@ -439,8 +443,23 @@ public sealed partial class World
         bool able = !(P.flatT > 0) && P.alive && (!P.rolling || P.hover) && P.hold == null && P.holdA == null && P.grabbed == null && P.stunT <= 0 && P.ragdoll == null && (def.Type == "melee" ? ArmsOf(A) > 0 : CanShoot(A)) && !P.berserk;
         // swings in progress
         if (W.swingT > 0) { W.swingT -= dt; if (W.swingHit == 0 && W.swingT < W.swingDur * 0.55f) { W.swingHit = 1; MeleeResolve(W.swingDef); } }
-        // reloads (enemies only; your guns feed straight from the ammo count)
-        if (W.reload > 0) { W.reload -= dt; if (W.reload <= 0 && w != null) { float n = MathF.Min(def.Clip - w.clip, w.ammo); w.clip += n; w.ammo -= n; } return; }
+        // the punch: a quick jab with the off hand, whatever you're holding (it interrupts a reload)
+        if (W.punchQ > 0)
+        {
+            W.punchQ -= dt;
+            if (W.swingT <= 0 && P.alive && ArmsOf(A) > 0 && P.stunT <= 0 && P.ragdoll == null)
+            {
+                W.punchQ = 0; W.reload = 0; var pd = WPN["punch"];
+                if (W.swingDef != pd) W.combo = -1;
+                MeleeSwing(pd); W.cd = MathF.Max(W.cd, W.swingDur * 0.9f); W.trig = true;
+            }
+        }
+        // magazines: reload by hand (X / R), or automatically when you pull the trigger on an empty one
+        bool canReload = w != null && def.Clip > 0 && !def.Energy && def.Type != "melee" && def.Type != "beam" && w.clip < def.Clip && w.ammo > 0;
+        if (IN.reload && W.reload <= 0 && canReload && W.swingT <= 0) StartReload(A, w, def);
+        // the AI tops up its magazine in a lull
+        else if (!A.human && !held && canReload && W.reload <= 0 && w.clip < def.Clip * 0.5f && W.since > 1.2f) StartReload(A, w, def);
+        if (W.reload > 0) { W.reload -= dt; if (W.reload <= 0 && w != null) { float n = MathF.Min(def.Clip - w.clip, w.ammo); w.clip += n; w.ammo -= n; if (A.human) Sfx("cooled", P.x, P.y, P.z, 0.4f); } return; }
         if (!able) { W.charge = 0; return; }
         if (held) W.aimT = 0.9f;
         if (def.Type == "melee") { if (held && W.cd <= 0 && W.swingT <= 0) { MeleeSwing(def); W.cd = MathF.Max(W.swingDur * 0.92f, 0.7f / def.Rate); } return; }
@@ -454,8 +473,8 @@ public sealed partial class World
             else if (held && w.over) W.empty = 0.3f;
             return;
         }
-        bool useClip = A.team == "enemy" && def.Clip != 0, loaded = def.Energy ? !w.over : useClip ? w.clip > 0 : w.ammo > 0;
-        if (useClip && w.clip <= 0) { if (w.ammo > 0) { W.reload = def.Reload; Sfx("reload", P.x, P.y, P.z, 0.5f); } return; }
+        bool useClip = def.Clip != 0 && !def.Energy, loaded = def.Energy ? !w.over : useClip ? w.clip > 0 : w.ammo > 0;
+        if (useClip && w.clip <= 0 && (held || A.team == "enemy")) { if (w.ammo > 0) StartReload(A, w, def); else if (held && W.cd <= 0) { W.empty = 0.4f; W.cd = 0.3f; if (A.human) { Sfx("click", P.x, P.y, P.z, 0.5f); ShowHint("NO AMMO"); } } return; }
         void Spend(float heatK)
         {
             if (def.Energy) { w.heat += heatK; if (w.heat >= 1) { w.heat = 1; w.over = true; if (A.human) { Sfx("overheat", P.x, P.y, P.z); ShowHint("OVERHEATED"); } } }
@@ -480,11 +499,18 @@ public sealed partial class World
         if (!loaded) { W.empty = 0.4f; W.cd = 0.3f; if (A.human) Sfx("click", P.x, P.y, P.z, 0.5f); return; }
         FireWeapon(def, w, 0); Spend(def.Heat); W.since = 0; W.cd = 1 / def.Rate * (A.team == "enemy" ? 1.45f : 1);
     }
+    void StartReload(Actor A, Weapon w, WeaponDef def)
+    {
+        // heroes reload faster than the germs (the germs' slowness is their weakness)
+        float t = def.Reload * (A.team == "hero" ? 0.85f : 1);
+        A.W.reload = t; A.W.reloadMax = t; A.W.charge = 0;
+        Sfx("reload", A.P.x, A.P.y, A.P.z, A.human ? 0.7f : 0.5f);
+    }
     public void SwitchWeapon(Actor A, int i)
     {
         var W = A.W; i = ((i % 3) + 3) % 3;
         W.cur = i; W.cd = MathF.Max(W.cd, 0.2f); W.charge = 0; W.reload = 0;
-        if (A.human) { var w = W.slots[i]; ShowHint(w != null ? WPN[w.id].Name + (float.IsFinite(w.ammo) ? " · " + w.ammo : "") : "FISTS"); Sfx("switch", A.P.x, A.P.y, A.P.z, 0.4f); }
+        if (A.human) { var w = W.slots[i]; ShowHint(w != null ? WPN[w.id].Name + (float.IsFinite(w.ammo) ? " · " + w.clip + " / " + w.ammo : "") : "PSEUDOPODS"); Sfx("switch", A.P.x, A.P.y, A.P.z, 0.4f); }
     }
     public void CycleWeapon(Actor A, int d)
     {

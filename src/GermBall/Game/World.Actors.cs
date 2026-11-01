@@ -33,14 +33,14 @@ public sealed class PState
 {
     public string type; public float s, f, R, H, BR, STEP, km, mass;
     public float x, y, z, vx, vy, vz, px, py, pz; public bool ground = true, rolling, jumping, jumpRolled, charging; public float rev, ctrlLock, facing, nx, ny = 1, nz;
-    public Body gBody; public bool skid; public float shield = 100, lastHit = -10, squash; public bool prevJump, prevRoll, prevGrab, prevJumpG, prevRollG, prevPound, prevUse, onStairs;
+    public Body gBody; public bool skid; public float shield = 100, lastHit = -10, squash; public bool prevJump, prevRoll, prevGrab, prevJumpG, prevRollG, prevPound, prevUse, prevPunch, prevReload, onStairs;
     public V3 spin = new(1, 0, 0); public float spinRate; public Q4 ballQ = new(), pBallQ = new(); public V3 up = new(0, 1, 0);
     public bool dashUsed; public float dashT, curl, downT, hoverFuel = 2.5f; public bool hover, ads; public float charge;
     public Actor grabbed; public float grabCD, struggle, flungT; public Actor flungBy; public Body hold; public Actor holdA; public float stunT, flatT; public int pound; public float poundT; public int homing; public float homingT; public Actor homeTgt;
     public bool alive = true; public float deadT; public Vehicle vehicle; public Ragdoll ragdoll; public bool berserk;
 }
 
-public sealed class InputState { public float mx, mz, yaw, aimYaw; public bool jump, roll, pound, ads, fire, grab, use, up, down; public V3 throwAt; }
+public sealed class InputState { public float mx, mz, yaw, aimYaw; public bool jump, roll, pound, ads, fire, grab, use, up, down, punch, reload; public V3 throwAt; }
 public sealed class AimState { public float px, py, pz, fx, fy, fz = -1; public bool ok; }
 public sealed class Anim { public float phase, lean, down, aimK, holdK, throwT, punchT, hurtT, twist, hop, yawRate, swingT, squashT, upYaw; }
 
@@ -70,6 +70,8 @@ public sealed partial class World
     float GRV = Pxs2(0.21875f), JMP = Pxs(6.5f), JMP_CUT = Pxs(4), AIR = Pxs2(0.09375f), MAX_FALL = Pxs(16), SLIP = Pxs(2.5f), SKID_KICK = Pxs(0.5f);
     const float AIR_DRAG = 31f / 32, ROLL_TURN = 1.7f, ADH = 3; public const float DT = 1f / 120;
     float DASH = 18; const float POUND_V = 34;
+    /// <summary>Homing dashes fly this much faster than a plain air dash.</summary>
+    const float HOMING_K = 1.75f;
     Dictionary<string, float> BASE;
     public Settings SET;
 
@@ -78,9 +80,9 @@ public sealed partial class World
     {
         ("forward", "Move forward", "KeyW", "ArrowUp"), ("back", "Move back", "KeyS", "ArrowDown"), ("left", "Move left", "KeyA", "ArrowLeft"), ("right", "Move right", "KeyD", "ArrowRight"),
         ("jump", "Jump / air dash", "Space", ""), ("roll", "Roll · spin dash · ground pound", "KeyC", "ShiftLeft"), ("fire", "Fire / swing", "Mouse0", "KeyF"), ("aim", "Aim down sights", "Mouse2", ""),
-        ("grab", "Pick up and throw", "KeyE", "Mouse1"), ("use", "Interact / ride", "KeyG", ""), ("up", "Hover chair: rise", "Space", "KeyE"), ("down", "Hover chair: sink", "KeyC", "ShiftLeft"),
+        ("grab", "Pick up and throw", "KeyE", "Mouse1"), ("punch", "Punch · ground pound (in ball form)", "KeyQ", "Mouse3"), ("reload", "Reload", "KeyR", ""), ("use", "Interact / ride", "KeyG", ""), ("up", "Hover chair: rise", "Space", "KeyE"), ("down", "Hover chair: sink", "KeyC", "ShiftLeft"),
         ("next", "Next weapon", "KeyP", ""), ("slot1", "Weapon 1", "Digit1", ""), ("slot2", "Weapon 2", "Digit2", ""), ("slot3", "Weapon 3", "Digit3", ""),
-        ("base", "Back to base", "KeyR", ""), ("freecam", "Free camera", "KeyV", ""), ("song", "Next song", "KeyM", ""),
+        ("base", "Back to base", "KeyB", ""), ("freecam", "Free camera", "KeyV", ""), ("song", "Next song", "KeyM", ""),
     };
     public static Dictionary<string, string[]> DefaultBinds() => BIND_DEF.ToDictionary(b => b.key, b => new[] { b.a, b.b });
     public Dictionary<string, string[]> BINDS;
@@ -388,7 +390,12 @@ public sealed partial class World
         P.ads = IN.ads && !outp && (A.team == "hero" || TYPES[A.type].Mimic != null);
         if (outp) { m = 0; wx = wz = 0; }
         int legs = LegsOf(A);
-        bool jumpHeld = IN.jump && !outp && legs > 0, rollHeld = IN.roll && !outp, grabHeld = IN.grab && !outp, poundHeld = IN.pound && !outp;
+        bool punchHeld = IN.punch && !outp;
+        bool punchPress = punchHeld && !P.prevPunch; P.prevPunch = punchHeld;
+        // the punch button doubles as ground pound, but only while curled into a ball in the air
+        bool ballAir = !P.ground && P.rolling && P.vehicle == null;
+        bool jumpHeld = IN.jump && !outp && legs > 0, rollHeld = IN.roll && !outp, grabHeld = IN.grab && !outp, poundHeld = (IN.pound || (punchHeld && ballAir)) && !outp;
+        if (punchPress && !ballAir && P.vehicle == null && P.grabbed == null && P.hold == null && P.holdA == null) W.punchQ = 0.25f;
         bool jumpPress = jumpHeld && !P.prevJump, rollPress = rollHeld && !P.prevRoll, grabPress = grabHeld && !P.prevGrab, poundPress = poundHeld && !P.prevPound;
         bool grabRelease = !grabHeld && P.prevGrab;
         P.prevJump = jumpHeld; P.prevRoll = rollHeld; P.prevGrab = grabHeld; P.prevPound = poundHeld;
@@ -524,7 +531,7 @@ public sealed partial class World
         else
         {
             // ground pound: roll in the air
-            if (poundPress && P.pound == 0 && !P.charging && P.hold == null && P.holdA == null && P.y - GroundAt(P.x, P.z, P.y + 0.1f, true).h > 0.8f)
+            if (poundPress && P.rolling && P.pound == 0 && !P.charging && P.hold == null && P.holdA == null && P.y - GroundAt(P.x, P.z, P.y + 0.1f, true).h > 0.8f)
             {
                 P.pound = 1; P.poundT = 0.13f; P.vx *= 0.15f; P.vz *= 0.15f; P.vy = 3; P.rolling = true; P.dashT = 0; P.hover = false; Sfx("poundup", P.x, P.y, P.z);
             }
@@ -536,7 +543,7 @@ public sealed partial class World
                 var DV = DashVec(m, wx, wz); float dx = DV.dx, dz = DV.dz;
                 P.vx = DV.vx; P.vz = DV.vz; P.vy = DV.vy;
                 P.hover = false; P.hoverFuel = 0;   // dashing ends any hover until you land
-                if (homing && DV.tgt != null) { P.homing--; P.homingT = MathF.Min(1.6f, Hypot(DV.tgt.P.x - P.x, DV.tgt.P.z - P.z) / DASH + 0.35f); P.homeTgt = DV.tgt; }
+                if (homing && DV.tgt != null) { P.homing--; P.homingT = MathF.Min(1.2f, Hypot(DV.tgt.P.x - P.x, DV.tgt.P.z - P.z) / (DASH * HOMING_K) + 0.3f); P.homeTgt = DV.tgt; }
                 P.dashUsed = true; P.dashT = 0.4f; P.rolling = true; P.jumping = true; P.jumpRolled = false; P.facing = MathF.Atan2(-dx, -dz);
                 if (P.hold != null || P.holdA != null) DropHeld(A);
                 for (int i = 0; i < 8; i++) Puff(P.x - dx * 0.4f, P.y + 0.3f, P.z - dz * 0.4f, 2, 1, 0.12f);
@@ -544,8 +551,9 @@ public sealed partial class World
             }
             if (P.homingT > 0 && P.homeTgt != null && P.homeTgt.P.alive)
             {   // homing charge: steer all the way in
-                var T = P.homeTgt.P; float ex = T.x - P.x, ey = T.y + T.H * 0.45f - P.y - P.BR, ez = T.z - P.z, l = Hypot(ex, ey, ez); if (l == 0) l = 1; float sp = MathF.Max(DASH, Hypot(P.vx, P.vy, P.vz));
-                float k = MathF.Min(1, dt * 14); P.vx += (ex / l * sp - P.vx) * k; P.vy += (ey / l * sp - P.vy) * k; P.vz += (ez / l * sp - P.vz) * k;
+                var T = P.homeTgt.P; float ex = T.x - P.x, ey = T.y + T.H * 0.45f - P.y - P.BR, ez = T.z - P.z, l = Hypot(ex, ey, ez); if (l == 0) l = 1; float sp = MathF.Max(DASH * HOMING_K, Hypot(P.vx, P.vy, P.vz));
+                float k = MathF.Min(1, dt * 22);
+                if (R() < 0.6f) Puff(P.x, P.y + P.BR, P.z, 1.5f, 0.6f, 0.1f); P.vx += (ex / l * sp - P.vx) * k; P.vy += (ey / l * sp - P.vy) * k; P.vz += (ez / l * sp - P.vz) * k;
             }
             P.hover = P.ads && P.hoverFuel > 0 && !P.charging && P.pound == 0 && P.dashT <= 0;
             if (P.hover)

@@ -175,18 +175,7 @@ public sealed partial class World
         if (el > 25) { cam.tx = dx; cam.tz = dz; cam.ty = dy; }
         else if (el > 1.2f) { cam.tx = dx + ex / el * 1.2f; cam.tz = dz + ez / el * 1.2f; }
         if (MathF.Abs(cam.ty - dy) > 1.8f) cam.ty = dy + MathF.Sign(cam.ty - dy) * 1.8f;
-        if (!manual && !P.ads && hs > 2.5f && P.ground)
-        {
-            float fx = -MathF.Sin(cam.yaw), fz = -MathF.Cos(cam.yaw), away = (P.vx * fx + P.vz * fz) / hs;
-            if (away > -0.35f) { float rate = MathF.Min(2.6f, hs * 0.1f) * (0.35f + 0.65f * MathF.Max(0, away)); cam.yaw = TurnAngle(cam.yaw, MathF.Atan2(P.vx, P.vz) + PI, fdt * rate); }
-        }
-        if (!manual && !P.ads)
-        {
-            float fx = -MathF.Sin(cam.yaw), fz = -MathF.Cos(cam.yaw), here = TerrainH(RP.x, RP.z);
-            float ahead = P.ground ? TerrainH(RP.x + fx * 8, RP.z + fz * 8) - here : 0;
-            float target = Clamp(0.32f - ahead * 0.03f + MathF.Min(0.12f, sp * 0.004f), 0.14f, 0.75f);
-            cam.pitch += (target - cam.pitch) * MathF.Min(1, fdt * 1.4f);
-        }
+        // the camera only turns when you turn it (the browser build swung it round behind you as you ran)
         float camK = P.vehicle?.def != null ? P.vehicle.def.CamK : 1;
         cam.dist += (Lerp((3.7f * P.s + MathF.Min(2.2f, sp * 0.06f)) * camK, 2.1f * P.s * camK, cam.ads) - cam.dist) * MathF.Min(1, fdt * (P.ads ? 10 : 2.5f));
         float cp = MathF.Cos(cam.pitch), ox = MathF.Sin(cam.yaw) * cp, oy = MathF.Sin(cam.pitch), oz = MathF.Cos(cam.yaw) * cp;
@@ -545,19 +534,29 @@ public sealed partial class World
     // =====================================================================
     // Input
     // =====================================================================
+    // the controller's X: tap to reload, hold to interact (take a weapon, get in or out of a vehicle or the mecha)
+    public float xHeldT; bool xFired; public const float HOLD_USE = 0.35f;
     void ReadHumanInput()
     {
         var I = ME.IN; float mx = 0, mz = 0; bool on = playing;
         if (on && Act("forward")) mz += 1; if (on && Act("back")) mz -= 1;
         if (on && Act("right")) mx += 1; if (on && Act("left")) mx -= 1;
         I.mx = mx + pad.lx; I.mz = mz - pad.ly; I.yaw = I.aimYaw = cam.yaw;
-        bool kroll = on && Act("roll");
-        I.jump = (on && Act("jump")) || pad.a; I.roll = kroll || pad.b; I.use = (on && Act("use")) || pad.x; I.pound = kroll || pad.lb;
-        I.grab = (on && Act("grab")) || pad.rb;
+        bool riding = ME.P.vehicle != null;
+        I.jump = (on && Act("jump")) || pad.a; I.roll = (on && Act("roll")) || pad.b;
+        I.pound = false;   // ground pound now comes from the punch button while in ball form
+        I.punch = !riding && ((on && Act("punch")) || pad.rb);
+        I.grab = (on && Act("grab")) || (!riding && pad.lb);
         I.ads = on && (pad.lt > 0.4f || Act("aim")); I.fire = on && (Act("fire") || pad.rt > 0.4f);
         I.throwAt = null;
-        I.up = pad.rb || (on && Act("up")); I.down = pad.lb || (on && Act("down"));   // hover-chair altitude: RB up, LB down
-        if (FREECAM.on) { I.mx = I.mz = 0; I.jump = I.roll = I.use = I.pound = I.grab = I.ads = I.fire = false; I.aimYaw = I.yaw = ME.P.facing; }
+        I.up = (riding && pad.rb) || (on && Act("up")); I.down = (riding && pad.lb) || (on && Act("down"));   // hover altitude while riding: RB up, LB down
+        // X: tap = reload, hold = interact. The keyboard has its own keys for both.
+        bool xUse = false, xReload = false;
+        if (pad.x) { xHeldT += DT; if (xHeldT >= HOLD_USE && !xFired) { xFired = true; xUse = true; } }
+        else { if (xHeldT > 0 && !xFired && xHeldT < HOLD_USE) xReload = true; xHeldT = 0; xFired = false; }
+        I.use = (on && Act("use")) || xUse;
+        I.reload = (on && Act("reload")) || xReload;
+        if (FREECAM.on) { I.mx = I.mz = 0; I.jump = I.roll = I.use = I.pound = I.grab = I.ads = I.fire = I.punch = I.reload = false; I.aimYaw = I.yaw = ME.P.facing; }
     }
 
     /// <summary>Discrete key presses during play (weapon switching, free cam, back to base, next song).</summary>
@@ -699,7 +698,6 @@ public sealed partial class World
             if (n == 12) accum = 0;
             alpha = accum / DT;
         }
-        else cam.yaw += fdt * 0.05f;
         RP.x = Lerp(P.px, P.x, alpha); RP.y = Lerp(P.py, P.y, alpha); RP.z = Lerp(P.pz, P.z, alpha);
         camera.Aspect = aspect; camera.Far = 3500;
         SyncProps(alpha);
