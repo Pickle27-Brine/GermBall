@@ -15,9 +15,9 @@ public static class Lineup
 {
     public static void Run(SoftRenderer sr, string file, bool germs, float yawDeg = 25, bool armor = true, string pose = "rest")
     {
-        var scene = new Scene { Background = Material.Hex(0x1a0618), FogNear = 1000, FogFar = 2000, Shadows = false, HemiSky = Material.Hex(0xffe8f4), HemiGround = Material.Hex(0x40142a), HemiIntensity = 0.85f, SunDir = Vector3.Normalize(new Vector3(2, 4, 3)), SunIntensity = 0.85f, SunColor = Vector3.One };
+        var scene = new Scene { Background = new Vector3(1, 0, 1), FogNear = 1000, FogFar = 2000, Shadows = false, HemiSky = Material.Hex(0xffe8f4), HemiGround = Material.Hex(0x40142a), HemiIntensity = 0.85f, SunDir = Vector3.Normalize(new Vector3(2, 4, 3)), SunIntensity = 0.85f, SunColor = Vector3.One };
         var GEO = new Dictionary<char, Geometry> { ['Z'] = Geo.Sphere(1, 18, 12), ['I'] = Geo.Icosahedron(1, 1), ['B'] = Geo.Box(1, 1, 1), ['P'] = Geo.Cone(1, 1, 12), ['C'] = Geo.Cylinder(1, 1, 1, 16), ['T'] = Geo.Torus(1, 0.18f, 8, 24).RotateX(MathF.PI / 2), ['F'] = Geo.Cylinder(1, 0.72f, 1, 16) };
-        var keys = germs ? GermDraw.SPECIES.Keys.ToArray() : MedDraw.PRESETS.Keys.ToArray();
+        var keys = germs ? GermDraw.SPECIES.Keys.ToArray() : MedDraw.PRESETS.Keys.Where(k => k != "medmech").ToArray();
         int n = keys.Length; float spacing = 1.6f;
         for (int idx = 0; idx < n; idx++)
         {

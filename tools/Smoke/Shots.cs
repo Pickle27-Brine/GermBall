@@ -92,6 +92,24 @@ public static class Shots
                 world.SetFreeCam(false); Input.KeyEvent("Mouse0", false); Input.KeyEvent("Mouse2", false);
             }
         }
+        if (Want("maps"))
+        {   // the title screen's backdrops: a slow oblique flyover still of every map
+            foreach (var (mode, map, seed) in new[] { ("sandbox", "random", 12345), ("sandbox", "classic", 1), ("sandbox", "leviathan", 1), ("waves", "bowl", 7), ("waves", "city", 7), ("waves", "spires", 7), ("waves", "gut", 7) })
+            {
+                var world = new World(new BootConfig { Mode = mode, Map = map, Seed = seed, Custom = GermDraw.DefaultCustom() }, new Settings { res = 0, density = 1, drawDist = 400 }, World.DefaultBinds());
+                var gs = new GameScreen(app, world); world.playing = true;
+                for (int i = 0; i < 30; i++) Frame(gs);
+                var H = world.HUMAN.P; bool arena = mode == "waves";
+                world.SetFreeCam(true); float dist = arena ? 70 : 110;
+                world.FREECAM.x = H.x + dist * 0.6f; world.FREECAM.z = H.z + dist * 0.6f; world.FREECAM.y = H.y + (arena ? 55 : 85);
+                world.FREECAM.yaw = MathF.Atan2(-(H.x - world.FREECAM.x), -(H.z - world.FREECAM.z)); world.FREECAM.pitch = -0.62f; world.FREECAM.fov = 60;
+                for (int i = 0; i < 8; i++) Frame(gs);
+                world.scene.Shadows = false; world.camera.Far = 3500;
+                sr.Render(world.scene, world.camera); var px = sr.Capture(out int ww, out int hh);
+                Directory.CreateDirectory(Path.Combine(dir, "maps")); File.WriteAllBytes(Path.Combine(dir, "maps", map + ".png"), Screenshot.Png(px, ww, hh)); Console.WriteLine("map " + map);
+            }
+        }
+        if (Want("cast")) { Lineup.Run(sr, Path.Combine(dir, "cast-raw.png"), false, 18, false); }
         if (Want("heroes"))
             foreach (var k in MedDraw.PRESETS.Keys)
             {
