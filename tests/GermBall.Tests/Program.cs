@@ -46,15 +46,18 @@ public static class Program
         Run("germ contact hurts; spin dash bowls germs over", GermContactAndRoll);
         Run("shooting a germ to death, and its respawn", ShootGermDead);
         Run("the hero ragdolls on death", PlayerRagdoll);
+        Run("limbs: hard hits only, legs keep it down, debris, critical limbs", LimbsOff);
         Run("content: entity and map files round-trip", ContentRoundTrip);
         Run("content: a level rebuilt from its map is identical", MapRebuild);
         Run("animation: clips, layers, masks, additive, crossfades", AnimationLayers);
         Run("camera: locked behind the hero, aim eases in", CameraLock);
+        Run("animation: layers by state, blends by parameter, foot IK", AnimationPipeline);
         Run("entity editor: shapes, colour, bones, keys, layers, undo, save, test in game", EntityEditorWorkflow);
         Run("map editor: add, pick, gizmo with snapping, properties, undo, save, play test", MapEditorWorkflow);
         Run("editor typing: click to type, select-all, caret, click-away, quick clicks", EditorTyping);
         Run("entity editor: rotate and scale gizmos, pose keys, rig rotation", EntityGizmos);
         Run("entity editor: hover and click pieces of the model", EntityPicking);
+        Run("entity editor: bones drawn from their pivot, picking, limb options", EntityBonesAndLimbs);
         Run("taper and curve shapes; the hero's two-part torso", TaperCurveAbdomen);
         Run("editors survive random clicking and typing", EditorFuzz);
         Run("random input soak (every landmark)", Soak);
@@ -438,20 +441,15 @@ public static class Program
             void Len(J a, J b, float want) { float l = Vector3.Distance(pose[a], pose[b]); if (MathF.Abs(l - want) > 0.01f) { bad++; why = $"{a}-{b} {l:0.00} vs {want:0.00}"; } }
             Len(J.HipL, J.KnL, rig.Thigh); Len(J.KnL, J.FtL, rig.Shin); Len(J.HipR, J.KnR, rig.Thigh); Len(J.KnR, J.FtR, rig.Shin);
             Len(J.ShL, J.ElL, rig.Upper); Len(J.ElL, J.HaL, rig.Fore); Len(J.ShR, J.ElR, rig.Upper); Len(J.ElR, J.HaR, rig.Fore);
-            foreach (var ft in new[] { J.FtL, J.FtR }) if (pose[ft].Y < 0 || pose[ft].Y > 0.55f) { bad++; why = $"{ft} at height {pose[ft].Y:0.00}"; }
+            foreach (var ft in new[] { J.FtL, J.FtR }) if (pose[ft].Y < -0.01f || pose[ft].Y > 0.8f) { bad++; why = $"{ft} at height {pose[ft].Y:0.00}"; }
             if (i < 2) continue;
-            // a foot in its stance half should stay (nearly) put on the ground
-            for (int side = 0; side < 2; side++)
-            {
-                float ph = g.Hero.Anim.Phase + side * 0.5f; ph -= MathF.Floor(ph);
-                if (ph < 0.05f || ph > 0.45f) continue;
-                var ft = side == 0 ? J.FtL : J.FtR;
-                stanceSpeed += MathX.FlatLen(pose[ft] - prev[ft]) / Game.DT; stanceN++;
-            }
+            // the lower foot is the one on the ground: with the run clip played at the running speed it should barely slide
+            var low = pose[J.FtL].Y < pose[J.FtR].Y ? J.FtL : J.FtR;
+            if (MathF.Abs(pose[J.FtL].Y - pose[J.FtR].Y) > 0.05f && pose[low].Y < 0.07f) { stanceSpeed += MathX.FlatLen(pose[low] - prev[low]) / Game.DT; stanceN++; }
         }
         Check(bad == 0, $"{bad} pose problems, e.g. {why}");
         float avg = stanceSpeed / Math.Max(1, stanceN), body = MathX.FlatLen(g.Player.Vel);
-        Check(avg < body * 0.3f, $"planted feet slide at {avg:0.0} m/s while running at {body:0.0}");
+        Check(stanceN > 20 && avg < body * 0.4f, $"planted feet slide at {avg:0.0} m/s while running at {body:0.0} ({stanceN} samples)");
     }
 
     static Germ GermOf(Game g, string k, int nth = 0)
@@ -530,6 +528,44 @@ public static class Program
         Check(bac.Ragdoll != null, "dead germs should ragdoll");
         Steps(g, Sec(6.5f), default);
         Check(bac.Standing && bac.Hp == bac.MaxHp, "dead germ should come back");
+    }
+
+    static void LimbsOff()
+    {
+        var g = New(); var gm = GermOf(g, "coccus"); var L = gm.Def.Limbs; var sk = gm.View.Sk;
+        Check(L.Enabled && L.Parts.Count == 4 && L.MaxLost == 2, "germs should have four limbs, two can go");
+        int arm = L.Parts.FindIndex(p => p.Bone == "shoulder.R"), leg = L.Parts.FindIndex(p => p.Bone == "hip.L"), arm2 = L.Parts.FindIndex(p => p.Bone == "shoulder.L");
+        Vector3 J(string b) => gm.View.Pose.Joint(sk.IndexOf(b));
+        // weak hits on the arm never wear it down
+        for (int i = 0; i < 40; i++) { g.DamageGerm(gm, L.MinHit - 1, Vector3.Zero, J("elbow.R"), false, true); gm.Hp = 1e6f; }
+        Check(gm.LimbHp[arm] == L.Parts[arm].Hp && !gm.LimbLost[arm], $"weak hits wore the arm to {gm.LimbHp[arm]}");
+        // hits on the body leave the limbs alone
+        g.DamageGerm(gm, 500, Vector3.Zero, J("chest"), false, true); gm.Hp = 1e6f;
+        Check(!gm.LimbLost.Any(x => x), "a body hit took a limb");
+        // hard hits take it off: it becomes debris and stops drawing, and the germ lives
+        int hits = 0;
+        while (!gm.LimbLost[arm] && hits < 20) { g.DamageGerm(gm, L.MinHit, new Vector3(2, 0, 0), J("elbow.R"), false, true); gm.Hp = 1e6f; hits++; }
+        Check(gm.LimbLost[arm] && hits > 1, $"arm came off after {hits} hits");
+        Check(g.Debris.Count == 1 && gm.View.IsHidden(sk.IndexOf("hand.R")) && !gm.View.IsHidden(sk.IndexOf("hand.L")), "the arm should be debris, hidden on the body");
+        Check(gm.Alive && gm.Standing, "losing an arm shouldn't kill or floor it");
+        // a leg keeps it down for good
+        g.DamageGerm(gm, L.Parts[leg].Hp + 1, Vector3.Zero, J("knee.L"), false, true); gm.Hp = 1e6f;
+        Check(gm.LimbLost[leg] && gm.Legless && gm.Ragdoll != null, "losing a leg should floor it");
+        Steps(g, Sec(4), default);
+        Check(gm.Ragdoll != null && gm.Ragdoll.Finite(), "a legless germ shouldn't get up");
+        // that's the most it can lose
+        g.DamageGerm(gm, 999, Vector3.Zero, gm.Ragdoll.Pos[GermBall.Engine.J.ElL], false, true); gm.Hp = 1e6f;
+        Check(!gm.LimbLost[arm2] && gm.LimbsLost == 2, "more limbs than MaxLost came off");
+        Steps(g, Sec(L.DebrisLife + 0.5f), default);
+        Check(g.Debris.Count == 0, "debris should fade away");
+        // a critical limb kills
+        var b = GermOf(g, "bacillus"); b.Def.Limbs.Parts[0].Critical = true;
+        int cb = b.View.Sk.IndexOf(b.Def.Limbs.Parts[0].Bone); int below = b.View.Sk.FirstChild(cb);
+        g.DamageGerm(b, b.Def.Limbs.Parts[0].Hp + 1, Vector3.Zero, b.View.Pose.Joint(below), false, true);
+        Check(!b.Alive && b.LimbLost[0], "losing a critical limb should kill");
+        // limbs come back with the germ
+        b.Reset();
+        Check(b.LimbsLost == 0 && b.View.HiddenBones.Count == 0, "a respawned germ should have its limbs");
     }
 
     static void PlayerRagdoll()
@@ -643,6 +679,37 @@ public static class Program
         foreach (var f in new[] { "foot.L", "foot.R" }) { float y = hero.Pose.Joint(hero.Sk.IndexOf(f)).Y; Check(y > -0.01f && y < 0.1f, $"{f} at {y:0.000}"); }
     }
 
+    static void AnimationPipeline()
+    {
+        // the hero's stack: a layer only plays in its states, fading in
+        var hero = DefaultEntities.Hero();
+        var v = new EntityView(hero); var ctx = new AnimContext { Move = "idle", State = "idle", Dt = 0.5f, GroundAt = _ => 0 };
+        float ShoulderPitch()
+        {
+            v.Update(ctx); v.Evaluate(ctx);
+            var q = v.Pose.Local[v.Sk.IndexOf("shoulder.R")].Rot; return 2 * MathF.Acos(MathF.Min(1, MathF.Abs(q.W))) / MathX.Deg;
+        }
+        float idle = ShoulderPitch();
+        ctx.State = "aim"; ctx.AimPitch = 0; ctx.Dt = 0.02f; float early = ShoulderPitch();
+        ctx.Dt = 0.5f; float aimed = ShoulderPitch();
+        Check(MathF.Abs(aimed - idle) > 30, $"aiming should raise the arm ({idle:0} -> {aimed:0} degrees)");
+        Check(MathF.Abs(early - idle) < MathF.Abs(aimed - idle) * 0.6f, "the aim layer should fade in");
+        // the aim blend follows the aim pitch
+        ctx.AimPitch = 60; float up = ShoulderPitch(); ctx.AimPitch = -60; float down = ShoulderPitch();
+        Check(MathF.Abs(up - down) > 40, $"aim up {up:0} and down {down:0} should differ");
+        // the run clip plays faster when running faster
+        var run = hero.Clip("run"); var st = hero.States.Find(x => x.State == "run");
+        Check(run != null && st.SpeedParam == "speed" && st.SpeedRef > 3, "run follows speed");
+        // foot IK: on a raised floor, the feet stand on it
+        var hv = new EntityView(hero); var hc = new AnimContext { Move = "idle", State = "idle", Dt = 0.3f, GroundAt = p => p.X > 0 ? 0.2f : 0 };
+        hv.Update(hc); hv.Evaluate(hc);
+        var fl = hv.Pose.Joint(hv.Sk.IndexOf("foot.L")); var fr = hv.Pose.Joint(hv.Sk.IndexOf("foot.R"));
+        var hi = fl.X > fr.X ? fl : fr; var lo = fl.X > fr.X ? fr : fl;
+        Check(hi.Y > lo.Y + 0.12f && hi.Y < 0.35f, $"foot IK: feet at {hi.Y:0.00} / {lo.Y:0.00} on a 0.2 step");
+        // no procedural motion is left in the hero's stack but foot IK
+        Check(hero.Layers.All(l => l.Source != "procedural") && hero.Layers.Exists(l => l.Source == "footik"), "the hero should be all clips plus foot IK");
+    }
+
     static void CameraLock()
     {
         var g = New();
@@ -673,21 +740,23 @@ public static class Program
         var d = new EditorDriver(1600, 900, (i, dt, dl) => ee.Frame(i, dt, 1600, 900, dl));
         d.Step(3);
         d.Shot(Path.Combine(dir, "ee-01-hero.png"));
-        ee.LeftTab = 2; ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Shape;
+        ee.LeftTab = 0; ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Shape;
         ee.SelShape = ee.Def.Shapes.FindIndex(x => x.Name == "upperarm.R"); ee.CurShape.Taper = 0.4f; ee.CurShape.Curve = 0.15f;
         ee.Mode = GermBall.Tools.EntityEditor.EntityEditor.GizmoMode.Rotate; ee.ShowBones = false; d.Step(2);
         d.Shot(Path.Combine(dir, "ee-02-shapes.png"));
         ee.Mode = GermBall.Tools.EntityEditor.EntityEditor.GizmoMode.Scale; d.Step(2);
         d.Shot(Path.Combine(dir, "ee-02b-scale.png"));
         ee.ShowBones = true; ee.Mode = GermBall.Tools.EntityEditor.EntityEditor.GizmoMode.Move;
-        ee.LeftTab = 1; ee.SelBone = "elbow.R"; ee.RightTab = 1; d.Step(2);
+        ee.LeftTab = 1; ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Rig; ee.SelBone = "elbow.R"; ee.RightTab = 1; d.Step(2);
         d.Shot(Path.Combine(dir, "ee-03-rig-layers.png"));
         ee.RightTab = 0; ee.SelClip = 0; ee.SelBone = "chest"; ee.Playhead = 0.1f; d.Step(2);
         d.Shot(Path.Combine(dir, "ee-04-clips.png"));
-        ee.RightTab = 3; ee.SoloClip = false; ee.Ctx.Speed = 6; ee.Ctx.Armed = true; ee.Ctx.Aiming = true; d.Step(30);
+        ee.RightTab = 2; ee.SoloClip = false; ee.Ctx.Move = "run"; ee.Ctx.State = "aim"; ee.Ctx.Speed = 6; ee.Ctx.Armed = true; ee.Ctx.Aiming = true; d.Step(30);
         d.Shot(Path.Combine(dir, "ee-05-preview-run.png"));
         ee.Load("brute"); ee.DropRagdoll(); d.Step(70);
         d.Shot(Path.Combine(dir, "ee-06-brute-ragdoll.png"));
+        ee.Load("coccus"); ee.LeftTab = 2; ee.RightTab = 2; ee.CutLimb("shoulder.R"); d.Step(20);
+        d.Shot(Path.Combine(dir, "ee-07-limbs.png"));
 
         var me = new GermBall.Tools.MapEditor.MapEditor(ScratchContent(), "debug");
         var m = new EditorDriver(1600, 900, (i, dt, dl) => me.Frame(i, dt, 1600, 900, dl));
@@ -710,10 +779,12 @@ public static class Program
         var d = new EditorDriver(1600, 900, (i, dt, dl) => ee.Frame(i, dt, 1600, 900, dl));
         var ui = ee.Ui;
         d.Step(2);
-        // shapes: add one through the Shapes tab and recolour it by typing a hex code
-        GuiDriving.ClickLabel(ui, d, "Shapes");
+        // shapes: add a capsule on the chest through the Model tab and recolour it by typing a hex code
+        GuiDriving.ClickLabel(ui, d, "Model");
         int before = ee.Def.Shapes.Count;
-        GuiDriving.ClickLabel(ui, d, "+ Capsule on torso");
+        GuiDriving.PickCombo(ui, d, "New shape", Array.IndexOf(ShapeTypes.All, "Capsule"));
+        ee.SelBone = "chest"; d.Step();
+        GuiDriving.ClickLabel(ui, d, "left/Add");
         Check(ee.Def.Shapes.Count == before + 1 && ee.SelShape == before && ee.PartOf(ee.CurShape.Bone) == "Torso", $"adding on the torso didn't ({ee.Def.Shapes.Count}, on {ee.CurShape?.Bone})");
         GuiDriving.TypeInto(ui, d, "left/Name", "spike");
         Check(ee.CurShape.Name == "spike", $"name is {ee.CurShape.Name}");
@@ -738,36 +809,40 @@ public static class Program
 
         // rig: rename a bone and everything that refers to it follows
         GuiDriving.ClickLabel(ui, d, "Rig");
-        GuiDriving.ClickLabel(ui, d, "pelvis");
-        Check(ee.SelBone == "pelvis", "clicking a bone in the list should select it");
-        GuiDriving.ClickLabel(ui, d, "Add child bone");
+        GuiDriving.ClickLabel(ui, d, "Hips");
+        Check(ee.SelBone == "pelvis", "clicking a bone in the list (by its friendly name) should select it");
+        GuiDriving.ClickLabel(ui, d, "left/Add");
         Check(ee.Def.Bones.Count == 17 && ee.Def.Bone(ee.SelBone).Parent == "pelvis", "Add child bone");
         GuiDriving.TypeInto(ui, d, "left/Name", "tail");
         Check(ee.Def.Bone("tail") != null, "rename to tail");
 
         // clips: make one, key the tail at frame 0 and at 0.5 s through the panel, then it animates
-        GuiDriving.ClickLabel(ui, d, "Clips");
-        GuiDriving.ClickLabel(ui, d, "New clip");
+        GuiDriving.ClickLabel(ui, d, "Animate");
+        GuiDriving.ClickLabel(ui, d, "right/New");
         var clip = ee.CurClip; Check(clip != null && clip.Tracks.Count == 0, "New clip");
-        GuiDriving.ClickLabel(ui, d, "Set key");
+        GuiDriving.ClickLabel(ui, d, "Add key");
         ee.Playhead = 0.5f; d.Step();
-        var rot = GuiDriving.Find(ui, d, "Rotate");
+        var rot = GuiDriving.Find(ui, d, "right/Rotate");
         d.Drag(rot.X + 10, rot.Y + rot.W / 2, rot.X + 90, rot.Y + rot.W / 2);
         var tr = clip.Track("tail");
         Check(tr != null && tr.Keys.Count == 2 && tr.Keys[1].Rot.X > 10, $"keys on tail: {tr?.Keys.Count}, rot {tr?.Keys[^1].Rot}");
         // layers: add a clip layer for it
         GuiDriving.ClickLabel(ui, d, "Layers");
         int layers = ee.Def.Layers.Count;
-        GuiDriving.ClickLabel(ui, d, "Add layer");
-        Check(ee.Def.Layers.Count == layers + 1 && ee.Def.Layers[^1].Clip == ee.Def.Clips[0].Name, "Add layer");
-        // states: map "hurt" to the new clip through its combo
-        GuiDriving.ClickLabel(ui, d, "States");
+        GuiDriving.PickCombo(ui, d, "right/Add", 1);   // "one clip"
+        Check(ee.Def.Layers.Count == layers + 1 && ee.Def.Layers[^1].Source == "clip" && ee.Def.Layers[^1].Clip == ee.Def.Clips[0].Name, "Add layer");
+        // states: on the state layer, map "hurt" to the new clip through its combo
+        GuiDriving.ClickLabel(ui, d, "1. Body  - states");
+        Check(ee.SelLayer == 0, "selecting the state layer");
         int ci = ee.Def.Clips.IndexOf(clip);
+        var unmapped = AnimStates.All.Where(st => !ee.Def.States.Exists(x => x.State == st)).ToList();
+        GuiDriving.PickCombo(ui, d, "Give a state a clip...", unmapped.IndexOf("hurt"));
+        Check(ee.Def.States.Exists(st => st.State == "hurt"), "giving hurt a clip");
         GuiDriving.PickCombo(ui, d, "hurt", ci, hasNone: true);
         Check(ee.Def.States.Exists(st => st.State == "hurt" && st.Clip == clip.Name), "state combo didn't map hurt");
 
         // save under a new name, and the game's store sees it
-        GuiDriving.ClickLabel(ui, d, "Entity");
+        GuiDriving.ClickLabel(ui, d, "Settings");
         GuiDriving.TypeInto(ui, d, "left/Name", "spiky");
         GuiDriving.ClickLabel(ui, d, "Save");
         store.Forget();
@@ -775,10 +850,10 @@ public static class Program
         Check(saved.Bone("tail") != null && saved.Shapes.Exists(x => x.Name == "spike" && x.Color == "#12AB34") && saved.Clip(clip.Name) != null, "saved file is missing edits");
         var game = new Game(Level.BuildDebug(), store);   // the game loads the edited entity without complaint
         Check(game.Store.Entity("spiky").Kind == "enemy", "game store");
-        GuiDriving.ClickLabel(ui, d, "Test in game");
+        GuiDriving.ClickLabel(ui, d, "Play in game");
         Check(launched == "--spawn spiky", $"test in game launched with \"{launched}\"");
         // the view picks shapes with a click: the coccus's body fills the middle of the view
-        ee.LeftTab = 2; ee.SelShape = -1; ee.ShowBones = false; d.Step(2);
+        ee.LeftTab = 0; ee.SelShape = -1; ee.ShowBones = false; d.Step(2);
         var v = ee.View.Rect;
         d.Click(v.X + v.Z / 2, v.Y + v.W / 2);
         Check(ee.SelShape >= 0, "clicking the model in the view should select a shape");
@@ -858,6 +933,7 @@ public static class Program
     static void EditorTyping()
     {
         var (ee, d) = NewEntityEditor("coccus"); var ui = ee.Ui;
+        GuiDriving.ClickLabel(ui, d, "Settings");
         // a click (no drag) on a slider types into it; typing replaces the whole value
         var hp = GuiDriving.Find(ui, d, "Health");
         d.Click(hp.X + hp.Z / 2, hp.Y + hp.W / 2);
@@ -884,12 +960,12 @@ public static class Program
         GuiDriving.ClickLabel(ui, d, "Rig");
         Check(ee.Def.Name == "germ_c", $"click-away commit gave {ee.Def.Name}");
         // quick clicks (press and release in one frame) work on buttons
-        var add = GuiDriving.Find(ui, d, "Add child bone");
+        var add = GuiDriving.Find(ui, d, "left/Add");
         int bones = ee.Def.Bones.Count;
         d.QuickClick(add.X + add.Z / 2, add.Y + add.W / 2);
         Check(ee.Def.Bones.Count == bones + 1, "a quick click didn't press the button");
         // escape cancels
-        var drag = GuiDriving.Find(ui, d, "Offset");
+        var drag = GuiDriving.Find(ui, d, "Joint");
         d.Click(drag.X + 10, drag.Y + drag.W / 2);
         var before = ee.Def.Bone(ee.SelBone).Offset;
         d.Type("9"); d.Key(GermBall.Engine.Keys.Escape);
@@ -918,7 +994,7 @@ public static class Program
         var (ee, d) = NewEntityEditor("hero");
         // a shape: rotate it about its own up axis, then scale it evenly
         ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Shape;
-        ee.SelShape = ee.Def.Shapes.FindIndex(x => x.Name == "visor"); ee.LeftTab = 2;
+        ee.SelShape = ee.Def.Shapes.FindIndex(x => x.Name == "visor"); ee.LeftTab = 0;
         ee.ShowBones = false; d.Step(2);
         ee.Mode = GermBall.Tools.EntityEditor.EntityEditor.GizmoMode.Rotate; d.Step(2);
         var visor = ee.CurShape; var frame = ee.Preview.ShapeMatrix(visor, Vector3.One);
@@ -931,8 +1007,8 @@ public static class Program
         d.Drag(c.X, c.Y, c.X + 60, c.Y - 30, 8);
         Check(visor.Size.X > size0.X * 1.3f && MathF.Abs(visor.Size.X / size0.X - visor.Size.Y / size0.Y) < 0.01f, $"uniform scale: {size0} -> {visor.Size}");
         // a pose: rotate the right elbow in a new clip; it gets keyed
-        GuiDriving.ClickLabel(ee.Ui, d, "Clips");
-        GuiDriving.ClickLabel(ee.Ui, d, "New clip");
+        GuiDriving.ClickLabel(ee.Ui, d, "Animate");
+        GuiDriving.ClickLabel(ee.Ui, d, "right/New");
         ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Pose; ee.SelBone = "elbow.R"; ee.SoloClip = true; ee.ClipOverProcedural = false;
         ee.Mode = GermBall.Tools.EntityEditor.EntityEditor.GizmoMode.Rotate; d.Step(2);
         int eb = ee.Preview.Sk.IndexOf("elbow.R");
@@ -959,7 +1035,7 @@ public static class Program
         d.MoveTo(hs.X, hs.Y); d.Step(2);
         Check(ee.HoverShape >= 0 && ee.PartOf(ee.Def.Shapes[ee.HoverShape].Bone) == "Head", $"hovering the head lit {(ee.HoverShape >= 0 ? ee.Def.Shapes[ee.HoverShape].Name : "nothing")}");
         d.Click(hs.X, hs.Y);
-        Check(ee.CurShape != null && ee.PartOf(ee.CurShape.Bone) == "Head" && ee.LeftTab == 2, $"clicking the head selected {ee.CurShape?.Name}");
+        Check(ee.CurShape != null && ee.PartOf(ee.CurShape.Bone) == "Head" && ee.LeftTab == 0, $"clicking the head selected {ee.CurShape?.Name}");
         // posing: clicking the shin picks the knee bone
         ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Pose; d.Step();
         var shin = ee.Def.Shapes.Find(x => x.Name == "shin.R");
@@ -970,6 +1046,54 @@ public static class Program
         var v = ee.View.Rect; string before = ee.SelBone;
         d.Click(v.X + 15, v.Y + 40);
         Check(ee.SelBone == before, "clicking the sky shouldn't change the selection");
+    }
+
+    static void EntityBonesAndLimbs()
+    {
+        var (ee, d) = NewEntityEditor("hero"); var ui = ee.Ui;
+        ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Rig; ee.LeftTab = 1; ee.ShowShapes = false; d.Step(2);
+        // the elbow bone runs from the elbow (its pivot) to the hand: the forearm, the part that turns
+        var sk = ee.Preview.Sk;
+        var (head, tail) = ee.BoneSegment(sk.IndexOf("elbow.R"));
+        Check(Vector3.Distance(head, ee.Preview.Pose.Joint(sk.IndexOf("elbow.R"))) < 1e-4f && Vector3.Distance(tail, ee.Preview.Pose.Joint(sk.IndexOf("hand.R"))) < 1e-4f, "elbow bone should run elbow to hand");
+        Check(ee.TailChild("pelvis").Name == "abdomen" && ee.TailChild("chest").Name == "neck", "torso bones point up the middle");
+        // clicking the middle of the forearm picks the elbow, not the shoulder
+        ee.View.Project(Vector3.Lerp(head, tail, 0.6f), out var fs);
+        d.Click(fs.X, fs.Y);
+        Check(ee.SelBone == "elbow.R", $"clicking the forearm picked {ee.SelBone}");
+        // posing the elbow moves the hand but not the elbow
+        ee.RightTab = 0; ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Pose; ee.SoloClip = true; ee.ClipOverProcedural = false;
+        GuiDriving.ClickLabel(ui, d, "right/New"); d.Step(2);
+        (head, tail) = ee.BoneSegment(sk.IndexOf("elbow.R"));   // the rest pose (an empty clip)
+        ee.SetKey(ee.CurClip, "elbow.R", new Vector3(-90, 0, 0), Vector3.Zero, Vector3.One); d.Step(2);
+        var (h2, t2) = ee.BoneSegment(sk.IndexOf("elbow.R"));
+        Check(Vector3.Distance(h2, head) < 0.02f && Vector3.Distance(t2, tail) > 0.15f, "rotating the elbow should swing the hand about the elbow");
+        // limb options on the Settings tab, and cutting one off in the preview
+        var (ge, gd) = NewEntityEditor("coccus"); var gui = ge.Ui;
+        GuiDriving.ClickLabel(gui, gd, "Settings");
+        GuiDriving.ClickLabel(gui, gd, "Limbs can come off");
+        Check(!ge.Def.Limbs.Enabled, "turning limbs off");
+        GuiDriving.ClickLabel(gui, gd, "Limbs can come off");
+        Check(ge.Def.Limbs.Enabled, "turning limbs on");
+        GuiDriving.TypeInto(gui, gd, "Smallest hit", "30");
+        Check(ge.Def.Limbs.MinHit == 30, $"smallest hit is {ge.Def.Limbs.MinHit}");
+        int n = ge.Def.Limbs.Parts.Count;
+        GuiDriving.ClickLabel(gui, gd, "Remove");
+        Check(ge.Def.Limbs.Parts.Count == n - 1, "removing a limb");
+        GuiDriving.ClickLabel(gui, gd, "Arms and legs");
+        Check(ge.Def.Limbs.Parts.Count == n, "Arms and legs should add the missing one back");
+        GuiDriving.ClickLabel(gui, gd, "Preview");
+        GuiDriving.PickCombo(gui, gd, "Cut off...", 0);
+        Check(ge.Debris.Count == 1 && ge.Preview.HiddenBones.Count == 1, "cutting off a limb in the preview");
+        gd.Step(10);
+        GuiDriving.ClickLabel(gui, gd, "Put limbs back");
+        Check(ge.Preview.HiddenBones.Count == 0 && ge.Debris.Count == 0, "putting limbs back");
+        // the layer stack: a layer only plays in the states ticked for it
+        GuiDriving.ClickLabel(gui, gd, "Layers");
+        ge.SelLayer = ge.Def.Layers.FindIndex(l => l.Name == "Pulse"); gd.Step();
+        GuiDriving.ClickLabel(gui, gd, "Plays in: always");
+        GuiDriving.ClickLabel(gui, gd, "stagger");
+        Check(ge.Def.Layers[ge.SelLayer].ActiveIn.SequenceEqual(new[] { "stagger" }), "ticking a state for a layer");
     }
 
     static void TaperCurveAbdomen()

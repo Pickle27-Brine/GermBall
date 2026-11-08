@@ -6,7 +6,7 @@ Germ Ball 2.0 lives in `src/` (the game plus two editors). Germ Ball 1.0 is depr
 
 The repository ships two editor exes next to the game: **EntityEditor.exe** and **MapEditor.exe**. Whenever a change touches anything they edit or show, update them in the same change:
 
-- **Entity data** (`EntityDef`, bones, shapes, clips, layers, states, stats, curl style): update the Entity Editor's panels (`src/GermBall.Tools/EntityEditor/`).
+- **Entity data** (`EntityDef`, bones, shapes, clips, layers, states, stats, curl style, limbs): update the Entity Editor's panels (`src/GermBall.Tools/EntityEditor/`).
 - **New game states** for state layers: update `AnimStates.All`.
 - **New procedural parameters** (things in `AnimContext`): expose them on the Entity Editor's Preview tab.
 - **Map data**: update the Map Editor (`src/GermBall.Tools/MapEditor/`): its Add palette, properties panel, `Bounds`, `Describe`, and `Add` defaults. Map data means `MapDef` or `MapObject`, any new object type, zone kind or pickup kind, and anything `Level.Add` builds.

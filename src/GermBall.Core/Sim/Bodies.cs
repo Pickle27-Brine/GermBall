@@ -11,6 +11,8 @@ namespace GermBall.Sim;
 public sealed partial class Game
 {
     public readonly List<Germ> Germs = new();
+    /// <summary>Severed limbs lying around.</summary>
+    public readonly List<LimbDebris> Debris = new();
     /// <summary>The hero's entity (content/entities/hero.entity.json): model, rig and animation layers.</summary>
     public EntityView Hero;
     /// <summary>The hero's humanoid joints in world space, from the last evaluated pose.</summary>
@@ -56,12 +58,26 @@ public sealed partial class Game
         c.Armed = w != null && p.Alive; c.TwoHanded = w != null && w.Def != WeaponDef.Pistol;
         c.Aiming = aimHeld || p.FacingLockT > 0 || p.Hovering;
         c.AimDir = MathX.Forward(CamYaw, CamPitch);
+        c.AimPitch = CamPitch / MathX.Deg; c.VSpeed = p.Vel.Y;
         c.PunchT = MathF.Max(0, PunchT); c.ReloadT = MathF.Max(0, ReloadT);
-        c.State = HeroState();
+        c.State = HeroState(); c.Move = HeroMove();
         c.GroundAt = groundAt ??= q => { var h = Level.World.Raycast(q + new Vector3(0, 0.6f, 0), -Vector3.UnitY, 1.2f); return h.Hit && h.Normal.Y > 0.5f ? h.Point.Y : float.NaN; };
         c.Joints = null; c.Spin = Quaternion.Identity;
     }
     Func<Vector3, float> groundAt;
+
+    /// <summary>The hero's movement, underneath any action (state layers fall back to it).</summary>
+    public string HeroMove()
+    {
+        var p = Player;
+        if (!p.Alive) return "dead";
+        if (p.Charging) return "spin";
+        if (p.Rolling) return "curl";
+        if (p.Hovering) return "hover";
+        if (!p.Grounded) return p.Vel.Y > 0 ? "jump" : "fall";
+        if (p.Skidding) return "skid";
+        return MathX.FlatLen(p.Vel) > 0.3f ? "run" : "idle";
+    }
 
     /// <summary>The hero's game state, for state animation layers.</summary>
     public string HeroState()
@@ -101,6 +117,8 @@ public sealed partial class Game
             }
         }
         if (PlayerRagdoll != null) PlayerRagdoll.Step(Level.World, dt, Player.Gravity);
+        foreach (var d in Debris) d.Update(Level.World, dt, Player.Gravity);
+        Debris.RemoveAll(d => d.Dead || d.Pos.Y < Level.KillY);
         AttackHitT -= dt;
     }
 
@@ -175,10 +193,12 @@ public sealed partial class Game
         AttackHitT = 0.1f; HitMarkerT = 0.15f;
     }
 
-    /// <summary>Damage a germ from any source. Killing blows (and big pushes on small germs) throw it into a ragdoll.</summary>
-    public void DamageGerm(Germ gm, float dmg, Vector3 push, Vector3 at, bool crit)
+    /// <summary>Damage a germ from any source. Killing blows (and big pushes on small germs) throw it into a ragdoll.
+    /// <paramref name="limbHit"/>: a direct hit (shot or punch) that can wear down the limb it lands on.</summary>
+    public void DamageGerm(Germ gm, float dmg, Vector3 push, Vector3 at, bool crit, bool limbHit = false)
     {
         if (!gm.Alive) { gm.Ragdoll?.Push(push * 0.3f, DT); return; }
+        if (limbHit && LimbHit(gm, dmg, push, at)) return;
         gm.Hp -= dmg; gm.HitFlash = 0.12f;
         damageLog.Enqueue((Time, dmg));
         Effects.Number(at, dmg, crit);
@@ -191,10 +211,78 @@ public sealed partial class Game
         }
     }
 
-    /// <summary>Shots, punches and blasts: a big enough push knocks small germs over.</summary>
-    void HitGerm(Germ gm, float dmg, Vector3 push, Vector3 at, bool crit, bool canTopple)
+    // ---------------------------------------------------------------- limbs
+    /// <summary>A direct hit near a limb wears it down; at zero it comes off. Only hits of at least the entity's minimum count,
+    /// and only so many limbs can go. Returns true if the hit killed the germ outright (a critical limb).</summary>
+    bool LimbHit(Germ gm, float dmg, Vector3 push, Vector3 at)
     {
-        DamageGerm(gm, dmg, push, at, crit);
+        var L = gm.Def.Limbs;
+        if (L == null || !L.Enabled || L.Parts.Count == 0 || dmg < L.MinHit || gm.LimbsLost >= L.MaxLost) return false;
+        int limb = NearestLimb(gm, at); if (limb < 0) return false;
+        gm.LimbHp[limb] -= dmg;
+        if (gm.LimbHp[limb] > 0) return false;
+        return Sever(gm, limb, push);
+    }
+
+    /// <summary>The limb (not yet lost) whose bones run closest to a point, within reach of the body's surface.</summary>
+    public static int NearestLimb(Germ gm, Vector3 at)
+    {
+        var v = gm.View; var sk = v.Sk; float best = 0.38f * gm.Scale; int bi = -1;
+        // how close the hit is to the rest of the body (bones in no limb): limbs only take hits clearly nearer to them
+        float body = float.MaxValue;
+        for (int b = 0; b < sk.Count; b++)
+        {
+            bool inLimb = false;
+            foreach (var p in gm.Def.Limbs.Parts) { int lb = sk.IndexOf(p.Bone); if (lb >= 0 && sk.IsDescendant(b, lb)) { inLimb = true; break; } }
+            if (inLimb) continue;
+            int c = sk.FirstChild(b);
+            body = MathF.Min(body, SegmentDistance(at, v.Pose.Joint(b), c >= 0 ? v.Pose.Joint(c) : v.Pose.Joint(b)));
+        }
+        for (int i = 0; i < gm.Def.Limbs.Parts.Count; i++)
+        {
+            if (gm.LimbLost[i]) continue;
+            int lb = sk.IndexOf(gm.Def.Limbs.Parts[i].Bone); if (lb < 0) continue;
+            for (int b = 0; b < sk.Count; b++)
+            {
+                if (!sk.IsDescendant(b, lb)) continue;
+                int c = sk.FirstChild(b);
+                var a0 = v.Pose.Joint(b); var a1 = c >= 0 ? v.Pose.Joint(c) : a0;
+                float d = SegmentDistance(at, a0, a1);
+                if (d < best && d < body * 0.8f) { best = d; bi = i; }
+            }
+        }
+        return bi;
+    }
+    static float SegmentDistance(Vector3 p, Vector3 a, Vector3 b)
+    {
+        var ab = b - a; float l = ab.LengthSquared(); float t = l < 1e-8f ? 0 : Math.Clamp(Vector3.Dot(p - a, ab) / l, 0, 1);
+        return Vector3.Distance(p, a + ab * t);
+    }
+
+    /// <summary>Takes a limb off: it flies away as debris, the body stops drawing it; a leg leaves it down for good, a critical limb kills.</summary>
+    public bool Sever(Germ gm, int limb, Vector3 push)
+    {
+        var part = gm.Def.Limbs.Parts[limb]; int lb = gm.View.Sk.IndexOf(part.Bone); if (lb < 0) return false;
+        gm.LimbLost[limb] = true; gm.LimbsLost++;
+        var vel = push * 0.6f + new Vector3(0, 4, 0) + Rng.InSphere() * 2;
+        Debris.Add(new LimbDebris(gm.View, lb, vel, gm.Def.Limbs.DebrisLife));
+        gm.View.HiddenBones.Add(lb);
+        Effects.Burst(gm.View.Pose.Joint(lb), ColorHex.Parse(gm.Def.BallColor), 18, 4);
+        Say($"{gm.Name}: {BoneNames.Friendly(part.Bone).ToLowerInvariant()} off");
+        if (part.Critical) { gm.Kill(this, push); HitMarkerKill = true; HitMarkerT = 0.3f; return true; }
+        if (part.Bone.StartsWith("hip") || part.Bone.StartsWith("knee") || part.Bone.StartsWith("foot"))
+        {
+            gm.Legless = true;
+            if (gm.Standing) gm.Topple(push * 0.5f + new Vector3(0, 2, 0), 99);
+        }
+        else gm.StaggerT = MathF.Max(gm.StaggerT, 0.6f);
+        return false;
+    }
+
+    /// <summary>Shots, punches and blasts: a big enough push knocks small germs over.</summary>
+    void HitGerm(Germ gm, float dmg, Vector3 push, Vector3 at, bool crit, bool canTopple, bool limbHit = false)
+    {
+        DamageGerm(gm, dmg, push, at, crit, limbHit);
         if (canTopple && gm.Alive && gm.Standing && gm.DashesToFloor == 1) gm.Topple(push + new Vector3(0, 3, 0), 1.2f);
         else if (gm.Alive && gm.Standing) gm.StaggerT = MathF.Max(gm.StaggerT, 0.3f);
     }

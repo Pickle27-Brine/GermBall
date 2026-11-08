@@ -22,6 +22,11 @@ public sealed class Germ
     public float GetUpT;                            // > 0: blending from the ragdoll back to standing
     public float DeadT, HitFlash, StaggerT, HitCooldown;
     public int DashHits; public float LastDashHit = -99;
+    /// <summary>Health left in each limb of <see cref="EntityDef.Limbs"/>, and which are gone.</summary>
+    public float[] LimbHp = Array.Empty<float>(); public bool[] LimbLost = Array.Empty<bool>();
+    public int LimbsLost;
+    /// <summary>Lost a leg: it can't get back up.</summary>
+    public bool Legless;
     /// <summary>World-space humanoid joints of the current pose (for ragdolls and hits).</summary>
     public readonly Pose Pose = new();
     readonly Pose getUpFrom = new(), blend = new();
@@ -44,6 +49,9 @@ public sealed class Germ
     public void Reset()
     {
         Pos = Spawn.Pos; Yaw = Spawn.Yaw; Hp = MaxHp; Alive = true; Ragdoll = null; DeadT = 0; DashHits = 0; StaggerT = 0; GetUpT = 0;
+        int n = Def.Limbs?.Parts.Count ?? 0;
+        LimbHp = new float[n]; LimbLost = new bool[n]; LimbsLost = 0; Legless = false; View.HiddenBones.Clear();
+        for (int i = 0; i < n; i++) LimbHp[i] = Def.Limbs.Parts[i].Hp;
         Animate(0, 0);
     }
 
@@ -63,7 +71,7 @@ public sealed class Germ
             else if (Alive)
             {
                 RagdollT -= dt;
-                if (RagdollT <= 0) GetUp(g);
+                if (RagdollT <= 0 && !Legless) GetUp(g);
             }
         }
         if (!Alive && Ragdoll == null)
@@ -73,6 +81,7 @@ public sealed class Germ
             return;
         }
         if (!Alive) { DeadT -= dt; if (DeadT <= 0) { Reset(); return; } }
+        ctx.GroundAt ??= q => { var h = g.Level.World.Raycast(q + new Vector3(0, 0.6f, 0), -Vector3.UnitY, 1.2f); return h.Hit && h.Normal.Y > 0.5f ? h.Point.Y : float.NaN; };
         Animate(g.Time + seed, dt);
     }
 
@@ -82,6 +91,7 @@ public sealed class Germ
         ctx.Time = t; ctx.Dt = dt; ctx.Feet = Pos; ctx.Yaw = Yaw; ctx.Grounded = true; ctx.Speed = 0;
         ctx.Sway = StaggerT > 0 ? 0.25f : 0.06f; ctx.ArmsUp = 0.35f + 0.15f * MathF.Sin(t * 1.7f);
         ctx.State = !Alive ? "dead" : Ragdoll != null ? "down" : StaggerT > 0 ? "stagger" : HitFlash > 0 ? "hurt" : "idle";
+        ctx.Move = "idle";
         ctx.Joints = null;
         View.Update(ctx);
         if (Ragdoll != null) ctx.Joints = Ragdoll.Pos;

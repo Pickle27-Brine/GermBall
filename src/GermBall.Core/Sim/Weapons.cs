@@ -158,7 +158,7 @@ public sealed partial class Game
                 {
                     bool head = gm.Standing && hit.Point.Y > gm.Pos.Y + gm.Height * 0.8f;
                     ShotsHit++;
-                    HitGerm(gm, head ? damage * 2 : damage, dir * knock, hit.Point, head, false);
+                    HitGerm(gm, head ? damage * 2 : damage, dir * knock, hit.Point, head, false, true);
                     Effects.Burst(hit.Point, ColorHex.Parse(gm.Def.BallColor), 6, 3);
                     break;
                 }
@@ -206,7 +206,7 @@ public sealed partial class Game
         {
             if (!gm.Alive) continue;
             var c = gm.Ragdoll != null ? gm.Ragdoll.Pos.P[gm.Ragdoll.Nearest(at)] : gm.Pos + new Vector3(0, MathX.Clamp(at.Y - gm.Pos.Y, 0, gm.Height), 0);
-            if (Vector3.Distance(c, at) < PunchRange * 0.6f + (gm.Ragdoll != null ? 0.2f : gm.Radius)) { HitGerm(gm, PunchDamage, fwd * 7 + new Vector3(0, 2, 0), c + (at - c) * 0.5f, false, true); any = true; }
+            if (Vector3.Distance(c, at) < PunchRange * 0.6f + (gm.Ragdoll != null ? 0.2f : gm.Radius)) { HitGerm(gm, PunchDamage, fwd * 7 + new Vector3(0, 2, 0), c + (at - c) * 0.5f, false, true, true); any = true; }
         }
         foreach (var pr in Props)
         {

@@ -87,12 +87,87 @@ public static class DefaultEntities
         s.Add(S("helmet.band", "head", "Cylinder", V(0, 0.0175f, 0), V(0.246f, 0.035f, 0.246f), Red));
         s.Add(S("visor", "head", "Box", V(0, 0.005f, -0.105f), V(0.2f, 0.055f, 0.05f), Cyan, unlit: true));
 
-        // a sample clip and the layer stack: procedural motion underneath, state clips added on top
-        e.Clips.Add(Flinch());
-        e.Layers.Add(new LayerDef { Name = "Locomotion", Source = "procedural", Mode = "override" });
-        e.Layers.Add(new LayerDef { Name = "Reactions", Source = "state", Mode = "additive" });
-        e.States.Add(new StateClip { State = "hurt", Clip = "flinch", Fade = 0.05f });
+        HeroAnimation(e);
         return e;
+    }
+
+    // ------------------------------------------------------------------ keyframed clips
+    // Angles in degrees on the standard rig: +X swings a thigh or upper arm forward; -X bends a knee; +X bends an elbow
+    // forward; -X on the abdomen or chest leans forward; -Z takes a left arm out to the side (+Z a right arm).
+    sealed class ClipBuilder
+    {
+        public readonly ClipDef Clip;
+        public ClipBuilder(string name, float length, bool loop) { Clip = new ClipDef { Name = name, Length = length, Loop = loop }; }
+        public ClipBuilder R(string bone, float t, float x, float y = 0, float z = 0) { Key(bone, t).Rot = new Vector3(x, y, z); return this; }
+        public ClipBuilder P(string bone, float t, float x, float y, float z) { Key(bone, t).Pos = new Vector3(x, y, z); return this; }
+        KeyDef Key(string bone, float t)
+        {
+            var tr = Clip.Track(bone); if (tr == null) { tr = new TrackDef { Bone = bone }; Clip.Tracks.Add(tr); }
+            var k = tr.Keys.Find(x => MathF.Abs(x.T - t) < 1e-4f);
+            if (k == null) { k = new KeyDef { T = t }; tr.Keys.Add(k); tr.Keys.Sort((p, q) => p.T.CompareTo(q.T)); }
+            return k;
+        }
+    }
+
+    static void HeroAnimation(EntityDef e)
+    {
+        var idle = new ClipBuilder("idle", 2.4f, true)
+            .R("chest", 0, 0).R("chest", 1.2f, -2).R("abdomen", 0, 0).R("abdomen", 1.2f, -1)
+            .R("head", 0, 0).R("head", 1.2f, 2, 3)
+            .R("shoulder.L", 0, 2, 0, -6).R("shoulder.L", 1.2f, 4, 0, -8).R("shoulder.R", 0, 2, 0, 6).R("shoulder.R", 1.2f, 4, 0, 8)
+            .R("elbow.L", 0, 12).R("elbow.R", 0, 12)
+            .R("hip.L", 0, 2, 0, -2).R("hip.R", 0, 2, 0, 2);
+        // one stride each way in half a second; the state plays it faster as you run faster so the feet keep up
+        var run = new ClipBuilder("run", 0.5f, true)
+            .R("hip.L", 0, 40).R("hip.L", 0.25f, -35).R("hip.R", 0, -35).R("hip.R", 0.25f, 40)
+            .R("knee.L", 0, -15).R("knee.L", 0.125f, -25).R("knee.L", 0.25f, -60).R("knee.L", 0.375f, -105).R("knee.L", 0.45f, -70)
+            .R("knee.R", 0, -60).R("knee.R", 0.125f, -105).R("knee.R", 0.2f, -70).R("knee.R", 0.25f, -15).R("knee.R", 0.375f, -25)
+            .R("foot.L", 0, 15).R("foot.L", 0.25f, -20).R("foot.R", 0, -20).R("foot.R", 0.25f, 15)
+            .R("shoulder.L", 0, -30, 0, -8).R("shoulder.L", 0.25f, 35, 0, -8).R("shoulder.R", 0, 35, 0, 8).R("shoulder.R", 0.25f, -30, 0, 8)
+            .R("elbow.L", 0, 80).R("elbow.L", 0.25f, 70).R("elbow.R", 0, 70).R("elbow.R", 0.25f, 80)
+            .R("abdomen", 0, -8, 6).R("abdomen", 0.25f, -8, -6).R("chest", 0, -6, -8).R("chest", 0.25f, -6, 8)
+            .R("head", 0, 8)
+            .P("pelvis", 0, 0, -0.04f, 0).P("pelvis", 0.125f, 0, 0, 0).P("pelvis", 0.25f, 0, -0.04f, 0).P("pelvis", 0.375f, 0, 0, 0);
+        var skid = new ClipBuilder("skid", 0.4f, false)
+            .R("abdomen", 0, 12).R("chest", 0, 6).R("hip.R", 0, 35).R("knee.R", 0, -10).R("hip.L", 0, -15).R("knee.L", 0, -35)
+            .R("shoulder.L", 0, 20, 0, -35).R("shoulder.R", 0, 20, 0, 35).R("elbow.L", 0, 30).R("elbow.R", 0, 30);
+        var fall = new ClipBuilder("fall", 0.8f, true)
+            .R("hip.L", 0, 55).R("hip.L", 0.4f, 50).R("knee.L", 0, -90).R("knee.L", 0.4f, -80)
+            .R("hip.R", 0, -10).R("hip.R", 0.4f, -5).R("knee.R", 0, -40).R("knee.R", 0.4f, -50)
+            .R("shoulder.L", 0, 40, 0, -40).R("shoulder.L", 0.4f, 45, 0, -50).R("shoulder.R", 0, 40, 0, 40).R("shoulder.R", 0.4f, 45, 0, 50)
+            .R("elbow.L", 0, 40).R("elbow.R", 0, 40);
+        var hover = new ClipBuilder("hover", 1.2f, true)
+            .R("hip.L", 0, -8).R("hip.L", 0.6f, -12).R("hip.R", 0, -12).R("hip.R", 0.6f, -8)
+            .R("knee.L", 0, -25).R("knee.R", 0, -30).R("foot.L", 0, -25).R("foot.R", 0, -25)
+            .P("pelvis", 0, 0, 0, 0).P("pelvis", 0.6f, 0, 0.03f, 0);
+        // aiming: arms forward, blended up and down with the aim
+        var aim = new ClipBuilder("aim", 1, true).R("shoulder.R", 0, 88, 0, -8).R("elbow.R", 0, 4).R("shoulder.L", 0, 75, 0, 25).R("elbow.L", 0, 35);
+        var aimUp = new ClipBuilder("aim_up", 1, true).R("shoulder.R", 0, 140, 0, -8).R("elbow.R", 0, 4).R("shoulder.L", 0, 125, 0, 25).R("elbow.L", 0, 35);
+        var aimDown = new ClipBuilder("aim_down", 1, true).R("shoulder.R", 0, 40, 0, -8).R("elbow.R", 0, 4).R("shoulder.L", 0, 30, 0, 25).R("elbow.L", 0, 35);
+        var punch = new ClipBuilder("punch", 0.25f, false)
+            .R("shoulder.R", 0, 40).R("shoulder.R", 0.08f, 88, 0, -6).R("shoulder.R", 0.25f, 40)
+            .R("elbow.R", 0, 100).R("elbow.R", 0.08f, 0).R("elbow.R", 0.25f, 90);
+        var reload = new ClipBuilder("reload", 0.6f, true)
+            .R("shoulder.R", 0, 45, 0, -25).R("shoulder.L", 0, 50, 0, 25).R("shoulder.L", 0.3f, 40, 0, 30)
+            .R("elbow.R", 0, 100).R("elbow.L", 0, 95).R("elbow.L", 0.3f, 110);
+        foreach (var c in new[] { idle, run, skid, fall, hover, aim, aimUp, aimDown, punch, reload }) e.Clips.Add(c.Clip);
+        e.Clips.Add(Flinch());
+
+        e.States.Add(new StateClip { State = "idle", Clip = "idle", Fade = 0.25f });
+        e.States.Add(new StateClip { State = "run", Clip = "run", Fade = 0.15f, SpeedParam = "speed", SpeedRef = 5.2f, MinRate = 0.5f });
+        e.States.Add(new StateClip { State = "skid", Clip = "skid", Fade = 0.1f });
+        e.States.Add(new StateClip { State = "jump", Clip = "fall", Fade = 0.15f });
+        e.States.Add(new StateClip { State = "fall", Clip = "fall", Fade = 0.2f });
+        e.States.Add(new StateClip { State = "hover", Clip = "hover", Fade = 0.2f });
+
+        var upper = new List<string> { "shoulder.L", "shoulder.R" };
+        e.Layers.Add(new LayerDef { Name = "Body", Source = "state" });
+        e.Layers.Add(new LayerDef { Name = "Aim", Source = "blend", Param = "aimPitch", Mask = new List<string>(upper), ActiveIn = { "aim", "fire", "hover" }, Fade = 0.12f,
+            Blend = { new BlendPoint { Clip = "aim_down", Value = -60 }, new BlendPoint { Clip = "aim", Value = 0 }, new BlendPoint { Clip = "aim_up", Value = 60 } } });
+        e.Layers.Add(new LayerDef { Name = "Punch", Source = "clip", Clip = "punch", Mask = { "shoulder.R" }, ActiveIn = { "punch" }, Fade = 0.04f });
+        e.Layers.Add(new LayerDef { Name = "Reload", Source = "clip", Clip = "reload", Mask = new List<string>(upper), ActiveIn = { "reload" }, Fade = 0.1f });
+        e.Layers.Add(new LayerDef { Name = "Flinch", Source = "clip", Clip = "flinch", Mode = "additive", ActiveIn = { "hurt" }, Fade = 0.04f });
+        e.Layers.Add(new LayerDef { Name = "Foot IK", Source = "footik" });
     }
 
     /// <summary>A quick recoil of the chest and head, played additively when hurt.</summary>
@@ -125,8 +200,23 @@ public static class DefaultEntities
             e.Shapes.Add(Limb("forearm." + side, "elbow." + side, 0.28f, 0.06f, dark));
             e.Shapes.Add(S("hand." + side, "hand." + side, "Sphere", Vector3.Zero, U(0.17f), col));
         }
-        e.Layers.Add(new LayerDef { Name = "Idle", Source = "procedural", Mode = "override" });
+        // a menacing sway with the arms up, a wobblier one when staggered
+        var idle = new ClipBuilder("idle", 3.2f, true)
+            .R("pelvis", 0, 0, 0, 3).R("pelvis", 1.6f, 0, 0, -3).R("chest", 0, 2).R("chest", 0.8f, -2).R("chest", 1.6f, 2).R("chest", 2.4f, -2)
+            .R("shoulder.L", 0, 40, 0, -25).R("shoulder.L", 1.6f, 50, 0, -30).R("shoulder.R", 0, 40, 0, 25).R("shoulder.R", 1.6f, 50, 0, 30)
+            .R("elbow.L", 0, 50).R("elbow.R", 0, 50).R("hip.L", 0, 0, 0, -3).R("hip.R", 0, 0, 0, 3);
+        var stagger = new ClipBuilder("stagger", 0.6f, true)
+            .R("pelvis", 0, 0, 0, 10).R("pelvis", 0.3f, 0, 0, -10).R("chest", 0, 12, 0, -8).R("chest", 0.3f, 8, 0, 8)
+            .R("shoulder.L", 0, 20, 0, -60).R("shoulder.R", 0, 20, 0, 60).R("elbow.L", 0, 30).R("elbow.R", 0, 30);
+        e.Clips.Add(idle.Clip); e.Clips.Add(stagger.Clip);
+        e.States.Add(new StateClip { State = "idle", Clip = "idle", Fade = 0.3f });
+        e.States.Add(new StateClip { State = "stagger", Clip = "stagger", Fade = 0.1f });
+        e.Layers.Add(new LayerDef { Name = "Body", Source = "state" });
         e.Layers.Add(new LayerDef { Name = "Pulse", Source = "clip", Clip = "pulse", Mode = "additive", Mask = { "pelvis" }, MaskChildren = false });
+        e.Layers.Add(new LayerDef { Name = "Foot IK", Source = "footik" });
+        // arms and legs come off (only to big hits, and only a couple of them)
+        e.Limbs = new LimbSettings { Enabled = true, MinHit = 18, MaxLost = 2 };
+        foreach (var b in new[] { "shoulder.L", "shoulder.R", "hip.L", "hip.R" }) e.Limbs.Parts.Add(new LimbDef { Bone = b, Hp = MathF.Round(MathF.Max(hp * 0.4f, 2 * e.Limbs.MinHit)) });   // never one ordinary hit
         return e;
     }
     static void Eyes(EntityDef e, string bone, Vector3 at, float r, float gap)
@@ -186,6 +276,7 @@ public static class DefaultEntities
         e.Shapes.Add(S("baseplate", "pelvis", "Cylinder", V(0, 0, 0), V(0.44f, 0.04f, 0.44f), "#505C6C"));
         e.Clips.Add(Pulse("head", 0.04f, 3f));
         e.Layers[1].Mask = new List<string> { "head" };
+        e.Limbs.Parts.RemoveAll(l => l.Bone.StartsWith("shoulder"));   // the titan's arms are thin; only its legs come off
         return e;
     }
 }

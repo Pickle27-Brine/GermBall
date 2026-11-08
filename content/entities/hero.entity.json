@@ -465,6 +465,1155 @@
   ],
   "Clips": [
     {
+      "Name": "idle",
+      "Length": 2.4,
+      "Loop": true,
+      "Tracks": [
+        {
+          "Bone": "chest",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 1.2,
+              "Rot": [-2, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "abdomen",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 1.2,
+              "Rot": [-1, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "head",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 1.2,
+              "Rot": [2, 3, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "shoulder.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [2, 0, -6],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 1.2,
+              "Rot": [4, 0, -8],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "shoulder.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [2, 0, 6],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 1.2,
+              "Rot": [4, 0, 8],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [12, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [12, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "hip.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [2, 0, -2],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "hip.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [2, 0, 2],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "run",
+      "Length": 0.5,
+      "Loop": true,
+      "Tracks": [
+        {
+          "Bone": "hip.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [40, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [-35, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "hip.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-35, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [40, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "knee.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-15, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.125,
+              "Rot": [-25, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [-60, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.375,
+              "Rot": [-105, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.45,
+              "Rot": [-70, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "knee.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-60, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.125,
+              "Rot": [-105, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.2,
+              "Rot": [-70, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [-15, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.375,
+              "Rot": [-25, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "foot.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [15, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [-20, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "foot.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-20, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [15, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "shoulder.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-30, 0, -8],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [35, 0, -8],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "shoulder.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [35, 0, 8],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [-30, 0, 8],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [80, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [70, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [70, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [80, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "abdomen",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-8, 6, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [-8, -6, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "chest",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-6, -8, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [-6, 8, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "head",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [8, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "pelvis",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [0, 0, 0],
+              "Pos": [0, -0.04, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.125,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [0, 0, 0],
+              "Pos": [0, -0.04, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.375,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "skid",
+      "Length": 0.4,
+      "Loop": false,
+      "Tracks": [
+        {
+          "Bone": "abdomen",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [12, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "chest",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [6, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "hip.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [35, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "knee.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-10, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "hip.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-15, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "knee.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-35, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "shoulder.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [20, 0, -35],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "shoulder.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [20, 0, 35],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [30, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [30, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "fall",
+      "Length": 0.8,
+      "Loop": true,
+      "Tracks": [
+        {
+          "Bone": "hip.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [55, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.4,
+              "Rot": [50, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "knee.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-90, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.4,
+              "Rot": [-80, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "hip.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-10, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.4,
+              "Rot": [-5, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "knee.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-40, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.4,
+              "Rot": [-50, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "shoulder.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [40, 0, -40],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.4,
+              "Rot": [45, 0, -50],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "shoulder.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [40, 0, 40],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.4,
+              "Rot": [45, 0, 50],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [40, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [40, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "hover",
+      "Length": 1.2,
+      "Loop": true,
+      "Tracks": [
+        {
+          "Bone": "hip.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-8, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.6,
+              "Rot": [-12, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "hip.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-12, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.6,
+              "Rot": [-8, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "knee.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-25, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "knee.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-30, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "foot.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-25, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "foot.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [-25, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "pelvis",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.6,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0.03, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "aim",
+      "Length": 1,
+      "Loop": true,
+      "Tracks": [
+        {
+          "Bone": "shoulder.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [88, 0, -8],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [4, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "shoulder.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [75, 0, 25],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [35, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "aim_up",
+      "Length": 1,
+      "Loop": true,
+      "Tracks": [
+        {
+          "Bone": "shoulder.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [140, 0, -8],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [4, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "shoulder.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [125, 0, 25],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [35, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "aim_down",
+      "Length": 1,
+      "Loop": true,
+      "Tracks": [
+        {
+          "Bone": "shoulder.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [40, 0, -8],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [4, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "shoulder.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [30, 0, 25],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [35, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "punch",
+      "Length": 0.25,
+      "Loop": false,
+      "Tracks": [
+        {
+          "Bone": "shoulder.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [40, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.08,
+              "Rot": [88, 0, -6],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [40, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [100, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.08,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.25,
+              "Rot": [90, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "reload",
+      "Length": 0.6,
+      "Loop": true,
+      "Tracks": [
+        {
+          "Bone": "shoulder.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [45, 0, -25],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "shoulder.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [50, 0, 25],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.3,
+              "Rot": [40, 0, 30],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.R",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [100, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "elbow.L",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [95, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.3,
+              "Rot": [110, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "Name": "flinch",
       "Length": 0.35,
       "Loop": false,
@@ -526,35 +1675,196 @@
   ],
   "Layers": [
     {
-      "Name": "Locomotion",
-      "Source": "procedural",
+      "Name": "Body",
+      "Source": "state",
       "Clip": null,
       "Mode": "override",
       "Weight": 1,
       "Speed": 1,
       "Mask": [],
       "MaskChildren": true,
-      "Enabled": true
+      "Enabled": true,
+      "ActiveIn": [],
+      "Fade": 0.15,
+      "SpeedParam": null,
+      "SpeedRef": 1,
+      "Param": "aimPitch",
+      "Blend": []
     },
     {
-      "Name": "Reactions",
-      "Source": "state",
+      "Name": "Aim",
+      "Source": "blend",
       "Clip": null,
+      "Mode": "override",
+      "Weight": 1,
+      "Speed": 1,
+      "Mask": [
+        "shoulder.L",
+        "shoulder.R"
+      ],
+      "MaskChildren": true,
+      "Enabled": true,
+      "ActiveIn": [
+        "aim",
+        "fire",
+        "hover"
+      ],
+      "Fade": 0.12,
+      "SpeedParam": null,
+      "SpeedRef": 1,
+      "Param": "aimPitch",
+      "Blend": [
+        {
+          "Clip": "aim_down",
+          "Value": -60
+        },
+        {
+          "Clip": "aim",
+          "Value": 0
+        },
+        {
+          "Clip": "aim_up",
+          "Value": 60
+        }
+      ]
+    },
+    {
+      "Name": "Punch",
+      "Source": "clip",
+      "Clip": "punch",
+      "Mode": "override",
+      "Weight": 1,
+      "Speed": 1,
+      "Mask": [
+        "shoulder.R"
+      ],
+      "MaskChildren": true,
+      "Enabled": true,
+      "ActiveIn": [
+        "punch"
+      ],
+      "Fade": 0.04,
+      "SpeedParam": null,
+      "SpeedRef": 1,
+      "Param": "aimPitch",
+      "Blend": []
+    },
+    {
+      "Name": "Reload",
+      "Source": "clip",
+      "Clip": "reload",
+      "Mode": "override",
+      "Weight": 1,
+      "Speed": 1,
+      "Mask": [
+        "shoulder.L",
+        "shoulder.R"
+      ],
+      "MaskChildren": true,
+      "Enabled": true,
+      "ActiveIn": [
+        "reload"
+      ],
+      "Fade": 0.1,
+      "SpeedParam": null,
+      "SpeedRef": 1,
+      "Param": "aimPitch",
+      "Blend": []
+    },
+    {
+      "Name": "Flinch",
+      "Source": "clip",
+      "Clip": "flinch",
       "Mode": "additive",
       "Weight": 1,
       "Speed": 1,
       "Mask": [],
       "MaskChildren": true,
-      "Enabled": true
+      "Enabled": true,
+      "ActiveIn": [
+        "hurt"
+      ],
+      "Fade": 0.04,
+      "SpeedParam": null,
+      "SpeedRef": 1,
+      "Param": "aimPitch",
+      "Blend": []
+    },
+    {
+      "Name": "Foot IK",
+      "Source": "footik",
+      "Clip": null,
+      "Mode": "override",
+      "Weight": 1,
+      "Speed": 1,
+      "Mask": [],
+      "MaskChildren": true,
+      "Enabled": true,
+      "ActiveIn": [],
+      "Fade": 0.15,
+      "SpeedParam": null,
+      "SpeedRef": 1,
+      "Param": "aimPitch",
+      "Blend": []
     }
   ],
   "States": [
     {
-      "State": "hurt",
-      "Clip": "flinch",
-      "Fade": 0.05
+      "State": "idle",
+      "Clip": "idle",
+      "Fade": 0.25,
+      "SpeedParam": null,
+      "SpeedRef": 1,
+      "MinRate": 0.3
+    },
+    {
+      "State": "run",
+      "Clip": "run",
+      "Fade": 0.15,
+      "SpeedParam": "speed",
+      "SpeedRef": 5.2,
+      "MinRate": 0.5
+    },
+    {
+      "State": "skid",
+      "Clip": "skid",
+      "Fade": 0.1,
+      "SpeedParam": null,
+      "SpeedRef": 1,
+      "MinRate": 0.3
+    },
+    {
+      "State": "jump",
+      "Clip": "fall",
+      "Fade": 0.15,
+      "SpeedParam": null,
+      "SpeedRef": 1,
+      "MinRate": 0.3
+    },
+    {
+      "State": "fall",
+      "Clip": "fall",
+      "Fade": 0.2,
+      "SpeedParam": null,
+      "SpeedRef": 1,
+      "MinRate": 0.3
+    },
+    {
+      "State": "hover",
+      "Clip": "hover",
+      "Fade": 0.2,
+      "SpeedParam": null,
+      "SpeedRef": 1,
+      "MinRate": 0.3
     }
   ],
   "CurlStyle": "ball",
-  "BallColor": "#E8303C"
+  "BallColor": "#E8303C",
+  "Limbs": {
+    "Enabled": false,
+    "MinHit": 18,
+    "MaxLost": 2,
+    "DebrisLife": 6,
+    "Parts": []
+  }
 }

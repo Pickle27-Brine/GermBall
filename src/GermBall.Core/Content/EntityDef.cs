@@ -27,6 +27,8 @@ public sealed class EntityDef
     /// <summary>How the entity looks curled up: "ball" (a striped ball) or "pose" (its own shapes, spun as a ball).</summary>
     public string CurlStyle = "ball";
     public string BallColor = "#E8303C";
+    /// <summary>Limbs that can be shot off.</summary>
+    public LimbSettings Limbs = new();
 
     public BoneDef Bone(string name) => Bones.Find(b => b.Name == name);
     public ClipDef Clip(string name) => string.IsNullOrEmpty(name) ? null : Clips.Find(c => c.Name == name);
@@ -109,10 +111,18 @@ public sealed class KeyDef
 
 public static class LayerSources
 {
-    /// <summary>procedural: the game's built-in motion (run cycle, IK, aim; idle sway for enemies).
-    /// clip: one clip, looping on the layer's own clock. state: the clip the current game state maps to, crossfaded.</summary>
-    public static readonly string[] All = { "procedural", "clip", "state" };
+    /// <summary>state: the clip the current game state maps to (States), crossfaded.
+    /// clip: one clip on the layer's own clock. blend: mixes clips by a parameter (aim angle, speed).
+    /// footik: plants the feet on the ground (stairs, slopes) after everything else; the only procedural motion.</summary>
+    public static readonly string[] All = { "state", "clip", "blend", "footik" };
     public static readonly string[] Modes = { "override", "additive" };
+    /// <summary>Values the game feeds the animator: horizontal speed (m/s), aim pitch (degrees, up positive), vertical speed (m/s).</summary>
+    public static readonly string[] Params = { "speed", "aimPitch", "vspeed" };
+}
+
+public sealed class BlendPoint
+{
+    public string Clip; public float Value;
 }
 
 public sealed class LayerDef
@@ -128,6 +138,15 @@ public sealed class LayerDef
     /// <summary>A masked bone brings its children along.</summary>
     public bool MaskChildren = true;
     public bool Enabled = true;
+    /// <summary>Game states the layer plays in (empty: always). It fades in and out over <see cref="Fade"/> seconds.</summary>
+    public List<string> ActiveIn = new();
+    public float Fade = 0.15f;
+    /// <summary>Playback rate follows a parameter: rate = param / SpeedRef (e.g. a run clip that matches the running speed).</summary>
+    public string SpeedParam;
+    public float SpeedRef = 1;
+    /// <summary>blend layers: the parameter, and the clips placed along it.</summary>
+    public string Param = "aimPitch";
+    public List<BlendPoint> Blend = new();
 }
 
 public sealed class StateClip
@@ -136,10 +155,52 @@ public sealed class StateClip
     public string Clip;
     /// <summary>Crossfade time into this clip.</summary>
     public float Fade = 0.15f;
+    /// <summary>Playback rate follows a parameter (rate = param / SpeedRef); a run clip keeps its feet planted at any speed.</summary>
+    public string SpeedParam;
+    public float SpeedRef = 1;
+    public float MinRate = 0.3f;
+}
+
+/// <summary>Destructible limbs: hits on a limb wear it down, and a big enough hit takes it off.
+/// Deliberately hard to trigger: only hits of at least <see cref="MinHit"/> count, and only a few limbs can go.</summary>
+public sealed class LimbSettings
+{
+    public bool Enabled;
+    /// <summary>Hits smaller than this never hurt a limb.</summary>
+    public float MinHit = 18;
+    /// <summary>How many limbs it can lose before it's just killed.</summary>
+    public int MaxLost = 2;
+    /// <summary>Seconds a severed limb lies around.</summary>
+    public float DebrisLife = 6;
+    public List<LimbDef> Parts = new();
+}
+
+public sealed class LimbDef
+{
+    /// <summary>The bone where the limb comes off; everything below it goes with it.</summary>
+    public string Bone;
+    public float Hp = 40;
+    /// <summary>Losing it kills (a head).</summary>
+    public bool Critical;
 }
 
 /// <summary>The game states an entity can be in, for state layers.</summary>
 public static class AnimStates
 {
     public static readonly string[] All = { "idle", "run", "skid", "jump", "fall", "curl", "spin", "hover", "aim", "fire", "punch", "reload", "hurt", "stagger", "down", "dead" };
+}
+
+/// <summary>Friendly names for the standard bones (a bone is the segment from its joint to its child's).</summary>
+public static class BoneNames
+{
+    public static string Friendly(string bone) => bone switch
+    {
+        "pelvis" => "Hips", "abdomen" => "Abdomen", "chest" => "Chest", "neck" => "Neck", "head" => "Head",
+        "shoulder.L" => "Upper arm L", "elbow.L" => "Forearm L", "hand.L" => "Hand L",
+        "shoulder.R" => "Upper arm R", "elbow.R" => "Forearm R", "hand.R" => "Hand R",
+        "hip.L" => "Thigh L", "knee.L" => "Shin L", "foot.L" => "Foot L",
+        "hip.R" => "Thigh R", "knee.R" => "Shin R", "foot.R" => "Foot R",
+        null => "(origin)",
+        _ => bone,
+    };
 }

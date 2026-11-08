@@ -52,6 +52,7 @@ public sealed partial class Game
         DrawPickups(dl);
         foreach (var pj in Projectiles)
             dl.Sphere(Vector3.Lerp(pj.PrevPos, pj.Pos, a), Projectile.Radius, MathX.Rgb(0x70C040), DrawFlags.Unlit);
+        foreach (var d in Debris) d.Draw(dl);
         DrawEffects(dl);
     }
 

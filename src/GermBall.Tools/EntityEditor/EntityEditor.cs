@@ -11,8 +11,8 @@ namespace GermBall.Tools.EntityEditor;
 
 /// <summary>
 /// The Entity Editor: build players, enemies and props from shapes on a rig, then animate them.
-/// Left panel: Entity (stats), Rig (bones), Shapes. Right panel: Clips (keyframes), Layers (the animation pipeline),
-/// States (which clip each game state plays), Preview (drive the procedural motion, test the ragdoll).
+/// Left panel: Model (shapes by body part), Rig (bones), Settings (stats, curl, limbs).
+/// Right panel: Animate (clips and keys), Layers (the animation pipeline, which clip each state plays), Preview (states, ragdoll, limbs).
 /// Bottom: the timeline. Centre: the 3D view.
 /// Everything is saved to content/entities/&lt;name&gt;.entity.json, which the game loads.
 /// </summary>
@@ -94,7 +94,9 @@ public sealed partial class EntityEditor
         e.Shapes.Add(new ShapeDef { Name = "head", Bone = "head", Type = "Sphere", Size = new Vector3(0.26f), Color = "#B0B6C0" });
         e.Shapes.Add(new ShapeDef { Name = "hand.L", Bone = "hand.L", Type = "Sphere", Size = new Vector3(0.13f), Color = "#B0B6C0" });
         e.Shapes.Add(new ShapeDef { Name = "hand.R", Bone = "hand.R", Type = "Sphere", Size = new Vector3(0.13f), Color = "#B0B6C0" });
-        e.Layers.Add(new LayerDef { Name = "Base", Source = "procedural" });
+        // start from the hero's animation: clips, the clip for each state, and the layer stack (foot IK included)
+        var hero = DefaultEntities.Hero();
+        e.Clips = hero.Clips; e.States = hero.States; e.Layers = hero.Layers;
         return e;
     }
     /// <summary>The rotation (degrees) that turns a capsule's Y axis along a direction.</summary>
@@ -119,7 +121,7 @@ public sealed partial class EntityEditor
     {
         undo.Clear(); redo.Clear();
         committed = Json.Write(Def); savedJson = committed;
-        ev = null; rigKey = null; rag = null;
+        ev = null; rigKey = null; rag = null; debris.Clear();
         SelBone = Def.Bones.Count > 0 ? Def.Bones[0].Name : null; SelShape = Def.Shapes.Count > 0 ? 0 : -1; SelClip = 0; SelLayer = 0; SelKey = null; Playhead = 0;
         float hh = Def.Stats.Height * Def.Stats.Scale;
         View.Frame(new Vector3(0, hh * 0.5f, 0), hh * 0.6f);
@@ -261,7 +263,7 @@ public sealed partial class EntityEditor
         Ctx.PunchT = PunchT; Ctx.ReloadT = ReloadT;
         if (rag != null) { rag.Step(floor, dt, Player.Gravity); Ctx.Joints = rag.Pos; }
         ev.Update(Ctx);
-        if (AnimTab && SoloClip && CurClip != null && rag == null) ev.Anim.EvaluateSolo(Ctx, ev.Pose, ev.Scale, CurClip, Playhead, ClipOverProcedural, PreviewAdditive);
+        if (AnimTab && SoloClip && CurClip != null && rag == null) ev.Anim.EvaluateSolo(Ctx, ev.Pose, ev.Scale, CurClip, Playhead, ClipOverProcedural);
         else ev.Evaluate(Ctx);
 
         if (ShowGrid) View.Grid(dl, 3, 0.5f);
@@ -271,6 +273,8 @@ public sealed partial class EntityEditor
         // what's under the mouse (pre-highlighted, like Blender), then the model with the selection lit
         bool uiMouse = Ui.MouseOverUi;
         HoverShape = !uiMouse && View.MouseIn(input) && !View.GizmoActive && !View.Looking && ShowShapes && !curled ? ShapeUnder(input) : -1;
+        foreach (var d in debris) { d.Update(floor, dt, Player.Gravity); d.Draw(dl); }
+        debris.RemoveAll(d => d.Dead);
         if (ShowShapes && !curled) ev.Draw(dl, false, 1, Target == EditTarget.Shape ? SelShape : -1, 1, HoverShape);
         if (curled) dl.Add(MeshId.BallStriped, MathX.Ts(new Vector3(0, Player.BallRadius, 0), new Vector3(Player.BallRadius * 2)), ColorHex.Parse(Def.BallColor));
         if (ShowCollision)
@@ -428,36 +432,82 @@ public sealed partial class EntityEditor
         return Vector3.TransformNormal(worldDelta, inv);
     }
 
+    /// <summary>The child a bone points at: the one nearest the middle (pelvis to abdomen, chest to neck), or null for an end bone.</summary>
+    public BoneDef TailChild(string bone)
+    {
+        BoneDef best = null;
+        foreach (var b in Def.Bones) if (b.Parent == bone && (best == null || MathF.Abs(b.Offset.X) < MathF.Abs(best.Offset.X))) best = b;
+        return best;
+    }
+
+    /// <summary>A bone as drawn: from its head (its own joint, the pivot it turns about) to its tail (the joint it moves).</summary>
+    public (Vector3 head, Vector3 tail) BoneSegment(int i)
+    {
+        var head = ev.Pose.Joint(i);
+        var kid = TailChild(Sk.Names[i]);
+        int k = kid != null ? Sk.IndexOf(kid.Name) : -1;
+        if (k >= 0) return (head, ev.Pose.Joint(k));
+        // an end bone (hand, foot, head): a short stub along its own direction, turned with it
+        var own = Def.Bone(Sk.Names[i])?.Offset ?? Vector3.UnitY;
+        if (own.LengthSquared() < 1e-8f) own = Vector3.UnitY;
+        var dir = Vector3.TransformNormal(Vector3.Normalize(own), ev.Pose.World[i]);
+        if (dir.LengthSquared() < 1e-8f) dir = Vector3.UnitY;
+        return (head, head + Vector3.Normalize(dir) * 0.1f * ev.Scale);
+    }
+
     void DrawBones(DrawList dl)
     {
         if (ev.Pose.World.Length != Sk.Count) return;
         float w = 0.0035f * View.Dist;
         for (int i = 0; i < Sk.Count; i++)
         {
-            var p = ev.Pose.Joint(i);
+            if (ev.IsHidden(i)) continue;
+            var (head, tail) = BoneSegment(i);
             bool sel = Sk.Names[i] == SelBone;
-            var c = sel ? new Vector4(1, 0.85f, 0.2f, 1) : new Vector4(0.9f, 0.95f, 1, 0.85f);
-            if (Sk.Parent[i] >= 0) View3D.Line(dl, ev.Pose.Joint(Sk.Parent[i]), p, sel ? c : new Vector4(0.55f, 0.8f, 1, 0.8f), w, true);
-            dl.Sphere(p, w * (sel ? 3.2f : 2.2f), c, DrawFlags.Unlit | DrawFlags.OnTop);
+            var c = sel ? new Vector4(1, 0.85f, 0.2f, 1) : new Vector4(0.55f, 0.8f, 1, 0.8f);
+            // thick at the pivot, thin at the tail, so it's clear which end turns
+            var mid = Vector3.Lerp(head, tail, 0.25f);
+            View3D.Line(dl, head, mid, c, w * (sel ? 2.4f : 1.8f), true);
+            View3D.Line(dl, mid, tail, c, w * (sel ? 1.2f : 0.8f), true);
+            dl.Sphere(head, w * (sel ? 3.2f : 2.2f), sel ? c : new Vector4(0.9f, 0.95f, 1, 0.85f), DrawFlags.Unlit | DrawFlags.OnTop);
         }
     }
 
-    /// <summary>A click in the view: joints (on the Rig and Clips targets) or the piece of the model under the mouse.
+    /// <summary>The bone under the mouse: nearest pivot, else nearest bone segment (head to tail), in screen pixels.</summary>
+    public int BoneUnder(UiInput input)
+    {
+        var m = new Vector2(input.MouseX, input.MouseY); int best = -1; float bd = 7 * Ui.S;
+        for (int i = 0; i < Sk.Count; i++)
+        {
+            if (ev.IsHidden(i)) continue;
+            var (head, tail) = BoneSegment(i);
+            if (!View.Project(head, out var a) || !View.Project(tail, out var b)) continue;
+            float d = MathF.Min(Vector2.Distance(a, m) * 0.7f, SegDist(m, a, b));   // pivots win ties
+            if (d < bd) { bd = d; best = i; }
+        }
+        return best;
+    }
+    static float SegDist(Vector2 p, Vector2 a, Vector2 b)
+    {
+        var ab = b - a; float l = ab.LengthSquared();
+        float t = l < 1e-6f ? 0 : Math.Clamp(Vector2.Dot(p - a, ab) / l, 0, 1);
+        return Vector2.Distance(p, a + ab * t);
+    }
+
+    /// <summary>A click in the view: bones (on the Rig and pose targets) or the piece of the model under the mouse.
     /// Clicking a piece selects that shape and its bone, like clicking a mesh in Blender.</summary>
     void Pick(UiInput input)
     {
         if (ShowBones && Target != EditTarget.Shape)
         {
-            var m = new Vector2(input.MouseX, input.MouseY); int best = -1; float bd = 12;
-            for (int i = 0; i < Sk.Count; i++)
-                if (View.Project(ev.Pose.Joint(i), out var s) && Vector2.Distance(s, m) < bd) { bd = Vector2.Distance(s, m); best = i; }
-            if (best >= 0) { SelBone = Sk.Names[best]; SelKey = null; return; }
+            int b = BoneUnder(input);
+            if (b >= 0) { SelBone = Sk.Names[b]; SelKey = null; Status = $"Selected {BoneNames.Friendly(SelBone)}"; return; }
         }
         int hit = ShapeUnder(input);
         if (hit < 0) return;
         SelShape = hit; SelBone = Def.Shapes[hit].Bone; SelKey = null;
-        if (Target == EditTarget.Shape) { LeftTab = 2; OpenPartOf(Def.Shapes[hit]); }
-        Status = Target == EditTarget.Shape ? $"Selected shape {Def.Shapes[hit].Name}" : $"Selected bone {SelBone} (via {Def.Shapes[hit].Name})";
+        if (Target == EditTarget.Shape) { LeftTab = TabModel; OpenPartOf(Def.Shapes[hit]); }
+        Status = Target == EditTarget.Shape ? $"Selected {Def.Shapes[hit].Name}" : $"Selected {BoneNames.Friendly(SelBone)} (via {Def.Shapes[hit].Name})";
     }
 
     /// <summary>The nearest visible shape under the mouse, tested against its real form (sphere, cylinder, capsule or box).</summary>
@@ -466,7 +516,7 @@ public sealed partial class EntityEditor
         var (o, d) = View.Ray(input); float bt = float.MaxValue; int bs = -1;
         for (int i = 0; i < Def.Shapes.Count; i++)
         {
-            var s = Def.Shapes[i]; if (s.Hidden) continue;
+            var s = Def.Shapes[i]; if (s.Hidden || ev.IsHidden(Sk.IndexOf(s.Bone))) continue;
             if (RayShape(o, d, s, out float t) && t < bt) { bt = t; bs = i; }
         }
         return bs;
@@ -536,5 +586,21 @@ public sealed partial class EntityEditor
         Status = "Ragdoll dropped (Stop ragdoll to stand back up)";
     }
     public void StopRagdoll() => rag = null;
+
+    // ---------------------------------------------------------------- limb test
+    readonly List<LimbDebris> debris = new();
+    /// <summary>Severed limbs tumbling in the preview.</summary>
+    public IReadOnlyList<LimbDebris> Debris => debris;
+    /// <summary>Cuts a limb off the preview, as a hard enough hit does in the game (Put limbs back restores it).</summary>
+    public void CutLimb(string bone)
+    {
+        EnsureView();
+        int b = Sk.IndexOf(bone); if (b < 0 || ev.HiddenBones.Contains(b)) return;
+        if (ev.Pose.World.Length != Sk.Count) { Ctx.Joints = null; ev.Update(Ctx); ev.Evaluate(Ctx); }   // not drawn yet (just loaded)
+        var side = MathX.Forward(PreviewYaw, 0);
+        debris.Add(new LimbDebris(ev, b, new Vector3(side.Z, 0, -side.X) * (bone.EndsWith(".R") ? -1.5f : 1.5f) + new Vector3(0, 2.5f, 0), Def.Limbs.DebrisLife));
+        ev.HiddenBones.Add(b);
+        Status = $"Cut off: {BoneNames.Friendly(bone)}";
+    }
     public bool RagdollActive => rag != null;
 }

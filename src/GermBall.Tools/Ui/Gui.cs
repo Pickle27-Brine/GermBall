@@ -145,6 +145,18 @@ public sealed class Gui
     public void ScrollToTop(string id) { if (panels.TryGetValue(id, out var p)) p.Scroll = 0; }
 
     public void SameLine() => sameLine = true;
+    Vector4 lastPlaced;
+    /// <summary>A tooltip for the widget just drawn (instead of a line of help text under it).</summary>
+    public void Hint(string text) { if (Hover(lastPlaced)) Tooltip = text; }
+
+    /// <summary>A button-like drop-down that runs an action instead of holding a value (toolbar menus: New, Open...).
+    /// Returns the picked option, or null.</summary>
+    public string Menu(string label, IList<string> options, float width)
+    {
+        string v = null;
+        var r = Place(width, RowH); Rec(label, r);
+        return ComboCore(Id("##menu" + label), r, ref v, options, null, label) ? v : null;
+    }
     public float Width => cw;
     /// <summary>Width of each of <paramref name="n"/> items sharing a row.</summary>
     public float Split(int n) => (cw - Gap * (n - 1)) / n;
@@ -157,7 +169,8 @@ public sealed class Gui
         else { x = cx; y = cy; cy = y + h + Gap; }
         if (w <= 0) w = cx + cw - x;
         lastX2 = x + w; lastY = y; lastH = h;
-        return new Vector4(x, y, w, h);
+        lastPlaced = new Vector4(x, y, w, h);
+        return lastPlaced;
     }
     bool Visible(Vector4 r) => r.Y + r.W >= clip.Y && r.Y <= clip.Y + clip.W;
 
@@ -466,14 +479,14 @@ public sealed class Gui
         return ComboCore(id, r, ref value, options, none);
     }
 
-    bool ComboCore(string id, Vector4 r, ref string value, IList<string> options, string none)
+    bool ComboCore(string id, Vector4 r, ref string value, IList<string> options, string none, string shown = null)
     {
         bool hover = Hover(r);
         if (hover && In.Pressed[0]) { openPopup = openPopup == id ? null : id; popupOpenedFrame = frame; }
         if (Visible(r))
         {
             O.Rect(r.X, r.Y, r.Z, r.W, openPopup == id ? ActiveBg : hover ? HoverBg : WidgetBg);
-            TextIn(new Vector4(r.X, r.Y, r.Z - CharW, r.W), string.IsNullOrEmpty(value) ? (none ?? "-") : value, string.IsNullOrEmpty(value) ? Dim : TextCol);
+            TextIn(new Vector4(r.X, r.Y, r.Z - CharW, r.W), shown ?? (string.IsNullOrEmpty(value) ? (none ?? "-") : value), shown != null ? TextCol : string.IsNullOrEmpty(value) ? Dim : TextCol);
             O.Text(r.X + r.Z - CharW - S, r.Y + (r.W - 7 * S) / 2, "v", S, Dim);
         }
         if (openPopup != id) return false;
@@ -553,7 +566,7 @@ public sealed class Gui
     {
         string id = Id(text);
         Space(S);
-        var r = Place(0, RowH);
+        var r = Place(0, RowH); Rec(text, r);
         bool hover = Hover(r);
         if (hover && In.Pressed[0]) active = id;
         if (hover && In.Released[0] && active == id) open = !open;

@@ -108,117 +108,164 @@ public sealed class AnimContext
     public bool Grounded = true, Rolling, Skidding, Hovering, Charging;
     public bool Armed, TwoHanded, Aiming; public Vector3 AimDir = -Vector3.UnitZ;
     public float PunchT, ReloadT;
-    /// <summary>Enemies: idle sway amount and how far the arms are raised.</summary>
+    /// <summary>Aim pitch in degrees (up positive) and vertical speed, for blend layers and speed-scaled clips.</summary>
+    public float AimPitch, VSpeed;
+    /// <summary>Old "procedural" layers only: idle sway amount and how far the arms are raised.</summary>
     public float Sway = 0.06f, ArmsUp;
-    /// <summary>The current game state (see <see cref="AnimStates"/>).</summary>
+    /// <summary>The current game state (see <see cref="AnimStates"/>): an action (punch, aim, hurt...) or a movement.</summary>
     public string State = "idle";
+    /// <summary>The movement underneath any action (idle, run, skid, jump, fall, hover, curl...). State layers fall back to it,
+    /// so a punch while running keeps the legs running.</summary>
+    public string Move = "idle";
     /// <summary>Floor height under a world point (NaN if none); used for foot placement.</summary>
     public Func<Vector3, float> GroundAt;
-    /// <summary>When set, the procedural layer follows these joint positions instead (ragdolls, get-up blends).</summary>
+    /// <summary>When set, the body follows these joint positions instead of its clips (ragdolls, get-up blends).</summary>
     public Pose Joints;
     /// <summary>Extra rotation of the whole body about a point <see cref="SpinCenter"/> above the feet (curled-up spin).</summary>
     public Quaternion Spin = Quaternion.Identity; public float SpinCenter;
 }
 
 /// <summary>
-/// The animation pipeline for one entity instance: evaluates its layer stack (procedural motion, clips, state clips with
-/// crossfades; override or additive; bone masks; weights; speeds) into bone transforms, then runs forward kinematics.
+/// The animation pipeline for one entity instance. Layers are evaluated in order:
+/// <list type="bullet">
+/// <item>state: the clip the current game state maps to (with crossfades and speed-scaled playback)</item>
+/// <item>clip: one clip on the layer's own clock</item>
+/// <item>blend: clips mixed by a parameter (aim angle, speed)</item>
+/// <item>footik: last of all, plants the feet on the ground under them (the only procedural motion)</item>
+/// </list>
+/// Each layer overrides or adds to what's below, by weight, through an optional bone mask, and only in the game states it's
+/// set to play in (fading in and out). Ragdolls take over the standard bones while an entity is down.
 /// </summary>
 public sealed class Animator
 {
     public readonly EntityDef Def; public readonly Skeleton Sk; public readonly Rig Rig;
-    public float Phase, Run, Lean;
-    readonly float[] layerTime;
+    readonly float[] layerTime = new float[64], layerWeight = new float[64];
     string stateClip, prevStateClip; float stateT, prevStateT, fade, fadeLen;
-    readonly BoneXf[] layer;
-    readonly bool[] driven;
+    StateClip curSC, prevSC;
+    readonly BoneXf[] layer, layerB;
+    readonly bool[] driven, drivenB;
     readonly Pose joints = new();
 
     public Animator(EntityDef def)
     {
         Def = def; Sk = new Skeleton(def.Bones); Rig = Sk.Rig();
-        layerTime = new float[64];
-        layer = new BoneXf[Sk.Count]; driven = new bool[Sk.Count];
+        layer = new BoneXf[Sk.Count]; layerB = new BoneXf[Sk.Count]; driven = new bool[Sk.Count]; drivenB = new bool[Sk.Count];
+        Array.Fill(layerWeight, -1);
     }
 
     public string StateClip => stateClip;
+    public float LayerWeight(int i) => i < layerWeight.Length ? MathF.Max(0, layerWeight[i]) : 0;
 
-    /// <summary>Advances clocks: the run cycle, layer clips, and state crossfades.</summary>
+    public static float Param(AnimContext c, string name) => name switch
+    {
+        "speed" => c.Speed, "aimPitch" => c.AimPitch, "vspeed" => c.VSpeed, _ => 0,
+    };
+    static float Rate(AnimContext c, string param, float reference, float min)
+    {
+        if (string.IsNullOrEmpty(param)) return 1;
+        return MathF.Max(min, MathF.Abs(Param(c, param)) / MathF.Max(1e-3f, reference));
+    }
+
+    /// <summary>Advances clocks: layer clips, layer fades and state crossfades.</summary>
     public void Update(AnimContext c)
     {
         float dt = c.Dt;
-        if (c.Grounded && !c.Rolling && c.Speed > 0.3f) { Phase += HeroMotion.Cadence(c.Speed) * dt; if (Phase > 1000) Phase -= 1000; }
-        float targetRun = c.Grounded && !c.Rolling ? MathX.Clamp01(c.Speed / Player.TopSpeed) : 0;
-        Run += (targetRun - Run) * MathF.Min(1, dt * 10);
-        float targetLean = c.Skidding ? -0.3f : Run * 0.3f;
-        Lean += (targetLean - Lean) * MathF.Min(1, dt * 8);
-        for (int i = 0; i < Def.Layers.Count && i < layerTime.Length; i++) layerTime[i] += dt * Def.Layers[i].Speed;
+        for (int i = 0; i < Def.Layers.Count && i < layerTime.Length; i++)
+        {
+            var L = Def.Layers[i];
+            bool active = L.ActiveIn == null || L.ActiveIn.Count == 0 || L.ActiveIn.Contains(c.State) || L.ActiveIn.Contains(c.Move);
+            float target = active ? 1 : 0;
+            if (layerWeight[i] < 0) layerWeight[i] = target;   // first frame: no fade
+            if (active && layerWeight[i] <= 0) layerTime[i] = 0;   // a layer that switches on starts its clip over
+            layerWeight[i] = L.Fade <= 1e-3f ? target : MathX.Clamp01(layerWeight[i] + MathF.Sign(target - layerWeight[i]) * dt / L.Fade);
+            layerTime[i] += dt * L.Speed * Rate(c, L.SpeedParam, L.SpeedRef, 0);
+        }
         // state clips crossfade when the state's clip changes
-        var sc = Def.States.Find(s => s.State == c.State);
+        var sc = Def.States.Find(s => s.State == c.State && !string.IsNullOrEmpty(s.Clip)) ?? Def.States.Find(s => s.State == c.Move);
         string want = sc?.Clip;
         if (want != stateClip)
         {
-            prevStateClip = stateClip; prevStateT = stateT;
-            stateClip = want; stateT = 0; fadeLen = MathF.Max(0.001f, sc?.Fade ?? 0.15f); fade = prevStateClip != null ? fadeLen : 0;
+            prevStateClip = stateClip; prevStateT = stateT; prevSC = curSC;
+            stateClip = want; curSC = sc; stateT = 0; fadeLen = MathF.Max(0.001f, sc?.Fade ?? 0.15f); fade = prevStateClip != null ? fadeLen : 0;
         }
-        stateT += dt; prevStateT += dt; fade = MathF.Max(0, fade - dt);
+        else curSC = sc;
+        stateT += dt * (curSC != null ? Rate(c, curSC.SpeedParam, curSC.SpeedRef, curSC.MinRate) : 1);
+        prevStateT += dt * (prevSC != null ? Rate(c, prevSC.SpeedParam, prevSC.SpeedRef, prevSC.MinRate) : 1);
+        fade = MathF.Max(0, fade - dt);
+    }
+
+    static Matrix4x4 RootFor(AnimContext c, float scale)
+    {
+        if (c.Joints != null) return Matrix4x4.CreateScale(scale);
+        var root = Matrix4x4.CreateScale(scale) * Matrix4x4.CreateRotationY(c.Yaw) * Matrix4x4.CreateTranslation(c.Feet);
+        if (c.Spin != Quaternion.Identity)
+            root = Matrix4x4.CreateScale(scale) * Matrix4x4.CreateTranslation(0, -c.SpinCenter, 0) * Matrix4x4.CreateFromQuaternion(c.Spin)
+                 * Matrix4x4.CreateRotationY(c.Yaw) * Matrix4x4.CreateTranslation(c.Feet + new Vector3(0, c.SpinCenter, 0));
+        return root;
     }
 
     /// <summary>Evaluates the layer stack into <paramref name="pose"/> for an entity standing at the context's feet and yaw.</summary>
     public void Evaluate(AnimContext c, EntityPose pose, float scale)
     {
         pose.Ensure(Sk.Count);
-        var root = Matrix4x4.CreateScale(scale) * Matrix4x4.CreateRotationY(c.Yaw) * Matrix4x4.CreateTranslation(c.Feet);
-        if (c.Spin != Quaternion.Identity)
-            root = Matrix4x4.CreateScale(scale) * Matrix4x4.CreateTranslation(0, -c.SpinCenter, 0) * Matrix4x4.CreateFromQuaternion(c.Spin)
-                 * Matrix4x4.CreateRotationY(c.Yaw) * Matrix4x4.CreateTranslation(c.Feet + new Vector3(0, c.SpinCenter, 0));
-        if (c.Joints != null) root = Matrix4x4.CreateScale(scale);
-        pose.Root = root;
+        var root = RootFor(c, scale); pose.Root = root;
         for (int i = 0; i < Sk.Count; i++) pose.Local[i] = BoneXf.Rest;
-
+        float footIk = 0;
         for (int li = 0; li < Def.Layers.Count; li++)
         {
             var L = Def.Layers[li];
-            if (!L.Enabled || L.Weight <= 0) continue;
+            float w = L.Weight * (li < layerWeight.Length ? MathF.Max(0, layerWeight[li] < 0 ? 1 : layerWeight[li]) : 1);
+            if (!L.Enabled || w <= 0) continue;
             Array.Clear(driven);
+            float t = li < layerTime.Length ? layerTime[li] : 0;
             switch (L.Source)
             {
-                case "procedural": Procedural(c, root, scale); break;
-                case "clip": SampleInto(Def.Clip(L.Clip), li < layerTime.Length ? layerTime[li] : 0, 1); break;
+                case "footik": footIk = MathF.Max(footIk, w); continue;
+                case "procedural": Procedural(c, root); break;   // old files: an idle sway
+                case "clip": SampleInto(Def.Clip(L.Clip), t); break;
+                case "blend": BlendInto(L, Param(c, L.Param), t); break;
                 case "state":
                     {
                         var cur = Def.Clip(stateClip); var prev = Def.Clip(prevStateClip);
                         if (fade > 0 && prev != null)
                         {
-                            SampleInto(prev, prevStateT, 1);
+                            SampleInto(prev, prevStateT);
                             if (cur != null) BlendSampleInto(cur, stateT, 1 - fade / fadeLen);
                             else FadeTowardRest(1 - fade / fadeLen);
                         }
-                        else if (cur != null) SampleInto(cur, stateT, 1);
+                        else if (cur != null) SampleInto(cur, stateT);
                         break;
                     }
             }
-            Apply(L, pose);
+            Apply(L, pose, w);
+        }
+        // a ragdoll (or a get-up blend) takes over the standard bones
+        if (c.Joints != null && Sk.Humanoid)
+        {
+            Array.Clear(driven);
+            Matrix4x4.Invert(root, out var toModel);
+            for (int j = 0; j < (int)J.Count; j++) joints.P[j] = Vector3.Transform(c.Joints.P[j], toModel);
+            JointsToLocal(joints, false);
+            Apply(new LayerDef { Mode = "override" }, pose, 1);
         }
         Fk(pose);
+        if (footIk > 0) FootIk(c, pose, footIk, scale);
     }
 
-    /// <summary>Editor preview: optionally the procedural motion, then one clip at an exact time on top (override or additive).</summary>
-    public void EvaluateSolo(AnimContext c, EntityPose pose, float scale, ClipDef clip, float t, bool procedural, bool additive)
+    /// <summary>Editor preview: one clip at an exact time on the rest pose, with the feet planted if asked.</summary>
+    public void EvaluateSolo(AnimContext c, EntityPose pose, float scale, ClipDef clip, float t, bool footIk)
     {
         pose.Ensure(Sk.Count);
-        var root = Matrix4x4.CreateScale(scale) * Matrix4x4.CreateRotationY(c.Yaw) * Matrix4x4.CreateTranslation(c.Feet);
-        if (c.Joints != null) root = Matrix4x4.CreateScale(scale);
-        pose.Root = root;
+        var root = RootFor(c, scale); pose.Root = root;
         for (int i = 0; i < Sk.Count; i++) pose.Local[i] = BoneXf.Rest;
-        if (procedural) { Array.Clear(driven); Procedural(c, root, scale); Apply(new LayerDef { Mode = "override" }, pose); }
-        if (clip != null) { Array.Clear(driven); SampleInto(clip, t, 1); Apply(new LayerDef { Mode = additive ? "additive" : "override" }, pose); }
+        if (clip != null) { Array.Clear(driven); SampleInto(clip, t); Apply(new LayerDef { Mode = "override" }, pose, 1); }
         Fk(pose);
+        if (footIk) FootIk(c, pose, 1, scale);
     }
 
-    void Apply(LayerDef L, EntityPose pose)
+    void Apply(LayerDef L, EntityPose pose, float w)
     {
-        float w = MathX.Clamp01(L.Weight);
+        w = MathX.Clamp01(w);
         int[] mask = null;
         if (L.Mask != null && L.Mask.Count > 0)
         {
@@ -286,16 +333,11 @@ public sealed class Animator
             u = b.T - a.T > 1e-5f ? (t - a.T) / (b.T - a.T) : 0;
         }
         u = a.Ease switch { "step" => 0, "linear" => u, _ => u * u * (3 - 2 * u) };
-        return new BoneXf
-        {
-            Rot = Quaternion.Slerp(Euler(a.Rot), Euler(b.Rot), u),
-            Pos = Vector3.Lerp(a.Pos, b.Pos, u),
-            Scale = Vector3.Lerp(a.Scale, b.Scale, u),
-        };
+        return new BoneXf { Rot = Quaternion.Slerp(Euler(a.Rot), Euler(b.Rot), u), Pos = Vector3.Lerp(a.Pos, b.Pos, u), Scale = Vector3.Lerp(a.Scale, b.Scale, u) };
     }
     static BoneXf ToXf(KeyDef k) => new() { Rot = Euler(k.Rot), Pos = k.Pos, Scale = k.Scale };
 
-    void SampleInto(ClipDef clip, float t, float w)
+    void SampleInto(ClipDef clip, float t)
     {
         if (clip == null) return;
         foreach (var tr in clip.Tracks)
@@ -311,32 +353,101 @@ public sealed class Animator
             int b = Sk.IndexOf(tr.Bone); if (b < 0) continue;
             var x = SampleTrack(tr, t, clip.Length, clip.Loop);
             var from = driven[b] ? layer[b] : BoneXf.Rest;
-            layer[b] = new BoneXf { Rot = Quaternion.Slerp(from.Rot, x.Rot, k), Pos = Vector3.Lerp(from.Pos, x.Pos, k), Scale = Vector3.Lerp(from.Scale, x.Scale, k) };
-            driven[b] = true;
+            layer[b] = Mix(from, x, k); driven[b] = true;
         }
         for (int b = 0; b < Sk.Count; b++)
-            if (driven[b] && clip.Track(Sk.Names[b]) == null)
-                layer[b] = new BoneXf { Rot = Quaternion.Slerp(layer[b].Rot, Quaternion.Identity, k), Pos = Vector3.Lerp(layer[b].Pos, Vector3.Zero, k), Scale = Vector3.Lerp(layer[b].Scale, Vector3.One, k) };
+            if (driven[b] && clip.Track(Sk.Names[b]) == null) layer[b] = Mix(layer[b], BoneXf.Rest, k);
     }
-    void FadeTowardRest(float k)
+    void FadeTowardRest(float k) { for (int b = 0; b < Sk.Count; b++) if (driven[b]) layer[b] = Mix(layer[b], BoneXf.Rest, k); }
+    static BoneXf Mix(BoneXf a, BoneXf b, float k) =>
+        new() { Rot = Quaternion.Slerp(a.Rot, b.Rot, k), Pos = Vector3.Lerp(a.Pos, b.Pos, k), Scale = Vector3.Lerp(a.Scale, b.Scale, k) };
+
+    /// <summary>A blend layer: the two clips either side of the parameter's value, mixed by where it falls between them.</summary>
+    void BlendInto(LayerDef L, float value, float t)
     {
+        if (L.Blend == null || L.Blend.Count == 0) return;
+        var pts = new List<BlendPoint>(L.Blend); pts.Sort((x, y) => x.Value.CompareTo(y.Value));
+        int hi = pts.FindIndex(p => p.Value >= value);
+        BlendPoint a, b;
+        if (hi < 0) a = b = pts[^1]; else if (hi == 0) a = b = pts[0]; else { a = pts[hi - 1]; b = pts[hi]; }
+        float k = a == b || MathF.Abs(b.Value - a.Value) < 1e-6f ? 0 : MathX.Clamp01((value - a.Value) / (b.Value - a.Value));
+        SampleInto(Def.Clip(a.Clip), t);
+        if (b != a) BlendSampleInto2(Def.Clip(b.Clip), t, k);
+    }
+    void BlendSampleInto2(ClipDef clip, float t, float k)
+    {
+        if (clip == null) return;
+        Array.Clear(drivenB);
+        foreach (var tr in clip.Tracks) { int b = Sk.IndexOf(tr.Bone); if (b < 0) continue; layerB[b] = SampleTrack(tr, t, clip.Length, clip.Loop); drivenB[b] = true; }
         for (int b = 0; b < Sk.Count; b++)
-            if (driven[b]) layer[b] = new BoneXf { Rot = Quaternion.Slerp(layer[b].Rot, Quaternion.Identity, k), Pos = Vector3.Lerp(layer[b].Pos, Vector3.Zero, k), Scale = Vector3.Lerp(layer[b].Scale, Vector3.One, k) };
+        {
+            if (!driven[b] && !drivenB[b]) continue;
+            layer[b] = Mix(driven[b] ? layer[b] : BoneXf.Rest, drivenB[b] ? layerB[b] : BoneXf.Rest, k); driven[b] = true;
+        }
     }
 
-    // ---------------------------------------------------------------- procedural
-    /// <summary>The built-in motion, as joint positions converted to bone rotations: the hero's run cycle, IK and aim for
-    /// players, an idle sway for everything else, or the ragdoll's joints when it's down.</summary>
-    void Procedural(AnimContext c, Matrix4x4 root, float scale)
+    // ---------------------------------------------------------------- foot IK (the one procedural layer)
+    /// <summary>Plants each foot on the ground under it: the clip's foot lift is kept, measured from the real floor; the hips
+    /// drop if a foot can't reach (stepping down); hip and knee re-aim with two-bone IK, and the foot keeps its angle.</summary>
+    void FootIk(AnimContext c, EntityPose pose, float w, float scale)
+    {
+        if (!Sk.Humanoid || c.GroundAt == null || !c.Grounded || c.Rolling || c.Joints != null) return;
+        float ankle = Rig.Ankle * scale, baseY = c.Feet.Y, reach = (Rig.Thigh + Rig.Shin) * scale * 0.995f;
+        var hips = new[] { Sk.Std[(int)J.HipL], Sk.Std[(int)J.HipR] }; var knees = new[] { Sk.Std[(int)J.KnL], Sk.Std[(int)J.KnR] }; var feet = new[] { Sk.Std[(int)J.FtL], Sk.Std[(int)J.FtR] };
+        var target = new Vector3[2]; var ok = new bool[2]; float drop = 0;
+        for (int s = 0; s < 2; s++)
+        {
+            var f = pose.Joint(feet[s]);
+            float g = c.GroundAt(new Vector3(f.X, baseY, f.Z));
+            if (float.IsNaN(g)) continue;
+            float lift = MathF.Max(0, f.Y - (baseY + ankle));
+            target[s] = new Vector3(f.X, g + ankle + lift, f.Z); ok[s] = true;
+            var h = pose.Joint(hips[s]); var hd = new Vector2(h.X - target[s].X, h.Z - target[s].Z).LengthSquared();
+            float need = h.Y - target[s].Y - MathF.Sqrt(MathF.Max(0, reach * reach - hd));
+            drop = MathF.Max(drop, need);
+        }
+        if (!ok[0] && !ok[1]) return;
+        drop = MathX.Clamp(drop, 0, 0.45f * scale) * w;
+        int pelvis = Sk.Std[(int)J.Pelvis];
+        if (drop > 0) { pose.Local[pelvis].Pos.Y -= drop / scale; Fk(pose); }
+        for (int s = 0; s < 2; s++)
+        {
+            if (!ok[s]) continue;
+            var h = pose.Joint(hips[s]); var k = pose.Joint(knees[s]); var f = pose.Joint(feet[s]);
+            var footRot = Rotation(pose.World[feet[s]]);
+            var goal = Vector3.Lerp(f, target[s], w);
+            var pole = k - (h + f) * 0.5f; if (pole.LengthSquared() < 1e-6f) pole = Vector3.Transform(-Vector3.UnitZ, Rotation(pose.Root));
+            var (nk, nf) = Skel.TwoBone(h, goal, Rig.Thigh * scale, Rig.Shin * scale, pole);
+            AimBone(pose, hips[s], knees[s], nk);
+            AimBone(pose, knees[s], feet[s], nf);
+            // the foot keeps the angle the clip gave it
+            var parentRot = Rotation(pose.World[knees[s]]);
+            pose.Local[feet[s]].Rot = Quaternion.Normalize(Quaternion.Inverse(parentRot) * footRot);
+            Fk(pose);
+        }
+    }
+
+    static Quaternion Rotation(Matrix4x4 m) => Matrix4x4.Decompose(m, out _, out var q, out _) ? q : Quaternion.Identity;
+
+    /// <summary>Turns a bone so its child joint points at a world position (no twist).</summary>
+    void AimBone(EntityPose pose, int bone, int child, Vector3 target)
+    {
+        var jb = pose.Joint(bone);
+        var cur = pose.Joint(child) - jb; var want = target - jb;
+        if (cur.LengthSquared() < 1e-10f || want.LengthSquared() < 1e-10f) return;
+        var qb = Rotation(pose.World[bone]);
+        var qNew = Quaternion.Normalize(FromTo(Vector3.Normalize(cur), Vector3.Normalize(want)) * qb);
+        var parentRot = Sk.Parent[bone] >= 0 ? Rotation(pose.World[Sk.Parent[bone]]) : Rotation(pose.Root);
+        pose.Local[bone].Rot = Quaternion.Normalize(Quaternion.Inverse(parentRot) * qNew);
+        Fk(pose);
+    }
+
+    // ---------------------------------------------------------------- joints to bones (ragdolls, old procedural layers)
+    void Procedural(AnimContext c, Matrix4x4 root)
     {
         if (!Sk.Humanoid) return;
-        Matrix4x4.Invert(root, out var toModel);
-        bool flatFeet = c.Joints == null;
-        if (c.Joints != null)
-            for (int j = 0; j < (int)J.Count; j++) joints.P[j] = Vector3.Transform(c.Joints.P[j], toModel);
-        else if (Def.Kind == "player") HeroMotion.Build(joints, Rig, this, c, root, toModel);
-        else Rig.Standing(joints, Vector3.Zero, 0, c.Time, c.Sway, c.ArmsUp);
-        JointsToLocal(joints, flatFeet);
+        Rig.Standing(joints, Vector3.Zero, 0, c.Time, c.Sway, c.ArmsUp);
+        JointsToLocal(joints, true);
     }
 
     /// <summary>Turns model-space joint positions into local bone rotations (and the pelvis's translation) for the standard bones.</summary>

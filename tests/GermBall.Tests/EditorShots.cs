@@ -73,6 +73,14 @@ public static class GuiDriving
     public static void PickCombo(GermBall.Tools.Ui.Gui ui, EditorDriver d, string label, int option, bool hasNone = false)
     {
         var r = Find(ui, d, label);
+        // scroll it into the top half, so its list opens downward
+        for (int i = 0; i < 40 && r.Y > d.H * 0.5f; i++)
+        {
+            float y0 = r.Y;
+            d.MoveTo(r.X + 4, d.H / 2f); d.In.Wheel = -1; d.Step();
+            ui.Rects.TryGetValue(label, out r);
+            if (r.Y >= y0) break;
+        }
         d.Click(r.X + r.Z / 2, r.Y + r.W / 2);
         float y = r.Y + r.W + 1 + (option + (hasNone ? 1 : 0) + 0.5f) * ui.RowH;
         d.Click(r.X + r.Z / 2, y);

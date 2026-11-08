@@ -18,10 +18,10 @@ Keep the `content` folder next to them: the editors save into it and the game lo
 
 ## What's in it
 
-- **The hero** is 1.0's gelcap in humanoid form: a red-and-white two-tone body with a visor helmet, pauldrons and a glowing cross. It's animated procedurally:
-  - The run cycle's stride matches your speed, so planted feet don't slide, and each foot finds its own floor on steps and slopes.
-  - Arms swing as you run, you lean into speed and back into skids, and you tuck a knee when you leave a ledge.
-  - The gun arm follows your aim (two-handed weapons use both hands). Punches and reloads have their own poses.
+- **The hero** is 1.0's gelcap in humanoid form: a red-and-white two-tone body with a visor helmet, pauldrons and a glowing cross. It's animated with keyframed clips you can edit in the Entity Editor:
+  - Idle, run, skid, fall and hover clips play by movement state. The run clip plays faster the faster you run, so planted feet don't slide.
+  - The gun arms blend between aim-down, aim and aim-up clips by your aim pitch. Punch, reload and flinch clips play over the top on the arms or body.
+  - Foot IK is the only procedural part: it puts each foot on its own floor on steps and slopes.
 - **Movement.** Movement uses 1.0's momentum-based tuning.
   - **Running has inertia.** Speed builds over about 2.6 s to top speed (9.8 m/s). Let go and you coast to a stop over about 2 s. Reverse at speed and you skid. The faster you go, the wider you turn. Slopes slow you going up and speed you up going down, so steep ramps need a run-up.
   - **Jumping curls you into a ball.** Hold jump for full height (2.7 m) or tap it for a short hop. You land on your feet, unless you hold roll, in which case you land rolling with your momentum.
@@ -41,6 +41,12 @@ Keep the `content` folder next to them: the editors save into it and the game lo
   - **Phage titan:** 900 HP, scale 2.7.
 
   Every attack damages them: shots (headshots double), punches, blasts, ground pounds and fast rolls.
+- **Limbs come off,** like 1.0 but rarer and calmer:
+  - Only direct hits (shots and punches) near an arm or leg count, and only hits of at least 18 damage, so the rifle never takes limbs.
+  - Each limb has its own health (at least two pistol shots), and a germ loses at most two.
+  - A severed limb tumbles away and fades after 6 s.
+  - Losing an arm staggers a germ. Losing a leg floors it for good.
+  - Limbs come back when the germ respawns. All of this is set per entity in the Entity Editor.
 - **The jump dash is an attack.** Dashing into a germ damages it and bounces you up with your dash restored, so you can chain into the next one. It works like 1.0:
   - One dash floors a coccus or bacillus, a brute takes two, and the titan takes four. The count resets after 8 s.
   - The dash bends slightly toward the best germ ahead of you.
@@ -120,39 +126,56 @@ The level is a flat 240 m square. North is -Z. Every solid has a 1 m grid, and s
 - **A layer stack** that blends everything into the final pose.
 - **State mappings:** which clip plays in each game state.
 - **Stats:** health, scale, contact damage, dashes to floor, and collision size.
+- **Limbs:** which bones can come off, and how hard that is.
 
 The game uses all of this.
 
+**Toolbar:** New (humanoid, hero copy, germ copy or empty) and Open menus, Save, Undo and Redo, the Move / Rotate / Scale gizmo, and **Play in game**. Hover over any control for a short tip about it.
+
 **Left panel:**
 
-- **Entity:** name, kind (player, enemy or prop), gameplay stats, and curled-up style (striped ball or its own shapes spun).
-- **Rig:** the bone tree. Add, delete, rename and reparent bones, and edit offsets and lengths with sliders or the gizmos. Rotating or scaling a bone swings and stretches its children and shapes about the joint. You can also mirror left to right, or reset to the standard humanoid (with a two-part torso). Renaming a bone updates every shape, clip and mask that uses it.
-- **Shapes:** the selected shape's controls sit at the top, followed by every shape grouped by body part: head, torso, left and right arms, left and right legs, and other. Each part folds away and has its own add button.
-  - Duplicate, delete, mirror and reorder shapes.
-  - Sliders cover position, rotation, size, **taper** and **curve**; "Point along bone" fits a capsule to its bone.
-  - There's a colour picker (hue, saturation and brightness, or type a hex code).
+- **Model:** the selected shape's controls sit at the top: name, shape, the bone it's attached to, position, rotation, size and colour.
+  - **Form** (folded away) holds taper, curve, "Fit to bone", glow and hidden.
+  - Below that, every shape is grouped by body part: head, torso, left and right arms, left and right legs, and other. Each part folds away.
+  - Add (pick the type under "New shape"), Copy, Mirror and Delete sit above.
+- **Rig:** the bone tree, by friendly names (Hips, Abdomen, Chest, Upper arm L, Forearm L, Thigh L, Shin L...).
+  - Add, delete, rename and reparent bones.
+  - Edit the joint and the length with sliders or the gizmos. Rotating or scaling a bone swings and stretches its children and shapes about the joint.
+  - Mirror left to right, or reset to the standard humanoid (with a two-part torso).
+  - Renaming a bone updates every shape, clip, mask and limb that uses it.
+- **Settings:** name and kind (player, enemy or prop), plus three sections:
+  - **Gameplay:** health, scale, contact damage, dash hits, collision.
+  - **Curled up:** striped ball or its own shapes spun.
+  - **Limbs:** whether limbs can come off, the smallest hit that counts, how many it can lose, and how long debris lasts.
+    - Each limb is a bone and everything below it, with its own health and a "losing it kills" option.
+    - Add a limb at any bone, or add both arms and legs in one go.
 
 **Right panel:**
 
-- **Clips:** create, duplicate, rename and delete clips, and set length and looping.
-  - Pick a bone (click a joint in the view) and set its rotation, movement and scale at the playhead. Editing a value keys it.
-  - Other tools: copy and paste a pose, mirror a pose left to right, key all bones, and preview the clip alone, over the procedural motion, or as additive.
-- **Layers:** the animation pipeline, evaluated top to bottom.
-  - Each layer takes its motion from **procedural** (players get the run cycle, foot IK, aim, punch and reload; others an idle sway), **clip** (loops a clip) or **state** (plays the clip mapped to the current game state, with crossfades).
-  - Layers can **override** or be **additive**, with weight, speed and a bone mask. "Upper body" is a one-click mask, and children can be included.
-- **States:** pick a clip and a crossfade time for each game state: idle, run, skid, jump, fall, curl, spin, hover, aim, fire, punch, reload, hurt, stagger, down and dead.
-- **Preview:** drive the procedural motion by hand to see the whole stack.
-  - Settings: run speed, on the ground, skidding, hovering, curled, holding a one- or two-handed gun, aiming (with direction), plus punch and reload buttons.
-  - Enemy idle: sway and raised arms.
-  - Other tools: drop the ragdoll, turntable view, and toggles for the grid, bones, shapes and collision.
+- **Animate:** pick a clip, then New, Copy or Delete. Set its name, length and looping.
+  - "Preview this clip alone" shows just the clip; "Plant the feet" adds foot IK, as in the game.
+  - Click a body part, then set its rotation, movement and scale at the playhead. Editing a value keys it. You can also add or delete the key there and set its ease.
+  - **Pose tools** (folded away): copy and paste a pose, mirror it left to right, key all bones, and clear a bone.
+- **Layers:** the animation pipeline, evaluated top to bottom. Each layer plays one of these:
+  - **state clips:** the clip given to the current state. Select this layer to give a state a clip, set its fade, and make it play faster when running (at full rate at a set speed, so feet don't slide). States without a clip keep the movement's clip.
+  - **one clip.**
+  - **blend:** clips placed along a parameter (speed, aim pitch or vertical speed), blended by its value. The hero's aim uses this.
+  - **foot IK:** feet on the ground under them.
+
+  Layers **override** or are **additive**, with a weight and speed. **Plays in** picks the states a layer is active in (aim, punch, hurt...), with a fade. **Bones** is the mask.
+- **Preview:**
+  - **State:** a movement (idle, run, fall...), an action on top (aim, punch, reload, hurt...), run speed, aim up and down, on the ground, curled up, and holding a gun.
+  - **Ragdoll and limbs:** drop the ragdoll and stand it up, or cut off a limb and put the limbs back.
+  - **View:** turntable, grid, bones, shapes, collision and frame.
 
 **In the view:**
 
-- **Picking:** like Blender, the piece of the model under the mouse lights up, and clicking it selects that shape and its bone. On the Rig and Clips tabs you can also click a joint.
+- **Picking:** like Blender, the piece of the model under the mouse lights up, and clicking it selects that shape and its bone. On the Rig and Animate tabs you can also click a bone.
+- **Bones** are drawn from their joint (the pivot, the thick end with the ball) to the next joint (the thin end). Selecting the forearm lights up the forearm, and rotating it turns it about the elbow.
 - **Gizmos:** there's a move, rotate and scale gizmo (W, E, R, or the toolbar). What they work on follows the tab you last used:
-  - **Shapes:** a shape's position, rotation (rings around its own axes) and size (per axis, or evenly from the centre).
+  - **Model:** a shape's position, rotation (rings around its own axes) and size (per axis, or evenly from the centre).
   - **Rig:** a bone's rest pose.
-  - **Clips:** the selected bone at the playhead, which sets a key.
+  - **Animate:** the selected bone at the playhead, which sets a key.
 
   The top-left corner of the view says what you're editing.
 
@@ -166,7 +189,7 @@ The game uses all of this.
 - Numbers: click any slider or number to type an exact value; drag it to change it (Shift drags finely, Ctrl coarsely).
 - Text: the whole value is selected when you start, so typing replaces it. Left, Right, Home and End move the caret; Ctrl+A selects all; Ctrl+V pastes. Enter, Tab or clicking elsewhere keeps the edit, and Escape cancels it.
 
-**Test in game** saves, then starts the game. Players start the game as the entity (`--hero <name>`); enemies spawn one in front of you (`--spawn <name>`).
+**Play in game** saves, then starts the game. Players start the game as the entity (`--hero <name>`); enemies spawn one in front of you (`--spawn <name>`).
 
 ## The Map Editor
 
@@ -207,7 +230,7 @@ The game uses all of this.
 
 - **Where they live:** `content/entities/*.entity.json` and `content/maps/*.map.json` are plain, readable JSON (vectors are `[x, y, z]`). The editors write them, and you can also edit them by hand.
 - **How the game uses them:** it loads `content/` next to the exe (or `--content <dir>`), plays `--map <name>` (default `debug`), and falls back to built-in defaults for anything missing.
-- **Standard rig:** entities with the 16 standard humanoid bones get the procedural motion and ragdolls. Those bones are pelvis, chest, neck, head, shoulder/elbow/hand and hip/knee/foot (.L and .R). An optional abdomen bone between pelvis and chest splits the torso in two (the hero has one, and the spine bends at both). Extra bones (tails, antennae) are animated by clips.
+- **Standard rig:** entities with the 16 standard humanoid bones get foot IK, ragdolls and destructible limbs. Those bones are pelvis, chest, neck, head, shoulder/elbow/hand and hip/knee/foot (.L and .R). An optional abdomen bone between pelvis and chest splits the torso in two (the hero has one, and the spine bends at both). Extra bones (tails, antennae) are animated by clips.
 
 ## For development
 
@@ -215,7 +238,7 @@ The game uses all of this.
 src/GermBall.Core/    platform-free engine and game
   Engine/             math, oriented-box collision, unit meshes, the draw list, a 5x7 pixel font, skeleton and ragdoll, UI input
   Content/            entity and map formats, the content store, the animation pipeline, entity drawing, the default entities
-  Sim/                Level (built from maps), Player, HeroAnim (procedural motion), Enemies (germs), Bodies (dash hits,
+  Sim/                Level (built from maps), Player, HeroAnim (rig joints), Enemies (germs), Bodies (dash hits,
                       contact, ragdolls), BodyDraw, Weapons, Entities, Game (loop, camera), Draw, Hud
 src/GermBall.Platform/ Windows: Win32 window, keyboard/mouse/XInput, Direct3D 11 renderer, the editor host
 src/GermBall/         GermBall.exe (the game)
@@ -251,6 +274,6 @@ dotnet run --project tests/GermBall.Tests -c Release -- editor-shots out
 
 - **AI.** Germs stand still, and there are no companions or pathfinding.
 - **Stage art.** The level is boxes and a grid only.
-- **Other 1.0 systems:** audio and music, menus, the customizer, vehicles, grabbing and throwing, the charged homing dash, losing limbs, and saves.
+- **Other 1.0 systems:** audio and music, menus, the customizer, vehicles, grabbing and throwing, the charged homing dash, and saves.
 
 These can come back one at a time.
