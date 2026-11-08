@@ -1,0 +1,52 @@
+# Builds ready-to-run Windows .exe files on every push, so nobody has to build locally.
+# Each branch gets a pre-release named "build-<branch>" holding the latest zips:
+#   GermBallPrototype-win-x64.zip  (one self-contained exe, no .NET install needed)
+#   GermBall-win-x64.zip           (the full game: GermBall.exe plus its data folder)
+name: Windows exe
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: exe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Prototype tests
+        run: dotnet run --project proto/Test -c Release
+
+      - name: Publish exes
+        run: |
+          FLAGS="-c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none"
+          dotnet publish proto/Win/GermBallProto.csproj $FLAGS -o out/proto
+          dotnet publish src/GermBall/GermBall.csproj $FLAGS -o out/full
+          (cd out/proto && zip -q -9 ../../GermBallPrototype-win-x64.zip GermBallProto.exe)
+          (cd out/full && zip -q -9 -r ../../GermBall-win-x64.zip GermBall.exe data)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: "*.zip"
+
+      - name: Update the branch's download page
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-$(echo "${GITHUB_REF_NAME}" | tr '/' '-')"
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" GermBallPrototype-win-x64.zip GermBall-win-x64.zip \
+            --prerelease --target "$GITHUB_SHA" --title "Windows build: ${GITHUB_REF_NAME}" \
+            --notes "Built automatically from ${GITHUB_SHA::7}. Unzip and double-click; no .NET install needed."

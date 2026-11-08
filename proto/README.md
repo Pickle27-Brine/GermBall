@@ -45,17 +45,9 @@ The core never calls the platform. Each frame the Windows layer:
 
 The draw list holds unit shapes (cube, sphere, cylinder, cone, striped ball), each with a transform, a colour and flags (`Grid`, `Unlit`). The HUD is coloured rectangles only, so the renderer needs no textures or font files.
 
-## Build and run (Windows 10/11, .NET 8)
+## Download and play
 
-```bash
-dotnet run --project proto/Win -c Release
-```
-
-Pass `--novsync` to uncap the frame rate. To build the whole solution:
-
-```bash
-dotnet build proto/GermBallProto.sln -c Release
-```
+Every push builds the Windows exes automatically. Open the repository's **Releases** page and pick **Windows build: <branch>**, then download `GermBallPrototype-win-x64.zip`, unzip it and double-click `GermBallProto.exe`. Nothing else needs installing. Each run of the **Windows exe** action also keeps the zips as an artifact.
 
 ## Controls
 
