@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Headless checks for Germ Ball 2.0: scripted movement, zones and combat, a long random-input soak,
+       and screenshots through a software rasteriser. Runs on any OS (no window, GPU or audio). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\GermBall.Core\GermBall.Core.csproj" />
+  </ItemGroup>
+</Project>

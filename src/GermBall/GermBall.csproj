@@ -1,13 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Windows only. Native Win32 window, Direct3D 11, XInput, XAudio2 and SAPI: no browser, no cross-platform layer. -->
+  <!-- Germ Ball 2.0 for Windows: a Win32 window, Direct3D 11 and XInput around the platform-free core in ../GermBall.Core. -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PlatformTarget>x64</PlatformTarget>
-    <Platforms>x64</Platforms>
     <SelfContained>false</SelfContained>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -15,32 +14,23 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <AssemblyName>GermBall</AssemblyName>
-    <RootNamespace>GermBall</RootNamespace>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>2.0.0</Version>
+    <RootNamespace>GermBall.Win</RootNamespace>
     <Product>Germ Ball</Product>
-    <!-- performance: server-style GC off (a game wants short pauses), tiered PGO on, invariant globalization -->
-    <ServerGarbageCollector>false</ServerGarbageCollector>
-    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+    <Version>2.0.0</Version>
+    <InformationalVersion>2.0-dev</InformationalVersion>
     <TieredPGO>true</TieredPGO>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <Optimize Condition="'$(Configuration)' == 'Release'">true</Optimize>
-    <NoWarn>$(NoWarn);CA1416;CS0649;CS0169;CS0414;CS0162;CS8981</NoWarn>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
     <PackageReference Include="Vortice.D3DCompiler" Version="3.6.2" />
     <PackageReference Include="Vortice.XInput" Version="3.6.2" />
-    <PackageReference Include="Vortice.XAudio2" Version="3.6.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Smoke" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\..\data\**\*" LinkBase="data" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <ProjectReference Include="..\GermBall.Core\GermBall.Core.csproj" />
   </ItemGroup>
 
 </Project>

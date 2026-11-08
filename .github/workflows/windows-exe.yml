@@ -1,7 +1,7 @@
-# Builds ready-to-run Windows .exe files on every push, so nobody has to build locally.
-# Each branch gets a pre-release named "build-<branch>" holding the latest zips:
-#   GermBallPrototype-win-x64.zip  (one self-contained exe, no .NET install needed)
-#   GermBall-win-x64.zip           (the full game: GermBall.exe plus its data folder)
+# Builds the Windows exe on every push, so nobody has to build locally.
+#   - Each branch gets a pre-release named "build-<branch>" with GermBall-win-x64.zip
+#     (one self-contained GermBall.exe, no .NET install needed).
+#   - Germ Ball 1.0 (deprecated, in legacy/) is published once as the "v1.0" release and never rebuilt.
 name: Windows exe
 
 on:
@@ -15,6 +15,11 @@ concurrency:
   group: exe-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PUBLISH: -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none
+  # the last commit of 1.0, before the 2.0 rewrite
+  V1_COMMIT: bbbe20846c3e0a8e7054bfa9b884ad88a2b7538b
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,21 +30,18 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Prototype tests
-        run: dotnet run --project proto/Test -c Release
+      - name: Tests
+        run: dotnet run --project tests/GermBall.Tests -c Release
 
-      - name: Publish exes
+      - name: Publish GermBall.exe
         run: |
-          FLAGS="-c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none"
-          dotnet publish proto/Win/GermBallProto.csproj $FLAGS -o out/proto
-          dotnet publish src/GermBall/GermBall.csproj $FLAGS -o out/full
-          (cd out/proto && zip -q -9 ../../GermBallPrototype-win-x64.zip GermBallProto.exe)
-          (cd out/full && zip -q -9 -r ../../GermBall-win-x64.zip GermBall.exe data)
+          dotnet publish src/GermBall/GermBall.csproj $PUBLISH -o out
+          (cd out && zip -q -9 ../GermBall-win-x64.zip GermBall.exe)
 
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-exe
-          path: "*.zip"
+          name: GermBall-win-x64
+          path: GermBall-win-x64.zip
 
       - name: Update the branch's download page
         env:
@@ -47,6 +49,17 @@ jobs:
         run: |
           TAG="build-$(echo "${GITHUB_REF_NAME}" | tr '/' '-')"
           gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" GermBallPrototype-win-x64.zip GermBall-win-x64.zip \
-            --prerelease --target "$GITHUB_SHA" --title "Windows build: ${GITHUB_REF_NAME}" \
-            --notes "Built automatically from ${GITHUB_SHA::7}. Unzip and double-click; no .NET install needed."
+          gh release create "$TAG" GermBall-win-x64.zip \
+            --prerelease --target "$GITHUB_SHA" --title "Germ Ball 2.0-dev: ${GITHUB_REF_NAME}" \
+            --notes "Built automatically from ${GITHUB_SHA::7}. Unzip and double-click GermBall.exe; no .NET install needed."
+
+      - name: Publish Germ Ball 1.0 once
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v1.0 >/dev/null 2>&1; then echo "v1.0 already published"; exit 0; fi
+          dotnet publish legacy/src/GermBall/GermBall.csproj $PUBLISH -o out-v1
+          (cd out-v1 && zip -q -9 -r ../GermBall-1.0-win-x64.zip GermBall.exe data)
+          gh release create v1.0 GermBall-1.0-win-x64.zip --target "$V1_COMMIT" --latest=false \
+            --title "Germ Ball 1.0 (deprecated)" \
+            --notes "The original full game, frozen. Development continues on 2.0. Unzip and run GermBall.exe with its data folder next to it."
