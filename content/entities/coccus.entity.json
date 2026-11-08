@@ -1,0 +1,385 @@
+{
+  "Version": 1,
+  "Name": "coccus",
+  "Kind": "enemy",
+  "Stats": {
+    "Hp": 45,
+    "Scale": 0.92,
+    "ContactDamage": 8,
+    "DashesToFloor": 1,
+    "Radius": 0.42,
+    "Height": 1.8
+  },
+  "Bones": [
+    {
+      "Name": "pelvis",
+      "Parent": null,
+      "Offset": [0, 0.98, 0]
+    },
+    {
+      "Name": "chest",
+      "Parent": "pelvis",
+      "Offset": [0, 0.4, 0]
+    },
+    {
+      "Name": "neck",
+      "Parent": "chest",
+      "Offset": [0, 0.13, 0]
+    },
+    {
+      "Name": "head",
+      "Parent": "neck",
+      "Offset": [0, 0.16, 0]
+    },
+    {
+      "Name": "shoulder.L",
+      "Parent": "chest",
+      "Offset": [-0.25, -0.02, 0]
+    },
+    {
+      "Name": "elbow.L",
+      "Parent": "shoulder.L",
+      "Offset": [0, -0.29, 0]
+    },
+    {
+      "Name": "hand.L",
+      "Parent": "elbow.L",
+      "Offset": [0, -0.28, 0]
+    },
+    {
+      "Name": "hip.L",
+      "Parent": "pelvis",
+      "Offset": [-0.11, -0.04, 0]
+    },
+    {
+      "Name": "knee.L",
+      "Parent": "hip.L",
+      "Offset": [0, -0.47, 0]
+    },
+    {
+      "Name": "foot.L",
+      "Parent": "knee.L",
+      "Offset": [0, -0.46, 0]
+    },
+    {
+      "Name": "shoulder.R",
+      "Parent": "chest",
+      "Offset": [0.25, -0.02, 0]
+    },
+    {
+      "Name": "elbow.R",
+      "Parent": "shoulder.R",
+      "Offset": [0, -0.29, 0]
+    },
+    {
+      "Name": "hand.R",
+      "Parent": "elbow.R",
+      "Offset": [0, -0.28, 0]
+    },
+    {
+      "Name": "hip.R",
+      "Parent": "pelvis",
+      "Offset": [0.11, -0.04, 0]
+    },
+    {
+      "Name": "knee.R",
+      "Parent": "hip.R",
+      "Offset": [0, -0.47, 0]
+    },
+    {
+      "Name": "foot.R",
+      "Parent": "knee.R",
+      "Offset": [0, -0.46, 0]
+    }
+  ],
+  "Shapes": [
+    {
+      "Name": "thigh.L",
+      "Bone": "hip.L",
+      "Type": "Capsule",
+      "Pos": [0, -0.235, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.18, 0.65, 0.18],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "shin.L",
+      "Bone": "knee.L",
+      "Type": "Capsule",
+      "Pos": [0, -0.23, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.16, 0.62, 0.16],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "upperarm.L",
+      "Bone": "shoulder.L",
+      "Type": "Capsule",
+      "Pos": [0, -0.145, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.14, 0.43, 0.14],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "forearm.L",
+      "Bone": "elbow.L",
+      "Type": "Capsule",
+      "Pos": [0, -0.14, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.12, 0.4, 0.12],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "hand.L",
+      "Bone": "hand.L",
+      "Type": "Sphere",
+      "Pos": [0, 0, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.17, 0.17, 0.17],
+      "Color": "#C060D8",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "thigh.R",
+      "Bone": "hip.R",
+      "Type": "Capsule",
+      "Pos": [0, -0.235, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.18, 0.65, 0.18],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "shin.R",
+      "Bone": "knee.R",
+      "Type": "Capsule",
+      "Pos": [0, -0.23, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.16, 0.62, 0.16],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "upperarm.R",
+      "Bone": "shoulder.R",
+      "Type": "Capsule",
+      "Pos": [0, -0.145, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.14, 0.43, 0.14],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "forearm.R",
+      "Bone": "elbow.R",
+      "Type": "Capsule",
+      "Pos": [0, -0.14, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.12, 0.4, 0.12],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "hand.R",
+      "Bone": "hand.R",
+      "Type": "Sphere",
+      "Pos": [0, 0, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.17, 0.17, 0.17],
+      "Color": "#C060D8",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "body",
+      "Bone": "pelvis",
+      "Type": "Sphere",
+      "Pos": [0, 0.22, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.72, 0.72, 0.72],
+      "Color": "#C060D8",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "bump0",
+      "Bone": "pelvis",
+      "Type": "Sphere",
+      "Pos": [0.33, 0.22, -0.033],
+      "Rot": [0, 0, 0],
+      "Size": [0.18, 0.18, 0.18],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "bump1",
+      "Bone": "pelvis",
+      "Type": "Sphere",
+      "Pos": [0.165, 0.4486, -0.033],
+      "Rot": [0, 0, 0],
+      "Size": [0.18, 0.18, 0.18],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "bump2",
+      "Bone": "pelvis",
+      "Type": "Sphere",
+      "Pos": [-0.165, 0.4486, -0.033],
+      "Rot": [0, 0, 0],
+      "Size": [0.18, 0.18, 0.18],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "bump3",
+      "Bone": "pelvis",
+      "Type": "Sphere",
+      "Pos": [-0.33, 0.22, -0.033],
+      "Rot": [0, 0, 0],
+      "Size": [0.18, 0.18, 0.18],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "bump4",
+      "Bone": "pelvis",
+      "Type": "Sphere",
+      "Pos": [-0.165, -0.0086, -0.033],
+      "Rot": [0, 0, 0],
+      "Size": [0.18, 0.18, 0.18],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "bump5",
+      "Bone": "pelvis",
+      "Type": "Sphere",
+      "Pos": [0.165, -0.0086, -0.033],
+      "Rot": [0, 0, 0],
+      "Size": [0.18, 0.18, 0.18],
+      "Color": "#6A2A80",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "eye.L",
+      "Bone": "pelvis",
+      "Type": "Sphere",
+      "Pos": [-0.1, 0.34, -0.3],
+      "Rot": [0, 0, 0],
+      "Size": [0.14, 0.14, 0.14],
+      "Color": "#FFFFFF",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "pupil.L",
+      "Bone": "pelvis",
+      "Type": "Sphere",
+      "Pos": [-0.1, 0.34, -0.342],
+      "Rot": [0, 0, 0],
+      "Size": [0.07, 0.07, 0.07],
+      "Color": "#101010",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "eye.R",
+      "Bone": "pelvis",
+      "Type": "Sphere",
+      "Pos": [0.1, 0.34, -0.3],
+      "Rot": [0, 0, 0],
+      "Size": [0.14, 0.14, 0.14],
+      "Color": "#FFFFFF",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "pupil.R",
+      "Bone": "pelvis",
+      "Type": "Sphere",
+      "Pos": [0.1, 0.34, -0.342],
+      "Rot": [0, 0, 0],
+      "Size": [0.07, 0.07, 0.07],
+      "Color": "#101010",
+      "Unlit": false,
+      "Hidden": false
+    }
+  ],
+  "Clips": [
+    {
+      "Name": "pulse",
+      "Length": 1.6,
+      "Loop": true,
+      "Tracks": [
+        {
+          "Bone": "pelvis",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.8,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1.05, 0.97, 1.05],
+              "Ease": "smooth"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "Layers": [
+    {
+      "Name": "Idle",
+      "Source": "procedural",
+      "Clip": null,
+      "Mode": "override",
+      "Weight": 1,
+      "Speed": 1,
+      "Mask": [],
+      "MaskChildren": true,
+      "Enabled": true
+    },
+    {
+      "Name": "Pulse",
+      "Source": "clip",
+      "Clip": "pulse",
+      "Mode": "additive",
+      "Weight": 1,
+      "Speed": 1,
+      "Mask": [
+        "pelvis"
+      ],
+      "MaskChildren": false,
+      "Enabled": true
+    }
+  ],
+  "States": [],
+  "CurlStyle": "pose",
+  "BallColor": "#C060D8"
+}

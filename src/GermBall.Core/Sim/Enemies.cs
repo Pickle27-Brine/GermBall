@@ -1,61 +1,55 @@
 using System;
 using System.Numerics;
+using GermBall.Content;
 using GermBall.Engine;
 
 namespace GermBall.Sim;
 
-public enum GermKind { Coccus, Bacillus, Brute, Titan }
-
-public sealed class GermSpawn { public Vector3 Pos; public float Yaw; public GermKind Kind; }
-
-/// <summary>Per-kind numbers, from 1.0's germ types (scale, toughness, how many jump dashes floor them).</summary>
-public sealed class GermType
-{
-    public string Name; public float Scale, Hp, ContactDamage; public int DashesToFloor; public Vector4 Color, Dark;
-    public static GermType Of(GermKind k) => k switch
-    {
-        GermKind.Coccus => Coccus, GermKind.Bacillus => Bacillus, GermKind.Brute => Brute, _ => Titan,
-    };
-    public static readonly GermType Coccus = new() { Name = "coccus", Scale = 0.92f, Hp = 45, ContactDamage = 8, DashesToFloor = 1, Color = MathX.Rgb(0xC060D8), Dark = MathX.Rgb(0x6A2A80) };
-    public static readonly GermType Bacillus = new() { Name = "bacillus", Scale = 1.2f, Hp = 100, ContactDamage = 12, DashesToFloor = 1, Color = MathX.Rgb(0x70C840), Dark = MathX.Rgb(0x2E6A1E) };
-    public static readonly GermType Brute = new() { Name = "amoeba brute", Scale = 1.68f, Hp = 320, ContactDamage = 20, DashesToFloor = 2, Color = MathX.Rgb(0xE88A30), Dark = MathX.Rgb(0x8A4410) };
-    public static readonly GermType Titan = new() { Name = "phage titan", Scale = 2.7f, Hp = 900, ContactDamage = 30, DashesToFloor = 4, Color = MathX.Rgb(0xA8B4C4), Dark = MathX.Rgb(0x505C6C) };
-}
+/// <summary>Where a germ stands, which way it faces, and which entity it is (content/entities/&lt;Entity&gt;.entity.json).</summary>
+public sealed class GermSpawn { public Vector3 Pos; public float Yaw; public string Entity = "coccus"; }
 
 /// <summary>
 /// A static germ: no AI. It stands where it spawned and sways, hurts you if you walk into it, and takes damage from shots,
 /// punches, blasts, pounds, fast rolls and jump dashes. Enough hits throw it into a ragdoll; it gets back up if it survives,
-/// and a dead one is replaced a few seconds later.
+/// and a dead one is replaced a few seconds later. Its look, rig, animation and numbers come from its entity definition.
 /// </summary>
 public sealed class Germ
 {
-    public readonly GermSpawn Spawn; public readonly GermType Type; public readonly Rig Rig;
+    public readonly GermSpawn Spawn; public readonly EntityDef Def; public readonly EntityView View;
     public Vector3 Pos; public float Yaw, Hp;
     public bool Alive = true;
     public Ragdoll Ragdoll; public float RagdollT;   // time left on the ground before getting up
     public float GetUpT;                            // > 0: blending from the ragdoll back to standing
     public float DeadT, HitFlash, StaggerT, HitCooldown;
     public int DashHits; public float LastDashHit = -99;
+    /// <summary>World-space humanoid joints of the current pose (for ragdolls and hits).</summary>
     public readonly Pose Pose = new();
-    readonly Pose getUpFrom = new(), stand = new();
+    readonly Pose getUpFrom = new(), blend = new();
+    readonly AnimContext ctx = new();
     readonly float seed;
 
-    public Germ(GermSpawn s)
+    public Germ(GermSpawn s, EntityDef def)
     {
-        Spawn = s; Type = GermType.Of(s.Kind); Rig = new Rig(Type.Scale);
-        seed = (s.Pos.X * 12.9898f + s.Pos.Z * 78.233f) % 6.28f;
+        Spawn = s; Def = def; View = new EntityView(def);
+        seed = MathF.Abs(s.Pos.X * 12.9898f + s.Pos.Z * 78.233f) % 6.28f;
         Reset();
     }
 
+    public string Name => Def.Name;
+    public float Scale => Def.Stats.Scale;
+    public int DashesToFloor => Math.Max(1, Def.Stats.DashesToFloor);
+    public float MaxHp => Def.Stats.Hp;
+    public bool CanRagdoll => View.Sk.Humanoid;
+
     public void Reset()
     {
-        Pos = Spawn.Pos; Yaw = Spawn.Yaw; Hp = Type.Hp; Alive = true; Ragdoll = null; DeadT = 0; DashHits = 0; StaggerT = 0; GetUpT = 0;
-        Rig.Standing(Pose, Pos, Yaw, seed, 0.06f);
+        Pos = Spawn.Pos; Yaw = Spawn.Yaw; Hp = MaxHp; Alive = true; Ragdoll = null; DeadT = 0; DashHits = 0; StaggerT = 0; GetUpT = 0;
+        Animate(0, 0);
     }
 
     public bool Standing => Alive && Ragdoll == null;
-    public float Radius => 0.42f * Type.Scale;
-    public float Height => 1.8f * Type.Scale;
+    public float Radius => Def.Stats.Radius * Scale;
+    public float Height => Def.Stats.Height * Scale;
     /// <summary>The middle of the body, wherever it is.</summary>
     public Vector3 Center => Ragdoll != null ? Ragdoll.Center : Pos + new Vector3(0, Height * 0.5f, 0);
 
@@ -65,38 +59,54 @@ public sealed class Germ
         if (Ragdoll != null)
         {
             Ragdoll.Step(g.Level.World, dt, Player.Gravity);
-            Pose.CopyFrom(Ragdoll.Pos);
-            if (!Ragdoll.Finite() || Ragdoll.Center.Y < g.Level.KillY) { Kill(g, Vector3.Zero, false); Ragdoll = null; DeadT = 0.01f; }
-            if (Alive)
+            if (!Ragdoll.Finite() || Ragdoll.Center.Y < g.Level.KillY) { Ragdoll = null; Alive = false; Hp = 0; DeadT = 0.01f; }
+            else if (Alive)
             {
                 RagdollT -= dt;
-                if (RagdollT <= 0 && Ragdoll != null) GetUp(g);
+                if (RagdollT <= 0) GetUp(g);
             }
         }
-        if (!Alive)
+        if (!Alive && Ragdoll == null)
         {
             DeadT -= dt;
-            if (DeadT <= 0) { Reset(); g.Effects.Burst(Pos + new Vector3(0, Height * 0.5f, 0), Type.Color, 16, 3); }
+            if (DeadT <= 0) { Reset(); g.Effects.Burst(Pos + new Vector3(0, Height * 0.5f, 0), ColorHex.Parse(Def.BallColor), 16, 3); }
             return;
         }
-        if (Ragdoll != null) return;
-        float t = g.Time + seed;
-        Rig.Standing(stand, Pos, Yaw, t, StaggerT > 0 ? 0.25f : 0.06f, armsUp: 0.35f + 0.15f * MathF.Sin(t * 1.7f));
-        if (GetUpT > 0)
-        {
-            GetUpT -= dt;
-            Pose.Lerp(stand, getUpFrom, MathX.Clamp01(GetUpT / 0.45f));
-        }
-        else Pose.CopyFrom(stand);
+        if (!Alive) { DeadT -= dt; if (DeadT <= 0) { Reset(); return; } }
+        Animate(g.Time + seed, dt);
     }
 
-    /// <summary>Knocks it over with this velocity; it lies there for <paramref name="time"/> seconds.</summary>
+    /// <summary>Evaluates the entity's layer stack: standing (with its idle), on the ground (ragdoll), or getting up.</summary>
+    void Animate(float t, float dt)
+    {
+        ctx.Time = t; ctx.Dt = dt; ctx.Feet = Pos; ctx.Yaw = Yaw; ctx.Grounded = true; ctx.Speed = 0;
+        ctx.Sway = StaggerT > 0 ? 0.25f : 0.06f; ctx.ArmsUp = 0.35f + 0.15f * MathF.Sin(t * 1.7f);
+        ctx.State = !Alive ? "dead" : Ragdoll != null ? "down" : StaggerT > 0 ? "stagger" : HitFlash > 0 ? "hurt" : "idle";
+        ctx.Joints = null;
+        View.Update(ctx);
+        if (Ragdoll != null) ctx.Joints = Ragdoll.Pos;
+        else if (GetUpT > 0 && CanRagdoll)
+        {
+            // stand up: the standing pose, blended in from where the ragdoll lay
+            GetUpT -= dt;
+            View.Evaluate(ctx);
+            View.Anim.WorldJoints(View.Pose, blend);
+            blend.Lerp(blend, getUpFrom, MathX.Clamp01(GetUpT / 0.45f));
+            ctx.Joints = blend;
+        }
+        View.Evaluate(ctx);
+        if (CanRagdoll) View.Anim.WorldJoints(View.Pose, Pose);
+    }
+
+    /// <summary>Knocks it over with this velocity; it lies there for <paramref name="time"/> seconds.
+    /// Entities without a humanoid rig can't ragdoll, so they only stagger.</summary>
     public void Topple(Vector3 velocity, float time)
     {
+        if (!CanRagdoll) { StaggerT = MathF.Max(StaggerT, 0.6f); return; }
         if (Ragdoll == null)
         {
             var spin = new Vector3(velocity.Z, 0, -velocity.X) * 0.25f;
-            Ragdoll = new Ragdoll(Pose, velocity, Type.Scale, spin);
+            Ragdoll = new Ragdoll(Pose, velocity, Scale, spin);
         }
         else Ragdoll.Push(velocity * 0.5f, Game.DT);
         RagdollT = MathF.Max(RagdollT, time);
@@ -112,12 +122,12 @@ public sealed class Germ
         Ragdoll = null; GetUpT = 0.45f; DashHits = 0;
     }
 
-    public void Kill(Game g, Vector3 fling, bool topple = true)
+    public void Kill(Game g, Vector3 fling)
     {
         if (!Alive) return;
         Alive = false; Hp = 0; DeadT = 6;
-        if (topple) Topple(fling + new Vector3(0, 3, 0), 99);
-        g.Effects.Burst(Center, Type.Color, 24, 6);
+        Topple(fling + new Vector3(0, 3, 0), 99);
+        g.Effects.Burst(Center, ColorHex.Parse(Def.BallColor), 24, 6);
     }
 
     /// <summary>Is the point (with a radius) touching the standing body?</summary>

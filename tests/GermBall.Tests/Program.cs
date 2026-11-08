@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using GermBall.Content;
 using GermBall.Engine;
 using GermBall.Sim;
 
@@ -18,6 +19,7 @@ public static class Program
 
     public static int Main(string[] args)
     {
+        if (args.Length >= 2 && args[0] == "export-content") { ExportContent(args[1]); return 0; }
         Run("spawn settles on the pad", SpawnSettles);
         Run("run speed builds slowly", WalkSpeed);
         Run("inertia: coasting, skids, wide turns", Inertia);
@@ -42,6 +44,10 @@ public static class Program
         Run("germ contact hurts; spin dash bowls germs over", GermContactAndRoll);
         Run("shooting a germ to death, and its respawn", ShootGermDead);
         Run("the hero ragdolls on death", PlayerRagdoll);
+        Run("content: entity and map files round-trip", ContentRoundTrip);
+        Run("content: a level rebuilt from its map is identical", MapRebuild);
+        Run("animation: clips, layers, masks, additive, crossfades", AnimationLayers);
+        Run("camera: locked behind the hero, aim eases in", CameraLock);
         Run("random input soak (every landmark)", Soak);
 
         if (args.Length >= 2 && args[0] == "shots") Shots(args[1], args.Length >= 4 ? int.Parse(args[2]) : 1280, args.Length >= 4 ? int.Parse(args[3]) : 720);
@@ -409,13 +415,13 @@ public static class Program
     static void HeroRig()
     {
         var g = New(); RunStart(g);
-        var rig = g.Anim.Rig; var pose = new Pose(); var prev = new Pose();
+        var rig = g.Hero.Anim.Rig; var pose = new Pose(); var prev = new Pose(); var ctx = new AnimContext();
         float stanceSpeed = 0; int stanceN = 0, bad = 0; string why = "";
         for (int i = 0; i < Sec(2); i++)
         {
             Steps(g, 1, Fwd());
             prev.CopyFrom(pose);
-            g.Anim.Build(pose, g, g.Player.Pos, g.Player.Yaw);
+            g.FillHeroContext(ctx, g.Player.Pos, g.Player.Yaw, 0); g.Hero.Evaluate(ctx); g.Hero.Anim.WorldJoints(g.Hero.Pose, pose);
             void Len(J a, J b, float want) { float l = Vector3.Distance(pose[a], pose[b]); if (MathF.Abs(l - want) > 0.01f) { bad++; why = $"{a}-{b} {l:0.00} vs {want:0.00}"; } }
             Len(J.HipL, J.KnL, rig.Thigh); Len(J.KnL, J.FtL, rig.Shin); Len(J.HipR, J.KnR, rig.Thigh); Len(J.KnR, J.FtR, rig.Shin);
             Len(J.ShL, J.ElL, rig.Upper); Len(J.ElL, J.HaL, rig.Fore); Len(J.ShR, J.ElR, rig.Upper); Len(J.ElR, J.HaR, rig.Fore);
@@ -424,7 +430,7 @@ public static class Program
             // a foot in its stance half should stay (nearly) put on the ground
             for (int side = 0; side < 2; side++)
             {
-                float ph = g.Anim.Phase + side * 0.5f; ph -= MathF.Floor(ph);
+                float ph = g.Hero.Anim.Phase + side * 0.5f; ph -= MathF.Floor(ph);
                 if (ph < 0.05f || ph > 0.45f) continue;
                 var ft = side == 0 ? J.FtL : J.FtR;
                 stanceSpeed += MathX.FlatLen(pose[ft] - prev[ft]) / Game.DT; stanceN++;
@@ -435,9 +441,9 @@ public static class Program
         Check(avg < body * 0.3f, $"planted feet slide at {avg:0.0} m/s while running at {body:0.0}");
     }
 
-    static Germ GermOf(Game g, GermKind k, int nth = 0)
+    static Germ GermOf(Game g, string k, int nth = 0)
     {
-        foreach (var gm in g.Germs) if (gm.Spawn.Kind == k && nth-- == 0) return gm;
+        foreach (var gm in g.Germs) if (gm.Name == k && nth-- == 0) return gm;
         throw new Exception("no " + k);
     }
 
@@ -458,7 +464,7 @@ public static class Program
 
     static void DashFloorsGerms()
     {
-        var g = New(); var c = GermOf(g, GermKind.Coccus);
+        var g = New(); var c = GermOf(g, "coccus");
         Check(DashInto(g, c), "dash missed the coccus: player " + P(g.Player.Pos));
         Check(c.Ragdoll != null, "one dash should floor a coccus");
         Check(g.Player.Vel.Y > 3 && !g.Player.DashUsed, $"should bounce up with the dash back (vel {P(g.Player.Vel)}, dash used {g.Player.DashUsed})");
@@ -468,13 +474,13 @@ public static class Program
         Steps(g, Sec(1.5f), default);
         Check(c.Standing && MathF.Abs(c.Pos.Y) < 0.05f, $"coccus should be back up on the floor ({c.Standing}, {P(c.Pos)})");
 
-        var b = GermOf(g, GermKind.Brute);
+        var b = GermOf(g, "brute");
         Check(DashInto(g, b), "dash missed the brute");
         Check(b.Standing && b.DashHits == 1, $"one dash shouldn't floor a brute (hits {b.DashHits})");
         Check(DashInto(g, b), "second dash missed the brute");
         Check(b.Ragdoll != null, "two dashes should floor a brute");
 
-        var t = GermOf(g, GermKind.Titan);
+        var t = GermOf(g, "titan");
         for (int i = 1; i <= 4; i++)
         {
             Check(DashInto(g, t), $"dash {i} missed the titan");
@@ -485,32 +491,32 @@ public static class Program
     static void GermContactAndRoll()
     {
         // walking into a germ hurts and shoves you away
-        var g = New(); var bac = GermOf(g, GermKind.Bacillus);
+        var g = New(); var bac = GermOf(g, "bacillus");
         Place(g, bac.Pos - new Vector3(3, 0, 0), -MathF.PI / 2);
         float before = g.Player.Hp + g.Player.Shield;
         Steps(g, Sec(1.5f), Fwd());
         Check(g.Player.Hp + g.Player.Shield < before, "walking into a bacillus didn't hurt");
-        Check(bac.Standing && bac.Hp == bac.Type.Hp, "walking into it shouldn't hurt the germ");
+        Check(bac.Standing && bac.Hp == bac.MaxHp, "walking into it shouldn't hurt the germ");
         // a spin dash bowls a coccus over
-        g = New(); var c = GermOf(g, GermKind.Coccus);
+        g = New(); var c = GermOf(g, "coccus");
         Place(g, c.Pos - new Vector3(5, 0, 0), -MathF.PI / 2);
         Steps(g, Sec(0.3f), new InputFrame { Held = Btn.Roll, Move = new Vector2(0, 1) }, Btn.Roll);
         Steps(g, 1, new InputFrame { Held = Btn.Roll | Btn.Jump }, Btn.Jump);
         Steps(g, Sec(0.2f), new InputFrame { Held = Btn.Roll });
         Steps(g, Sec(0.6f), default);
-        Check(c.Hp < c.Type.Hp && (c.Ragdoll != null || !c.Alive), $"spin dash into a coccus: hp {c.Hp}, down {c.Ragdoll != null}, player {P(g.Player.Pos)}");
+        Check(c.Hp < c.MaxHp && (c.Ragdoll != null || !c.Alive), $"spin dash into a coccus: hp {c.Hp}, down {c.Ragdoll != null}, player {P(g.Player.Pos)}");
     }
 
     static void ShootGermDead()
     {
-        var g = New(); var bac = GermOf(g, GermKind.Bacillus);
+        var g = New(); var bac = GermOf(g, "bacillus");
         Place(g, bac.Pos - new Vector3(10, 0, 0), -MathF.PI / 2);
         AimAt(g, bac.Pos + new Vector3(0, 1.0f, 0));
         for (int i = 0; i < 5; i++) { Steps(g, 1, new InputFrame { Held = Btn.Fire }, Btn.Fire); Steps(g, Sec(0.25f), default); }
         Check(!bac.Alive, $"bacillus has {bac.Hp} hp after 5 pistol shots");
         Check(bac.Ragdoll != null, "dead germs should ragdoll");
         Steps(g, Sec(6.5f), default);
-        Check(bac.Standing && bac.Hp == bac.Type.Hp, "dead germ should come back");
+        Check(bac.Standing && bac.Hp == bac.MaxHp, "dead germ should come back");
     }
 
     static void PlayerRagdoll()
@@ -524,6 +530,119 @@ public static class Program
         Check(g.PlayerRagdoll.Finite() && c.Y > 0.05f && c.Y < 0.8f, "hero ragdoll pelvis at " + P(c));
         Steps(g, Sec(1), default);
         Check(g.Player.Alive && g.PlayerRagdoll == null, "should respawn and clear the ragdoll");
+    }
+
+    // ---------------------------------------------------------------- content
+    /// <summary>Writes the built-in entities and the debug map as content files (the repository's content/ folder is made this way).</summary>
+    static void ExportContent(string dir)
+    {
+        var store = new ContentStore(dir);
+        foreach (var n in DefaultEntities.Names) store.SaveEntity(DefaultEntities.Get(n));
+        var map = Level.BuildDebug().Map; map.Name = "debug";
+        store.SaveMap(map);
+        Console.WriteLine($"wrote {DefaultEntities.Names.Length} entities and 1 map to {Path.GetFullPath(dir)}");
+    }
+
+    static void ContentRoundTrip()
+    {
+        foreach (var n in DefaultEntities.Names)
+        {
+            var e = DefaultEntities.Get(n);
+            var back = Json.Read<EntityDef>(Json.Write(e));
+            Check(Json.Write(back) == Json.Write(e), $"{n} changed after a round trip");
+            Check(back.Bones.Count == e.Bones.Count && back.Shapes.Count == e.Shapes.Count && back.Shapes[0].Size == e.Shapes[0].Size, $"{n} lost data");
+        }
+        var m = Level.BuildDebug().Map;
+        var mb = Json.Read<MapDef>(Json.Write(m));
+        Check(Json.Write(mb) == Json.Write(m), "map changed after a round trip");
+        // a store on disk: save, forget, load
+        var dir = Path.Combine(Path.GetTempPath(), "gb-content-" + Environment.ProcessId);
+        var store = new ContentStore(dir);
+        var hero = DefaultEntities.Hero(); hero.Name = "tester"; hero.Stats.Hp = 123; store.SaveEntity(hero);
+        store.Forget();
+        Check(store.Entity("tester").Stats.Hp == 123, "saved entity didn't load back");
+        Directory.Delete(dir, true);
+    }
+
+    static void MapRebuild()
+    {
+        var a = Level.BuildDebug();
+        var b = Level.FromMap(Json.Read<MapDef>(Json.Write(a.Map)));
+        Check(a.Solids.Count == b.Solids.Count && a.Zones.Count == b.Zones.Count && a.Germs.Count == b.Germs.Count && a.Labels.Count == b.Labels.Count
+              && a.Landmarks.Count == b.Landmarks.Count && a.Dummies.Count == b.Dummies.Count && a.Props.Count == b.Props.Count && a.Pickups.Count == b.Pickups.Count,
+              "object counts differ");
+        for (int i = 0; i < a.Solids.Count; i++)
+        {
+            var x = a.Solids[i].Box; var y = b.Solids[i].Box;
+            Check(Vector3.Distance(x.Center, y.Center) < 1e-3f && Vector3.Distance(x.Half, y.Half) < 1e-3f && Vector3.Distance(x.AxisZ, y.AxisZ) < 1e-3f, $"solid {i} differs");
+        }
+        for (int i = 0; i < a.Zones.Count; i++) Check(Vector3.Distance(a.Zones[i].Dir, b.Zones[i].Dir) < 1e-3f && Vector3.Distance(a.Zones[i].Min, b.Zones[i].Min) < 1e-3f, $"zone {a.Zones[i].Name} differs");
+    }
+
+    static void AnimationLayers()
+    {
+        var e = DefaultEntities.Coccus();
+        e.Layers.Clear(); e.Clips.Clear(); e.States.Clear();
+        // a clip that turns the head 90 degrees halfway through, and the chest 30
+        var c = new ClipDef { Name = "turn", Length = 1, Loop = true };
+        c.Tracks.Add(new TrackDef { Bone = "head", Keys = { new KeyDef { T = 0 }, new KeyDef { T = 0.5f, Rot = new Vector3(0, 90, 0), Ease = "linear" } } });
+        c.Tracks.Add(new TrackDef { Bone = "chest", Keys = { new KeyDef { T = 0 }, new KeyDef { T = 0.5f, Rot = new Vector3(0, 30, 0) } } });
+        e.Clips.Add(c);
+        var keyAt = Animator.SampleTrack(c.Tracks[0], 0.25f, 1, true);
+        float ang = 2 * MathF.Acos(MathF.Min(1, MathF.Abs(keyAt.Rot.W))) / MathX.Deg;
+        Check(MathF.Abs(ang - 45) < 0.5f, $"linear key halfway: {ang:0.0} degrees");
+        var wrap = Animator.SampleTrack(c.Tracks[0], 0.75f, 1, true);   // between the last key and the first, looping
+        ang = 2 * MathF.Acos(MathF.Min(1, MathF.Abs(wrap.Rot.W))) / MathX.Deg;
+        Check(MathF.Abs(ang - 45) < 0.5f, $"looping wrap: {ang:0.0} degrees");
+
+        float HeadYaw(EntityDef def, float t, string state = "idle")
+        {
+            var v = new EntityView(def); var ctx = new AnimContext { Dt = t, State = state };
+            v.Update(ctx); v.Evaluate(ctx);
+            int h = v.Sk.IndexOf("head");
+            var q = v.Pose.Local[h].Rot; return MathF.Atan2(2 * (q.W * q.Y + q.X * q.Z), 1 - 2 * (q.Y * q.Y + q.X * q.X)) / MathX.Deg;
+        }
+        e.Layers.Add(new LayerDef { Name = "turn", Source = "clip", Clip = "turn", Mode = "override", Weight = 1 });
+        Check(MathF.Abs(HeadYaw(e, 0.5f) - 90) < 1, $"override layer: head at {HeadYaw(e, 0.5f):0.0}");
+        e.Layers[0].Weight = 0.5f;
+        Check(MathF.Abs(HeadYaw(e, 0.5f) - 45) < 1, $"half-weight layer: head at {HeadYaw(e, 0.5f):0.0}");
+        e.Layers[0].Weight = 1; e.Layers[0].Mask = new List<string> { "chest" }; e.Layers[0].MaskChildren = false;
+        Check(MathF.Abs(HeadYaw(e, 0.5f)) < 1, "a chest-only mask moved the head");
+        e.Layers[0].MaskChildren = true;
+        Check(MathF.Abs(HeadYaw(e, 0.5f) - 90) < 1, "mask with children should include the head");
+        e.Layers[0].Mask.Clear();
+        e.Layers.Add(new LayerDef { Name = "add", Source = "clip", Clip = "turn", Mode = "additive", Weight = 1 });
+        Check(MathF.Abs(HeadYaw(e, 0.25f) - 90) < 1, $"additive on top: head at {HeadYaw(e, 0.25f):0.0} (expected 45 + 45)");
+        // state layers pick the clip for the state, and crossfade
+        e.Layers.Clear();
+        e.Layers.Add(new LayerDef { Name = "states", Source = "state", Mode = "override" });
+        e.States.Add(new StateClip { State = "hurt", Clip = "turn", Fade = 0.2f });
+        Check(MathF.Abs(HeadYaw(e, 0.5f, "idle")) < 1, "idle has no clip mapped");
+        Check(MathF.Abs(HeadYaw(e, 0.5f, "hurt") - 90) < 1, $"hurt plays its clip: {HeadYaw(e, 0.5f, "hurt"):0.0}");
+        var view = new EntityView(e); var cx = new AnimContext { Dt = 0.5f, State = "hurt" };
+        view.Update(cx); view.Evaluate(cx);
+        cx.State = "idle"; cx.Dt = 0.1f; view.Update(cx); view.Evaluate(cx);
+        var q2 = view.Pose.Local[view.Sk.IndexOf("head")].Rot; float mid = 2 * MathF.Acos(MathF.Min(1, MathF.Abs(q2.W))) / MathX.Deg;
+        Check(mid > 20 && mid < 80, $"crossfade out of hurt should be partway, got {mid:0.0} degrees");
+        // the procedural layer on a humanoid puts the feet on the floor
+        var hero = new EntityView(DefaultEntities.Hero()); var hc = new AnimContext();
+        hero.Update(hc); hero.Evaluate(hc);
+        foreach (var f in new[] { "foot.L", "foot.R" }) { float y = hero.Pose.Joint(hero.Sk.IndexOf(f)).Y; Check(y > -0.01f && y < 0.1f, $"{f} at {y:0.000}"); }
+    }
+
+    static void CameraLock()
+    {
+        var g = New();
+        g.Frame(Game.DT, new InputFrame { Look = new Vector2(0.8f, 0), Move = new Vector2(0, 1) });
+        Steps(g, 2, Fwd());
+        Check(MathF.Abs(MathX.AngleWrap(g.Player.Yaw - g.CamYaw)) < 1e-3f, "hero should face the camera's way");
+        var behind = g.Player.Pos - MathX.Forward(g.CamYaw, 0) * 3;
+        Check(Vector3.Distance(MathX.Flat(g.CamPos), MathX.Flat(behind)) < 2.2f, "camera should be behind the hero");
+        Check(g.CamPos.Y - g.Player.Pos.Y < 2.4f, $"camera height {g.CamPos.Y - g.Player.Pos.Y:0.00} above the feet");
+        // aim eases in over a fifth of a second
+        float prev = g.AimBlend; int rising = 0;
+        for (int i = 0; i < 30; i++) { g.Frame(1 / 120f, new InputFrame { Held = Btn.Aim }); if (g.AimBlend > prev) rising++; Check(g.AimBlend - prev <= 1 / 120f / Game.AimBlendTime + 1e-4f, "aim jumped"); prev = g.AimBlend; }
+        Check(rising >= 20 && g.AimBlend > 0.99f, $"aim blend {g.AimBlend:0.00} after {rising} rising frames");
     }
 
     // ---------------------------------------------------------------- soak
@@ -588,7 +707,7 @@ public static class Program
         var gy = g.Level.Landmarks.Find(m => m.Name == "Germ yard");
         g.Teleport(gy.Pos, gy.Yaw); Steps(g, 30, default); g.CamPitch = -0.1f;
         Shot("10-germ-yard", g);
-        var cc = GermOf(g, GermKind.Coccus, 1);
+        var cc = GermOf(g, "coccus", 1);
         DashInto(g, cc); Steps(g, Sec(0.25f), default);
         g.CamYaw = -MathF.PI / 2 + 0.3f; g.CamPitch = -0.25f;
         Shot("11-dash-ragdoll", g);

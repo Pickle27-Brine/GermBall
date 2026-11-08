@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using GermBall.Content;
 using GermBall.Engine;
 
 namespace GermBall.Sim;
@@ -158,7 +159,7 @@ public sealed partial class Game
                     bool head = gm.Standing && hit.Point.Y > gm.Pos.Y + gm.Height * 0.8f;
                     ShotsHit++;
                     HitGerm(gm, head ? damage * 2 : damage, dir * knock, hit.Point, head, false);
-                    Effects.Burst(hit.Point, gm.Type.Color, 6, 3);
+                    Effects.Burst(hit.Point, ColorHex.Parse(gm.Def.BallColor), 6, 3);
                     break;
                 }
             case Prop pr:

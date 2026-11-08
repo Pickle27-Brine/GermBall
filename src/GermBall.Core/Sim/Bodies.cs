@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using GermBall.Content;
 using GermBall.Engine;
 
 namespace GermBall.Sim;
@@ -10,8 +11,11 @@ namespace GermBall.Sim;
 public sealed partial class Game
 {
     public readonly List<Germ> Germs = new();
-    public readonly HeroAnim Anim = new();
+    /// <summary>The hero's entity (content/entities/hero.entity.json): model, rig and animation layers.</summary>
+    public EntityView Hero;
+    /// <summary>The hero's humanoid joints in world space, from the last evaluated pose.</summary>
     public readonly Pose HeroPose = new();
+    public readonly AnimContext HeroCtx = new();
     /// <summary>The hero's body after death, until respawn.</summary>
     public Ragdoll PlayerRagdoll;
     public float AttackHitT;   // brief flash on the HUD when an attack connects
@@ -38,23 +42,63 @@ public sealed partial class Game
 
     void InitBodies()
     {
-        foreach (var s in Level.Germs) Germs.Add(new Germ(s));
+        Hero = new EntityView(Store.Entity("hero"));
+        foreach (var s in Level.Germs) Germs.Add(new Germ(s, Store.Entity(s.Entity)));
+    }
+
+    /// <summary>What the hero's animation layers need to know this frame.</summary>
+    public void FillHeroContext(AnimContext c, Vector3 feet, float yaw, float dt)
+    {
+        var p = Player; var w = Weapon;
+        c.Time = Time; c.Dt = dt; c.Feet = feet; c.Yaw = yaw;
+        c.Speed = MathX.FlatLen(p.Vel); c.MoveDir = c.Speed > 0.01f ? MathX.Flat(p.Vel) / c.Speed : MathX.Forward(yaw, 0);
+        c.Grounded = p.Grounded; c.Rolling = p.Rolling; c.Skidding = p.Skidding; c.Hovering = p.Hovering; c.Charging = p.Charging;
+        c.Armed = w != null && p.Alive; c.TwoHanded = w != null && w.Def != WeaponDef.Pistol;
+        c.Aiming = aimHeld || p.FacingLockT > 0 || p.Hovering;
+        c.AimDir = MathX.Forward(CamYaw, CamPitch);
+        c.PunchT = MathF.Max(0, PunchT); c.ReloadT = MathF.Max(0, ReloadT);
+        c.State = HeroState();
+        c.GroundAt = groundAt ??= q => { var h = Level.World.Raycast(q + new Vector3(0, 0.6f, 0), -Vector3.UnitY, 1.2f); return h.Hit && h.Normal.Y > 0.5f ? h.Point.Y : float.NaN; };
+        c.Joints = null; c.Spin = Quaternion.Identity;
+    }
+    Func<Vector3, float> groundAt;
+
+    /// <summary>The hero's game state, for state animation layers.</summary>
+    public string HeroState()
+    {
+        var p = Player;
+        if (!p.Alive) return "dead";
+        if (Time - p.LastHurt < 0.3f) return "hurt";
+        if (p.Charging) return "spin";
+        if (p.Rolling) return "curl";
+        if (p.Hovering) return "hover";
+        if (PunchT > 0) return "punch";
+        if (ReloadT > 0) return "reload";
+        if (FireCooldown > 0 && p.FacingLockT > 0.6f) return "fire";
+        if (aimHeld) return "aim";
+        if (!p.Grounded) return p.Vel.Y > 0 ? "jump" : "fall";
+        if (p.Skidding) return "skid";
+        return MathX.FlatLen(p.Vel) > 0.3f ? "run" : "idle";
     }
 
     void TickBodies(float dt)
     {
-        Anim.Update(Player, dt);
+        FillHeroContext(HeroCtx, Player.Pos, Player.Yaw, dt);
+        Hero.Update(HeroCtx);
         foreach (var gm in Germs) gm.Update(this, dt);
         if (Player.Alive && !Player.Noclip) GermContacts();
 
         if (!Player.Alive && PlayerRagdoll == null)
         {
             // the hero goes limp with whatever speed it had
-            var pose = new Pose();
-            if (Player.Rolling) Anim.Rig.Standing(pose, Player.Pos, Player.Yaw, Time, 0);
-            else Anim.Build(pose, this, Player.Pos, Player.Yaw);
-            var v = Player.Vel + new Vector3(0, 2, 0);
-            PlayerRagdoll = new Ragdoll(pose, v, 1, new Vector3(v.Z, 0, -v.X) * 0.2f + new Vector3(0, 0, 1.5f));
+            if (Hero.Sk.Humanoid)
+            {
+                FillHeroContext(HeroCtx, Player.Pos, Player.Yaw, 0);
+                HeroCtx.Rolling = false; HeroCtx.Grounded = true;
+                Hero.Evaluate(HeroCtx); Hero.Anim.WorldJoints(Hero.Pose, HeroPose);
+                var v = Player.Vel + new Vector3(0, 2, 0);
+                PlayerRagdoll = new Ragdoll(HeroPose, v, Hero.Scale, new Vector3(v.Z, 0, -v.X) * 0.2f + new Vector3(0, 0, 1.5f));
+            }
         }
         if (PlayerRagdoll != null) PlayerRagdoll.Step(Level.World, dt, Player.Gravity);
         AttackHitT -= dt;
@@ -84,8 +128,8 @@ public sealed partial class Game
             if (gm.HitCooldown <= 0)
             {
                 gm.HitCooldown = 0.8f;
-                p.Hurt(gm.Type.ContactDamage, -n * 8 + new Vector3(0, 5, 0), this, gm.Type.Name);
-                Effects.Burst(p.Center, gm.Type.Color, 8, 3);
+                p.Hurt(gm.Def.Stats.ContactDamage, -n * 8 + new Vector3(0, 5, 0), this, gm.Name);
+                Effects.Burst(p.Center, ColorHex.Parse(gm.Def.BallColor), 8, 3);
             }
         }
     }
@@ -94,7 +138,7 @@ public sealed partial class Game
     /// each hit bounces you up with your dash back, so you can chain into the next one.</summary>
     void DashHit(Germ gm, Vector3 n, float speed)
     {
-        var p = Player; int need = gm.Type.DashesToFloor;
+        var p = Player; int need = gm.DashesToFloor;
         if (Time - gm.LastDashHit > DashCountWindow) gm.DashHits = 0;
         gm.DashHits++; gm.LastDashHit = Time;
         float dmg = (need >= 4 ? 30 : need == 2 ? 40 : 45) * 0.6f * MathF.Max(1, speed / 25);
@@ -123,7 +167,7 @@ public sealed partial class Game
         DamageGerm(gm, 10 + (speed - RollAttackSpeed) * 1.6f, n * speed * 0.3f, gm.Center, false);
         if (gm.Alive && gm.Standing)
         {
-            if (gm.Type.DashesToFloor == 1) gm.Topple(n * speed * 0.5f + new Vector3(0, 4, 0), 0.8f + MathF.Min(1, speed * 0.04f));
+            if (gm.DashesToFloor == 1) gm.Topple(n * speed * 0.5f + new Vector3(0, 4, 0), 0.8f + MathF.Min(1, speed * 0.04f));
             else gm.StaggerT = 0.5f;
         }
         p.Vel -= MathX.Flat(n) * speed * 0.45f;   // the roller loses some speed into the victim
@@ -151,7 +195,7 @@ public sealed partial class Game
     void HitGerm(Germ gm, float dmg, Vector3 push, Vector3 at, bool crit, bool canTopple)
     {
         DamageGerm(gm, dmg, push, at, crit);
-        if (canTopple && gm.Alive && gm.Standing && gm.Type.DashesToFloor == 1) gm.Topple(push + new Vector3(0, 3, 0), 1.2f);
+        if (canTopple && gm.Alive && gm.Standing && gm.DashesToFloor == 1) gm.Topple(push + new Vector3(0, 3, 0), 1.2f);
         else if (gm.Alive && gm.Standing) gm.StaggerT = MathF.Max(gm.StaggerT, 0.3f);
     }
 

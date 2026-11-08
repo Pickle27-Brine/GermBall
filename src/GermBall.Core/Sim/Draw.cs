@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using GermBall.Content;
 using GermBall.Engine;
 
 namespace GermBall.Sim;
@@ -99,7 +100,7 @@ public sealed partial class Game
     void DrawPlayer(DrawList dl, float a)
     {
         var p = Player;
-        if (PlayerRagdoll != null) { DrawHero(dl, PlayerRagdoll.Pos, false, false); return; }
+        if (PlayerRagdoll != null) { DrawHero(dl, Vector3.Zero, 0, false, PlayerRagdoll.Pos); return; }
         if (!p.Alive || p.Noclip) return;
         var feet = Vector3.Lerp(p.PrevPos, p.Pos, a);
         float yaw = p.PrevYaw + MathX.AngleWrap(p.Yaw - p.PrevYaw) * a;
@@ -107,15 +108,21 @@ public sealed partial class Game
         BlobShadow(dl, feet + new Vector3(0, 0.3f, 0), 0.5f);
         if (p.Rolling)
         {
-            // curled up: the gelcap ball
+            // curled up: a striped ball in the entity's ball colour, or its own shapes spun like a ball ("pose" curl style)
             var c = feet + new Vector3(0, Player.BallRadius, 0);
-            dl.Add(MeshId.BallStriped, MathX.Trs(c, Quaternion.Slerp(p.PrevBallRot, p.BallRot, a), new Vector3(Player.BallRadius * 2)), hurt ? MathX.Rgb(0xFFFFFF) : HeroRed);
+            var spin = Quaternion.Slerp(p.PrevBallRot, p.BallRot, a);
+            if (Hero.Def.CurlStyle == "pose")
+            {
+                FillHeroContext(HeroCtx, feet, yaw, 0);
+                HeroCtx.Spin = spin * Quaternion.Inverse(Quaternion.CreateFromAxisAngle(Vector3.UnitY, yaw)); HeroCtx.SpinCenter = Player.BallRadius;
+                Hero.Evaluate(HeroCtx); Hero.Draw(dl, hurt);
+            }
+            else dl.Add(MeshId.BallStriped, MathX.Trs(c, spin, new Vector3(Player.BallRadius * 2)), hurt ? MathX.Rgb(0xFFFFFF) : ColorHex.Parse(Hero.Def.BallColor));
             if (p.Pounding) dl.Rod(c + new Vector3(0, 0.6f, 0), c + new Vector3(0, 2.2f, 0), 0.3f, MathX.Rgb(0xFFFFFF, 0.35f), DrawFlags.Unlit);
             if (p.DashT > 0 && !p.Grounded) dl.Sphere(c, Player.BallRadius * 1.25f, MathX.Rgb(0x80E0FF, 0.25f), DrawFlags.Unlit);   // the dash is an attack
             return;
         }
-        Anim.Build(HeroPose, this, feet, yaw);
-        DrawHero(dl, HeroPose, hurt, true);
+        DrawHero(dl, feet, yaw, hurt, null);
     }
 
     void DrawGerms(DrawList dl)

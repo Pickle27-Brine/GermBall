@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using GermBall.Content;
 using GermBall.Engine;
 
 namespace GermBall.Sim;
@@ -45,51 +46,107 @@ public sealed class Level
     /// <summary>Anything that falls below this is dead.</summary>
     public float KillY = -40;
 
-    // ---------------------------------------------------------------- building blocks
-    public Solid Box(Vector3 center, Vector3 size, Quaternion rot, Vector4 color, bool grid = true)
+    /// <summary>The map this level was built from: every builder call below records one object, so any level can be
+    /// saved as a map file and rebuilt from one (<see cref="FromMap"/>).</summary>
+    public readonly MapDef Map = new();
+
+    /// <summary>Builds a level from a map file.</summary>
+    public static Level FromMap(MapDef map)
     {
-        var s = new Solid { Box = new Obb(center, size * 0.5f, rot), Color = color, Grid = grid };
-        Solids.Add(s); World.Add(s.Box); return s;
+        var L = new Level { Name = map.Name, KillY = map.KillY };
+        L.SetSpawn(map.Spawn, map.SpawnYaw);
+        foreach (var o in map.Objects) L.Add(o.Clone());
+        return L;
     }
-    public Solid Box(Vector3 center, Vector3 size, Vector4 color, bool grid = true) => Box(center, size, Quaternion.Identity, color, grid);
+
+    public void SetSpawn(Vector3 feet, float yaw) { Spawn = feet; SpawnYaw = yaw; Map.Spawn = feet; Map.SpawnYaw = yaw; Map.KillY = KillY; }
+
+    /// <summary>Adds one map object: records it, then builds what it describes.</summary>
+    public void Add(MapObject o)
+    {
+        Map.Objects.Add(o);
+        var col = ColorHex.Parse(o.Color);
+        switch (o.Type)
+        {
+            case MapTypes.Box:
+                AddSolid(o.Pos, o.Size, Animator.Euler(o.Rot), col, o.Grid); break;
+            case MapTypes.Ramp:
+                BuildRamp(o.Pos, o.Yaw * MathX.Deg, o.Angle, o.Height, o.Width, col, o.Landing); break;
+            case MapTypes.Zone:
+                {
+                    var kind = Enum.TryParse<ZoneKind>(o.Zone, true, out var k) ? k : ZoneKind.Area;
+                    var half = Vector3.Abs(o.Size) * 0.5f;
+                    Zones.Add(new Zone { Name = string.IsNullOrEmpty(o.Name) ? kind.ToString() : o.Name, Kind = kind, Min = o.Pos - half, Max = o.Pos + half, Power = o.Power, Dir = o.Dir });
+                    break;
+                }
+            case MapTypes.Germ: Germs.Add(new GermSpawn { Pos = o.Pos, Yaw = o.Yaw * MathX.Deg, Entity = o.Entity }); break;
+            case MapTypes.Dummy: Dummies.Add(new DummySpawn { Pos = o.Pos, RailEnd = o.RailEnd, Speed = o.Speed, Kind = o.Heavy ? DummyKind.Heavy : DummyKind.Standard }); break;
+            case MapTypes.Ball: Props.Add(new PropSpawn { Pos = o.Pos, Radius = MathF.Max(0.05f, o.Radius), Color = col }); break;
+            case MapTypes.Pickup: Pickups.Add(new PickupSpawn { Pos = o.Pos, Kind = Enum.TryParse<PickupKind>(o.Pickup, true, out var pk) ? pk : PickupKind.Health }); break;
+            case MapTypes.Sign: Labels.Add(new Label3D { Pos = o.Pos, Text = o.Text, Range = o.Range }); break;
+            case MapTypes.Landmark: Landmarks.Add(new Landmark { Name = o.Name, Pos = o.Pos, Yaw = o.Yaw * MathX.Deg }); break;
+        }
+    }
+
+    // ---------------------------------------------------------------- building blocks (each records a map object)
+    public void Box(Vector3 center, Vector3 size, Vector4 color, bool grid = true) =>
+        Add(new MapObject { Type = MapTypes.Box, Pos = center, Size = size, Color = ColorHex.Format(new Vector3(color.X, color.Y, color.Z)), Grid = grid });
     /// <summary>A box from its ground footprint: x and z of the centre, the footprint size, and the height of its top above y = 0.</summary>
-    public Solid Block(float x, float z, float sx, float sz, float top, Vector4 color, float bottom = 0) =>
+    public void Block(float x, float z, float sx, float sz, float top, Vector4 color, float bottom = 0) =>
         Box(new Vector3(x, (top + bottom) / 2, z), new Vector3(sx, top - bottom, sz), color);
 
     /// <summary>A ramp that starts at ground level at <paramref name="start"/> and climbs <paramref name="height"/> metres at
-    /// <paramref name="angleDeg"/> degrees toward <paramref name="yaw"/>, with a landing at the top.</summary>
-    public void Ramp(Vector3 start, float yaw, float angleDeg, float height, float width, Vector4 color, float landing = 3)
+    /// <paramref name="angleDeg"/> degrees toward <paramref name="yaw"/> (radians), with a landing at the top.</summary>
+    public void Ramp(Vector3 start, float yaw, float angleDeg, float height, float width, Vector4 color, float landing = 3) =>
+        Add(new MapObject { Type = MapTypes.Ramp, Pos = start, Yaw = yaw / MathX.Deg, Angle = angleDeg, Height = height, Width = width, Landing = landing, Color = ColorHex.Format(new Vector3(color.X, color.Y, color.Z)) });
+
+    public void AddZone(string name, ZoneKind kind, Vector3 min, Vector3 max, float power = 0, Vector3 dir = default) =>
+        Add(new MapObject { Type = MapTypes.Zone, Name = name, Zone = kind.ToString(), Pos = (min + max) * 0.5f, Size = max - min, Power = power, Dir = dir, Color = "#FFFFFF" });
+
+    /// <summary>A 2 × 2 m pad that throws you onto a ledge whose top is <paramref name="top"/> metres up and centred at <paramref name="land"/>.
+    /// The launch velocity is stored in the zone's Dir.</summary>
+    public void JumpPad(string name, Vector3 pad, float top, Vector3 land)
     {
+        var v = JumpPadVelocity(pad, top, land);
+        AddZone(name, ZoneKind.JumpPad, pad - new Vector3(1, 0.5f, 1), pad + new Vector3(1, 0.4f, 1), v.Y, v);
+    }
+    /// <summary>The launch velocity that lands on a ledge <paramref name="top"/> metres up at <paramref name="land"/> (the Map Editor's pad helper uses this too).</summary>
+    public static Vector3 JumpPadVelocity(Vector3 pad, float top, Vector3 land)
+    {
+        float v = MathF.Sqrt(2 * Player.Gravity * MathF.Max(0.1f, top - pad.Y + 1.6f)), tUp = v / Player.Gravity, tDown = MathF.Sqrt(2 * 1.6f / Player.Gravity);
+        var h = MathX.Flat(land - pad) / (tUp + tDown);
+        return new Vector3(h.X, v, h.Z);
+    }
+    public void Sign(Vector3 pos, string text, float range = 45) => Add(new MapObject { Type = MapTypes.Sign, Pos = pos, Text = text, Range = range });
+    public void Mark(string name, Vector3 pos, float yaw) => Add(new MapObject { Type = MapTypes.Landmark, Name = name, Pos = pos, Yaw = yaw / MathX.Deg });
+    public void Dummy(Vector3 pos, Vector3 railEnd = default, float speed = 0, bool heavy = false) => Add(new MapObject { Type = MapTypes.Dummy, Pos = pos, RailEnd = railEnd, Speed = speed, Heavy = heavy });
+    public void Ball(Vector3 pos, float radius, Vector4 color) => Add(new MapObject { Type = MapTypes.Ball, Pos = pos, Radius = radius, Color = ColorHex.Format(new Vector3(color.X, color.Y, color.Z)) });
+    public void Pickup(Vector3 pos, PickupKind kind) => Add(new MapObject { Type = MapTypes.Pickup, Pos = pos, Pickup = kind.ToString() });
+    public void Germ(Vector3 feet, float yawDeg, string entity) => Add(new MapObject { Type = MapTypes.Germ, Pos = feet, Yaw = yawDeg, Entity = entity });
+
+    // the raw builders (not recorded)
+    void AddSolid(Vector3 center, Vector3 size, Quaternion rot, Vector4 color, bool grid)
+    {
+        var s = new Solid { Box = new Obb(center, Vector3.Abs(size) * 0.5f, rot), Color = color, Grid = grid };
+        Solids.Add(s); World.Add(s.Box);
+    }
+
+    void BuildRamp(Vector3 start, float yaw, float angleDeg, float height, float width, Vector4 color, float landing)
+    {
+        angleDeg = Math.Clamp(angleDeg, 1, 89);
         float a = angleDeg * MathX.Deg, run = height / MathF.Tan(a), slopeLen = height / MathF.Sin(a);
         const float thick = 0.6f;
         var fwd = MathX.Forward(yaw, 0);
         var rot = Quaternion.CreateFromYawPitchRoll(yaw, a, 0);
         var up = Vector3.Transform(Vector3.UnitY, rot);
         var mid = start + fwd * (run / 2) + Vector3.UnitY * (height / 2) - up * (thick / 2);
-        Box(mid, new Vector3(width, thick, slopeLen), rot, color);
+        AddSolid(mid, new Vector3(width, thick, slopeLen), rot, color, true);
         if (landing > 0)
         {
             var lc = start + fwd * (run + landing / 2);
-            var size = MathF.Abs(fwd.X) > 0.5f ? new Vector3(landing, height, width) : new Vector3(width, height, landing);
-            Box(new Vector3(lc.X, height / 2, lc.Z), size, color);
+            AddSolid(new Vector3(lc.X, start.Y + height / 2, lc.Z), new Vector3(width, height, landing), Quaternion.CreateFromAxisAngle(Vector3.UnitY, yaw), color, true);
         }
     }
-
-    public Zone AddZone(string name, ZoneKind kind, Vector3 min, Vector3 max, float power = 0, Vector3 dir = default)
-    {
-        var z = new Zone { Name = name, Kind = kind, Min = min, Max = max, Power = power, Dir = dir };
-        Zones.Add(z); return z;
-    }
-    /// <summary>A 2 × 2 m pad that throws you onto a ledge whose top is <paramref name="top"/> metres up and centred at <paramref name="land"/>.
-    /// The launch velocity is stored in the zone's Dir.</summary>
-    public Zone JumpPad(string name, Vector3 pad, float top, Vector3 land)
-    {
-        float v = MathF.Sqrt(2 * Player.Gravity * (top + 1.6f)), tUp = v / Player.Gravity, tDown = MathF.Sqrt(2 * 1.6f / Player.Gravity);
-        var h = MathX.Flat(land - pad) / (tUp + tDown);
-        return AddZone(name, ZoneKind.JumpPad, pad - new Vector3(1, 0.5f, 1), pad + new Vector3(1, 0.4f, 1), v, new Vector3(h.X, v, h.Z));
-    }
-    public void Sign(Vector3 pos, string text, float range = 45) => Labels.Add(new Label3D { Pos = pos, Text = text, Range = range });
-    public void Mark(string name, Vector3 pos, float yaw) => Landmarks.Add(new Landmark { Name = name, Pos = pos, Yaw = yaw });
 
     // ---------------------------------------------------------------- the debug level
     static readonly Vector4 FloorCol = MathX.Rgb(0x8A8F96), WallCol = MathX.Rgb(0x5E6670),
@@ -118,7 +175,7 @@ public sealed class Level
         L.Box(new Vector3(E + 0.5f, 3, 0), new Vector3(1, 6, 2 * E), WallCol);
 
         // ---- hub
-        L.Spawn = new Vector3(0, 0.1f, 0); L.SpawnYaw = 0;
+        L.SetSpawn(new Vector3(0, 0.1f, 0), 0);
         L.Block(0, 0, 4, 4, 0.05f, HubCol);
         L.AddZone("Hub", ZoneKind.Area, new Vector3(-10, -1, -10), new Vector3(10, 30, 10));
         L.Sign(new Vector3(0, 3.2f, -8), "MOVEMENT  (north)");
@@ -230,11 +287,11 @@ public sealed class Level
         L.Block(20, 0, 0.3f, 24, 0.05f, MathX.Rgb(0xE0C040));
         L.Sign(new Vector3(20, 2.5f, -10), "FIRING LINE", 30);
         L.Sign(new Vector3(15, 2.5f, 0), "ARMORY", 25);
-        L.Pickups.Add(new PickupSpawn { Pos = new Vector3(14, 0.6f, -4), Kind = PickupKind.Rifle });
-        L.Pickups.Add(new PickupSpawn { Pos = new Vector3(14, 0.6f, 4), Kind = PickupKind.Lobber });
-        L.Pickups.Add(new PickupSpawn { Pos = new Vector3(16, 0.6f, -6), Kind = PickupKind.Ammo });
-        L.Pickups.Add(new PickupSpawn { Pos = new Vector3(16, 0.6f, 6), Kind = PickupKind.Ammo });
-        L.Pickups.Add(new PickupSpawn { Pos = new Vector3(12, 0.6f, 8), Kind = PickupKind.Health });
+        L.Pickup(new Vector3(14, 0.6f, -4), PickupKind.Rifle);
+        L.Pickup(new Vector3(14, 0.6f, 4), PickupKind.Lobber);
+        L.Pickup(new Vector3(16, 0.6f, -6), PickupKind.Ammo);
+        L.Pickup(new Vector3(16, 0.6f, 6), PickupKind.Ammo);
+        L.Pickup(new Vector3(12, 0.6f, 8), PickupKind.Health);
         L.Mark("Combat range", new Vector3(17, 0.1f, 0), MathF.PI / 2 * -1);
 
         // dummies at known ranges from the firing line
@@ -242,18 +299,18 @@ public sealed class Level
         for (int i = 0; i < ranges.Length; i++)
         {
             float x = 20 + ranges[i], z = -12 + i * 6;
-            L.Dummies.Add(new DummySpawn { Pos = new Vector3(x, 0, z) });
+            L.Dummy(new Vector3(x, 0, z));
             L.Sign(new Vector3(x, 3.2f, z), $"{ranges[i]:0} m", 90);
             L.Block(x, z, 4, 0.2f, 0.05f, CombatCol);
         }
         // movers on rails, and a heavy
-        L.Dummies.Add(new DummySpawn { Pos = new Vector3(45, 0, -14), RailEnd = new Vector3(45, 0, 14), Speed = 3 });
-        L.Dummies.Add(new DummySpawn { Pos = new Vector3(70, 0, 14), RailEnd = new Vector3(70, 0, -14), Speed = 7 });
+        L.Dummy(new Vector3(45, 0, -14), new Vector3(45, 0, 14), 3);
+        L.Dummy(new Vector3(70, 0, 14), new Vector3(70, 0, -14), 7);
         L.Block(45, 0, 0.3f, 28, 0.04f, CombatCol);
         L.Block(70, 0, 0.3f, 28, 0.04f, CombatCol);
         L.Sign(new Vector3(45, 3.2f, 16), "MOVER 3 m/s", 90);
         L.Sign(new Vector3(70, 3.2f, 16), "MOVER 7 m/s", 90);
-        L.Dummies.Add(new DummySpawn { Pos = new Vector3(32, 0, 18), Kind = DummyKind.Heavy });
+        L.Dummy(new Vector3(32, 0, 18), heavy: true);
         L.Sign(new Vector3(32, 4, 18), "HEAVY 400 HP", 60);
         // waist-high cover and a pillar
         L.Block(24, -5, 1, 3, 1.1f, CombatCol);
@@ -270,7 +327,7 @@ public sealed class Level
         float[] radii = { 0.3f, 0.45f, 0.6f, 0.9f, 1.3f };
         for (int i = 0; i < radii.Length; i++)
             for (int k = 0; k < 2; k++)
-                L.Props.Add(new PropSpawn { Pos = new Vector3(-22 - i * 3.5f, radii[i] + 0.05f, -4 + k * 8), Radius = radii[i], Color = cols[i] });
+                L.Ball(new Vector3(-22 - i * 3.5f, radii[i] + 0.05f, -4 + k * 8), radii[i], cols[i]);
         L.Sign(new Vector3(-28, 3.5f, 0), "BALLS (shoot, punch, push)");
         L.Mark("Physics", new Vector3(-16, 0.1f, 0), MathF.PI / 2);
 
@@ -278,7 +335,7 @@ public sealed class Level
         L.Ramp(new Vector3(-44, 0, 22), MathF.PI / 2, 12, 4, 6, PhysCol, 4);
         float topX = -44 - 4 / MathF.Tan(12 * MathX.Deg) - 2;
         for (int i = 0; i < 3; i++)
-            L.Props.Add(new PropSpawn { Pos = new Vector3(topX, 4.7f, 20 + i * 2), Radius = 0.5f, Color = cols[i] });
+            L.Ball(new Vector3(topX, 4.7f, 20 + i * 2), 0.5f, cols[i]);
         L.Sign(new Vector3(-50, 4, 18), "ROLLING SLOPE");
 
         // skate bowl: a 12 m flat ringed by 25 degree banks, for rolling momentum
@@ -301,19 +358,19 @@ public sealed class Level
     static void BuildGermYard(Level L)
     {
         L.AddZone("Germ yard", ZoneKind.Area, new Vector3(56, -1, 26), new Vector3(118, 60, 100));
-        float face = MathF.PI / 2;
-        void G(GermKind k, float x, float z, float y = 0) => L.Germs.Add(new GermSpawn { Kind = k, Pos = new Vector3(x, y, z), Yaw = face });
+        const float face = 90;
+        void G(string entity, float x, float z, float y = 0) => L.Germ(new Vector3(x, y, z), face, entity);
         // a row of cocci on the ground: one dash (or a fast roll) each
-        for (int i = 0; i < 5; i++) G(GermKind.Coccus, 72 + i * 5, 36);
+        for (int i = 0; i < 5; i++) G("coccus", 72 + i * 5, 36);
         L.Sign(new Vector3(82, 3, 33), "COCCI  (1 dash)", 50);
         // a dash chain: cocci on 1.5 m posts, 6 m apart
-        for (int i = 0; i < 4; i++) { float x = 72 + i * 6; L.Block(x, 48, 1.5f, 1.5f, 1.5f, HazCol); G(GermKind.Coccus, x, 48, 1.5f); }
+        for (int i = 0; i < 4; i++) { float x = 72 + i * 6; L.Block(x, 48, 1.5f, 1.5f, 1.5f, HazCol); G("coccus", x, 48, 1.5f); }
         L.Sign(new Vector3(81, 4.5f, 45), "DASH CHAIN", 50);
-        for (int i = 0; i < 3; i++) G(GermKind.Bacillus, 72 + i * 8, 60);
+        for (int i = 0; i < 3; i++) G("bacillus", 72 + i * 8, 60);
         L.Sign(new Vector3(80, 4, 57), "BACILLI  (1 dash)", 50);
-        G(GermKind.Brute, 74, 74); G(GermKind.Brute, 90, 74);
+        G("brute", 74, 74); G("brute", 90, 74);
         L.Sign(new Vector3(82, 5, 71), "BRUTES  (2 dashes)", 60);
-        G(GermKind.Titan, 104, 58);
+        G("titan", 104, 58);
         L.Sign(new Vector3(104, 7.5f, 58), "PHAGE TITAN  (4 dashes)", 80);
         L.Mark("Germ yard", new Vector3(62, 0.1f, 42), -MathF.PI / 2);
     }

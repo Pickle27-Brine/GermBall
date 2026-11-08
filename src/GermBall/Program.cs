@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using GermBall.Content;
 using GermBall.Engine;
 using GermBall.Sim;
 
@@ -27,7 +28,12 @@ public static class Program
         Win32.timeBeginPeriod(1);
         var window = new Window("Germ Ball " + Game.Version, 1600, 900);
         using var renderer = new Renderer(window) { VSync = Array.IndexOf(args, "--novsync") < 0 };
-        var game = new Game(Level.BuildDebug());
+        // content: entities and maps from the content folder next to the exe (--content to point elsewhere);
+        // the map is --map <name or path>, else "debug", else the built-in debug level
+        string Arg(string name) { int i = Array.IndexOf(args, name); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
+        var store = ContentStore.Find(Arg("--content"));
+        var map = store.Map(Arg("--map") ?? "debug");
+        var game = new Game(map != null ? Level.FromMap(map) : Level.BuildDebug(), store);
         var dl = new DrawList();
         var clock = Stopwatch.StartNew();
         double last = 0, fpsT = 0; int frames = 0;

@@ -1,0 +1,488 @@
+{
+  "Version": 1,
+  "Name": "hero",
+  "Kind": "player",
+  "Stats": {
+    "Hp": 100,
+    "Scale": 1,
+    "ContactDamage": 0,
+    "DashesToFloor": 1,
+    "Radius": 0.4,
+    "Height": 1.8
+  },
+  "Bones": [
+    {
+      "Name": "pelvis",
+      "Parent": null,
+      "Offset": [0, 0.98, 0]
+    },
+    {
+      "Name": "chest",
+      "Parent": "pelvis",
+      "Offset": [0, 0.4, 0]
+    },
+    {
+      "Name": "neck",
+      "Parent": "chest",
+      "Offset": [0, 0.13, 0]
+    },
+    {
+      "Name": "head",
+      "Parent": "neck",
+      "Offset": [0, 0.16, 0]
+    },
+    {
+      "Name": "shoulder.L",
+      "Parent": "chest",
+      "Offset": [-0.25, -0.02, 0]
+    },
+    {
+      "Name": "elbow.L",
+      "Parent": "shoulder.L",
+      "Offset": [0, -0.29, 0]
+    },
+    {
+      "Name": "hand.L",
+      "Parent": "elbow.L",
+      "Offset": [0, -0.28, 0]
+    },
+    {
+      "Name": "hip.L",
+      "Parent": "pelvis",
+      "Offset": [-0.11, -0.04, 0]
+    },
+    {
+      "Name": "knee.L",
+      "Parent": "hip.L",
+      "Offset": [0, -0.47, 0]
+    },
+    {
+      "Name": "foot.L",
+      "Parent": "knee.L",
+      "Offset": [0, -0.46, 0]
+    },
+    {
+      "Name": "shoulder.R",
+      "Parent": "chest",
+      "Offset": [0.25, -0.02, 0]
+    },
+    {
+      "Name": "elbow.R",
+      "Parent": "shoulder.R",
+      "Offset": [0, -0.29, 0]
+    },
+    {
+      "Name": "hand.R",
+      "Parent": "elbow.R",
+      "Offset": [0, -0.28, 0]
+    },
+    {
+      "Name": "hip.R",
+      "Parent": "pelvis",
+      "Offset": [0.11, -0.04, 0]
+    },
+    {
+      "Name": "knee.R",
+      "Parent": "hip.R",
+      "Offset": [0, -0.47, 0]
+    },
+    {
+      "Name": "foot.R",
+      "Parent": "knee.R",
+      "Offset": [0, -0.46, 0]
+    }
+  ],
+  "Shapes": [
+    {
+      "Name": "thigh.L",
+      "Bone": "hip.L",
+      "Type": "Capsule",
+      "Pos": [0, -0.235, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.17, 0.64, 0.17],
+      "Color": "#F4F1EC",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "shin.L",
+      "Bone": "knee.L",
+      "Type": "Capsule",
+      "Pos": [0, -0.23, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.144, 0.604, 0.144],
+      "Color": "#E8303C",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "boot.L",
+      "Bone": "foot.L",
+      "Type": "Box",
+      "Pos": [0, 0.02, -0.05],
+      "Rot": [0, 0, 0],
+      "Size": [0.13, 0.11, 0.27],
+      "Color": "#3A3F48",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "toe.L",
+      "Bone": "foot.L",
+      "Type": "Box",
+      "Pos": [0, -0.005, -0.16],
+      "Rot": [0, 0, 0],
+      "Size": [0.12, 0.06, 0.07],
+      "Color": "#F4F1EC",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "pauldron.L",
+      "Bone": "shoulder.L",
+      "Type": "Sphere",
+      "Pos": [-0.03, 0.03, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.21, 0.21, 0.21],
+      "Color": "#E8303C",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "upperarm.L",
+      "Bone": "shoulder.L",
+      "Type": "Capsule",
+      "Pos": [0, -0.145, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.126, 0.416, 0.126],
+      "Color": "#E8303C",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "forearm.L",
+      "Bone": "elbow.L",
+      "Type": "Capsule",
+      "Pos": [0, -0.14, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.114, 0.394, 0.114],
+      "Color": "#F4F1EC",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "hand.L",
+      "Bone": "hand.L",
+      "Type": "Sphere",
+      "Pos": [0, 0, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.136, 0.136, 0.136],
+      "Color": "#F4F1EC",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "thigh.R",
+      "Bone": "hip.R",
+      "Type": "Capsule",
+      "Pos": [0, -0.235, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.17, 0.64, 0.17],
+      "Color": "#F4F1EC",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "shin.R",
+      "Bone": "knee.R",
+      "Type": "Capsule",
+      "Pos": [0, -0.23, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.144, 0.604, 0.144],
+      "Color": "#E8303C",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "boot.R",
+      "Bone": "foot.R",
+      "Type": "Box",
+      "Pos": [0, 0.02, -0.05],
+      "Rot": [0, 0, 0],
+      "Size": [0.13, 0.11, 0.27],
+      "Color": "#3A3F48",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "toe.R",
+      "Bone": "foot.R",
+      "Type": "Box",
+      "Pos": [0, -0.005, -0.16],
+      "Rot": [0, 0, 0],
+      "Size": [0.12, 0.06, 0.07],
+      "Color": "#F4F1EC",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "pauldron.R",
+      "Bone": "shoulder.R",
+      "Type": "Sphere",
+      "Pos": [0.03, 0.03, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.21, 0.21, 0.21],
+      "Color": "#E8303C",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "upperarm.R",
+      "Bone": "shoulder.R",
+      "Type": "Capsule",
+      "Pos": [0, -0.145, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.126, 0.416, 0.126],
+      "Color": "#E8303C",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "forearm.R",
+      "Bone": "elbow.R",
+      "Type": "Capsule",
+      "Pos": [0, -0.14, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.114, 0.394, 0.114],
+      "Color": "#F4F1EC",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "hand.R",
+      "Bone": "hand.R",
+      "Type": "Sphere",
+      "Pos": [0, 0, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.136, 0.136, 0.136],
+      "Color": "#F4F1EC",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "hips",
+      "Bone": "pelvis",
+      "Type": "Capsule",
+      "Pos": [0, -0.04, 0],
+      "Rot": [0, 0, 90],
+      "Size": [0.22, 0.44, 0.22],
+      "Color": "#F4F1EC",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "waist",
+      "Bone": "pelvis",
+      "Type": "Capsule",
+      "Pos": [0, 0.11, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.24, 0.38, 0.24],
+      "Color": "#F4F1EC",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "torso",
+      "Bone": "pelvis",
+      "Type": "Capsule",
+      "Pos": [0, 0.28, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.3, 0.5, 0.3],
+      "Color": "#E8303C",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "chest",
+      "Bone": "chest",
+      "Type": "Capsule",
+      "Pos": [0, -0.05, 0],
+      "Rot": [0, 0, 90],
+      "Size": [0.26, 0.76, 0.26],
+      "Color": "#E8303C",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "cross.h",
+      "Bone": "chest",
+      "Type": "Box",
+      "Pos": [0, -0.06, -0.135],
+      "Rot": [0, 0, 0],
+      "Size": [0.12, 0.035, 0.02],
+      "Color": "#7AFFEF",
+      "Unlit": true,
+      "Hidden": false
+    },
+    {
+      "Name": "cross.v",
+      "Bone": "chest",
+      "Type": "Box",
+      "Pos": [0, -0.06, -0.135],
+      "Rot": [0, 0, 0],
+      "Size": [0.035, 0.12, 0.02],
+      "Color": "#7AFFEF",
+      "Unlit": true,
+      "Hidden": false
+    },
+    {
+      "Name": "neck",
+      "Bone": "neck",
+      "Type": "Cylinder",
+      "Pos": [0, 0.07, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.1, 0.18, 0.1],
+      "Color": "#F4F1EC",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "helmet.low",
+      "Bone": "head",
+      "Type": "Capsule",
+      "Pos": [0, -0.0125, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.25, 0.295, 0.25],
+      "Color": "#F4F1EC",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "helmet.cap",
+      "Bone": "head",
+      "Type": "Sphere",
+      "Pos": [0, 0.035, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.244, 0.244, 0.244],
+      "Color": "#E8303C",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "helmet.band",
+      "Bone": "head",
+      "Type": "Cylinder",
+      "Pos": [0, 0.0175, 0],
+      "Rot": [0, 0, 0],
+      "Size": [0.246, 0.035, 0.246],
+      "Color": "#E8303C",
+      "Unlit": false,
+      "Hidden": false
+    },
+    {
+      "Name": "visor",
+      "Bone": "head",
+      "Type": "Box",
+      "Pos": [0, 0.005, -0.105],
+      "Rot": [0, 0, 0],
+      "Size": [0.2, 0.055, 0.05],
+      "Color": "#7AFFEF",
+      "Unlit": true,
+      "Hidden": false
+    }
+  ],
+  "Clips": [
+    {
+      "Name": "flinch",
+      "Length": 0.35,
+      "Loop": false,
+      "Tracks": [
+        {
+          "Bone": "chest",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.08,
+              "Rot": [-18, 0, 4],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.35,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        },
+        {
+          "Bone": "head",
+          "Keys": [
+            {
+              "T": 0,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.1,
+              "Rot": [-12, 6, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            },
+            {
+              "T": 0.35,
+              "Rot": [0, 0, 0],
+              "Pos": [0, 0, 0],
+              "Scale": [1, 1, 1],
+              "Ease": "smooth"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "Layers": [
+    {
+      "Name": "Locomotion",
+      "Source": "procedural",
+      "Clip": null,
+      "Mode": "override",
+      "Weight": 1,
+      "Speed": 1,
+      "Mask": [],
+      "MaskChildren": true,
+      "Enabled": true
+    },
+    {
+      "Name": "Reactions",
+      "Source": "state",
+      "Clip": null,
+      "Mode": "additive",
+      "Weight": 1,
+      "Speed": 1,
+      "Mask": [],
+      "MaskChildren": true,
+      "Enabled": true
+    }
+  ],
+  "States": [
+    {
+      "State": "hurt",
+      "Clip": "flinch",
+      "Fade": 0.05
+    }
+  ],
+  "CurlStyle": "ball",
+  "BallColor": "#E8303C"
+}

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using GermBall.Content;
 using GermBall.Engine;
 
 namespace GermBall.Sim;
@@ -40,9 +41,12 @@ public sealed partial class Game
     public Zone Area; public float AreaBannerT;
     public readonly List<Zone> ActiveZones = new();
 
-    public Game(Level level)
+    /// <summary>Where entity definitions come from (the content folder, or the built-in defaults).</summary>
+    public readonly ContentStore Store;
+
+    public Game(Level level, ContentStore store = null)
     {
-        Level = level;
+        Level = level; Store = store ?? ContentStore.BuiltIn();
         foreach (var s in level.Dummies) Dummies.Add(new Dummy(s));
         foreach (var s in level.Props) Props.Add(new Prop(s));
         foreach (var s in level.Pickups) Pickups.Add(new Pickup(s));
@@ -51,7 +55,7 @@ public sealed partial class Game
         RespawnPos = level.Spawn; RespawnYaw = level.SpawnYaw;
         Player.Place(level.Spawn, level.SpawnYaw);
         CamYaw = level.SpawnYaw;
-        camPivotY = Player.Pos.Y + 1.5f;
+        camPivotY = Player.Pos.Y + CameraHeight;
         UpdateCamera(1, 1);
     }
 
@@ -129,7 +133,7 @@ public sealed partial class Game
         Player.Place(RespawnPos, RespawnYaw);
         PlayerRagdoll = null;
         CamYaw = RespawnYaw; CamPitch = -0.15f;
-        camPivotY = Player.Pos.Y + 1.5f;
+        camPivotY = Player.Pos.Y + CameraHeight;
     }
 
     public void Teleport(Vector3 feet, float yaw)
@@ -138,7 +142,7 @@ public sealed partial class Game
         PlayerRagdoll = null;
         Player.Place(feet, yaw);
         CamYaw = yaw; CamPitch = -0.15f;
-        camPivotY = Player.Pos.Y + 1.5f;
+        camPivotY = Player.Pos.Y + CameraHeight;
     }
 
     void UpdateZones(float dt)
@@ -282,14 +286,17 @@ public sealed partial class Game
         var p = Player;
         var feet = PlayerRagdoll != null ? PlayerRagdoll.Center - new Vector3(0, 0.9f, 0) : Vector3.Lerp(p.PrevPos, p.Pos, a);
         // one height whether curled or not, so every jump doesn't bob the camera
-        float targetY = feet.Y + (p.Rolling && p.Grounded ? 1.3f : 1.6f);
+        float targetY = feet.Y + (p.Rolling && p.Grounded ? 1.05f : CameraHeight);
         // smooth vertical motion (steps, landings) but never lag behind by more than half a metre
         camPivotY = MathX.Lerp(camPivotY, targetY, 1 - MathF.Exp(-14 * dt));
         camPivotY = MathX.Clamp(camPivotY, targetY - 0.5f, targetY + 0.5f);
         var pivot = new Vector3(feet.X, camPivotY, feet.Z);
+        // aiming eases in and out: distance, shoulder offset and field of view all blend over about a fifth of a second
         bool aiming = aimHeld && Weapon != null && !p.Rolling && p.Alive && !p.Noclip;
-        float dist = aiming ? 2.4f : 4.4f, shoulder = aiming ? 0.8f : 0.9f;
-        Fov = (aiming ? 52 : 70) * MathX.Deg;
+        AimBlend = dt <= 0 && a >= 1 ? (aiming ? 1 : 0) : MathX.Clamp01(AimBlend + (aiming ? 1 : -1) * dt / AimBlendTime);
+        float k = AimBlend * AimBlend * (3 - 2 * AimBlend);
+        float dist = MathX.Lerp(4.4f, 2.4f, k), shoulder = MathX.Lerp(0.9f, 0.8f, k);
+        Fov = MathX.Lerp(70, 52, k) * MathX.Deg;
         CamForward = MathX.Forward(CamYaw, CamPitch);
         var right = MathX.Right(CamYaw);
         var shoulderPt = pivot + right * shoulder;
@@ -301,6 +308,11 @@ public sealed partial class Game
         CamPos = hit.Hit ? shoulderPt - CamForward * MathF.Max(0.3f, hit.T - 0.2f) : want;
     }
     bool aimHeld;
+    /// <summary>0 = hip camera, 1 = fully aimed in (eased).</summary>
+    public float AimBlend;
+    public const float AimBlendTime = 0.2f;
+    /// <summary>Height of the camera's pivot above the feet (lowered from 1.6 m so the view sits lower behind the hero).</summary>
+    public const float CameraHeight = 1.35f;
     /// <summary>Interpolation between the last two simulation steps, for drawing.</summary>
     public float Alpha => alpha;
 }

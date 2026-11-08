@@ -174,7 +174,6 @@ public sealed class Player
             if (!Grounded) Charging = false;
             else if (rollHeld)
             {
-                if (m > 0.1f) Yaw = MathX.YawOf(wd);
                 Rev = MathF.Min(MaxRev, Rev * MathF.Pow(31f / 32f, dt * 60) + 9 * dt);
                 if (input.Hit(Btn.Jump)) { Rev = MathF.Min(MaxRev, Rev + 2); jumpUsed = true; JumpBufferT = 0; g.Effects.Burst(Pos + new Vector3(0, 0.1f, 0), MathX.Rgb(0xE0E0E0), 3, 2); }
                 Vel *= MathF.Exp(-12 * dt);
@@ -253,12 +252,8 @@ public sealed class Player
             JumpPeakY = MathF.Max(JumpPeakY, Pos.Y);
         }
 
-        // ---- facing: the way you're travelling (not while skidding), the stick when still, the camera when aiming or firing
-        float hs = MathX.FlatLen(Vel);
-        if (Charging) { }
-        else if (FacingLockT > 0 || (aimHeld && !Rolling)) Yaw = MathX.TurnToward(Yaw, g.CamYaw, 30 * dt);
-        else if (hs > 0.3f && !Skidding) Yaw = MathX.TurnToward(Yaw, MathX.YawOf(Vel), (Rolling ? 20 : 7) * dt);
-        else if (m > 0.1f && !Rolling) Yaw = MathX.TurnToward(Yaw, MathX.YawOf(wd), 7 * dt);
+        // ---- facing: locked to the camera, which always sits directly behind the hero (look turns the hero)
+        Yaw = g.CamYaw;
 
         // ---- the ball's spin follows its travel (and whirls in place while revving)
         if (Charging)
