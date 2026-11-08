@@ -115,7 +115,7 @@ The level is a flat 240 m square. North is -Z. Every solid has a 1 m grid, and s
 **What an entity is:**
 
 - **A rig:** bones, each an offset from its parent joint.
-- **Shapes** fixed to bones: box, sphere, capsule, cylinder, cone or striped ball, each with a position, rotation, size, colour, and glow or hidden flags.
+- **Shapes** fixed to bones: box, sphere, capsule, cylinder, cone or striped ball, each with a position, rotation, size, taper (one end narrower), curve (bent along its length), colour, and glow or hidden flags.
 - **Animation clips:** keyframes per bone (rotation, movement, and scale for squash and stretch), each easing smooth, linear or step to the next key.
 - **A layer stack** that blends everything into the final pose.
 - **State mappings:** which clip plays in each game state.
@@ -126,8 +126,11 @@ The game uses all of this.
 **Left panel:**
 
 - **Entity:** name, kind (player, enemy or prop), gameplay stats, and curled-up style (striped ball or its own shapes spun).
-- **Rig:** the bone tree. Add, delete, rename and reparent bones, edit offsets and lengths with sliders or the move gizmo, mirror left to right, or reset to the standard humanoid. Renaming a bone updates every shape, clip and mask that uses it.
-- **Shapes:** add, duplicate, delete, mirror and reorder shapes. Sliders cover position, rotation and size; "Point along bone" fits a capsule to its bone. There's a colour picker (hue, saturation and brightness, or type a hex code). Click a shape in the view to select it, or drag it with the gizmo.
+- **Rig:** the bone tree. Add, delete, rename and reparent bones, and edit offsets and lengths with sliders or the gizmos. Rotating or scaling a bone swings and stretches its children and shapes about the joint. You can also mirror left to right, or reset to the standard humanoid (with a two-part torso). Renaming a bone updates every shape, clip and mask that uses it.
+- **Shapes:** the selected shape's controls sit at the top, followed by every shape grouped by body part: head, torso, left and right arms, left and right legs, and other. Each part folds away and has its own add button.
+  - Duplicate, delete, mirror and reorder shapes.
+  - Sliders cover position, rotation, size, **taper** and **curve**; "Point along bone" fits a capsule to its bone.
+  - There's a colour picker (hue, saturation and brightness, or type a hex code).
 
 **Right panel:**
 
@@ -143,6 +146,16 @@ The game uses all of this.
   - Enemy idle: sway and raised arms.
   - Other tools: drop the ragdoll, turntable view, and toggles for the grid, bones, shapes and collision.
 
+**In the view:**
+
+- **Picking:** like Blender, the piece of the model under the mouse lights up, and clicking it selects that shape and its bone. On the Rig and Clips tabs you can also click a joint.
+- **Gizmos:** there's a move, rotate and scale gizmo (W, E, R, or the toolbar). What they work on follows the tab you last used:
+  - **Shapes:** a shape's position, rotation (rings around its own axes) and size (per axis, or evenly from the centre).
+  - **Rig:** a bone's rest pose.
+  - **Clips:** the selected bone at the playhead, which sets a key.
+
+  The top-left corner of the view says what you're editing.
+
 **Bottom: the timeline.** Play, pause and step through frames (30 a second). Scrub the ruler, click a key to select it, drag keys to retime them, and press Delete to remove the selected one.
 
 **Keys and mouse:**
@@ -150,7 +163,8 @@ The game uses all of this.
 - File: Ctrl+S save, Ctrl+Z / Ctrl+Y undo and redo.
 - Editing: Space play, F frame the selection, Ctrl+D duplicate a shape, Del delete.
 - View: right-drag orbits, middle-drag pans, the wheel zooms.
-- Numbers: right-click any slider or number to type an exact value. Shift drags finely, Ctrl drags coarsely.
+- Numbers: click any slider or number to type an exact value; drag it to change it (Shift drags finely, Ctrl coarsely).
+- Text: the whole value is selected when you start, so typing replaces it. Left, Right, Home and End move the caret; Ctrl+A selects all; Ctrl+V pastes. Enter, Tab or clicking elsewhere keeps the edit, and Escape cancels it.
 
 **Test in game** saves, then starts the game. Players start the game as the entity (`--hero <name>`); enemies spawn one in front of you (`--spawn <name>`).
 
@@ -193,7 +207,7 @@ The game uses all of this.
 
 - **Where they live:** `content/entities/*.entity.json` and `content/maps/*.map.json` are plain, readable JSON (vectors are `[x, y, z]`). The editors write them, and you can also edit them by hand.
 - **How the game uses them:** it loads `content/` next to the exe (or `--content <dir>`), plays `--map <name>` (default `debug`), and falls back to built-in defaults for anything missing.
-- **Standard rig:** entities with the 16 standard humanoid bones (pelvis, chest, neck, head, shoulder/elbow/hand and hip/knee/foot, .L and .R) get the procedural motion and ragdolls. Extra bones (tails, antennae) are animated by clips.
+- **Standard rig:** entities with the 16 standard humanoid bones get the procedural motion and ragdolls. Those bones are pelvis, chest, neck, head, shoulder/elbow/hand and hip/knee/foot (.L and .R). An optional abdomen bone between pelvis and chest splits the torso in two (the hero has one, and the spine bends at both). Extra bones (tails, antennae) are animated by clips.
 
 ## For development
 

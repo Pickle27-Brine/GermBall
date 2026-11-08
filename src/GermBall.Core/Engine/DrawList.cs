@@ -22,6 +22,9 @@ public struct DrawItem
     public Vector4 Color;   // alpha below 1 draws in the transparent pass
     public MeshId Mesh;
     public DrawFlags Flags;
+    /// <summary>A mesh of its own (tapered and curved shapes) instead of a built-in one.</summary>
+    public Mesh Custom;
+    public Mesh Geometry => Custom ?? GermBall.Engine.Mesh.Get(Mesh);
 }
 
 /// <summary>Everything a renderer needs for one frame: the camera, the lighting, the 3D items and the 2D overlay.
@@ -55,6 +58,8 @@ public sealed class DrawList
 
     public void Add(MeshId mesh, Matrix4x4 world, Vector4 color, DrawFlags flags = DrawFlags.None) =>
         Items.Add(new DrawItem { Mesh = mesh, World = world, Color = color, Flags = flags });
+    public void AddCustom(Mesh mesh, Matrix4x4 world, Vector4 color, DrawFlags flags = DrawFlags.None) =>
+        Items.Add(new DrawItem { Mesh = MeshId.Count, Custom = mesh, World = world, Color = color, Flags = flags });
     public void Box(Vector3 center, Vector3 size, Quaternion rot, Vector4 color, DrawFlags flags = DrawFlags.None) =>
         Add(MeshId.Cube, MathX.Trs(center, rot, size), color, flags);
     public void Box(Vector3 center, Vector3 size, Vector4 color, DrawFlags flags = DrawFlags.None) =>

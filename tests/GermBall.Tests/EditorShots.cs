@@ -27,6 +27,12 @@ public sealed class EditorDriver
         In.Down[button] = true; In.Pressed[button] = true; Step();
         In.Down[button] = false; In.Released[button] = true; Step();
     }
+    /// <summary>Press and release within one frame (a fast click on a real mouse).</summary>
+    public void QuickClick(float x, float y)
+    {
+        MoveTo(x, y); Step();
+        In.Pressed[0] = true; In.Released[0] = true; In.Down[0] = false; Step();
+    }
     public void Drag(float x0, float y0, float x1, float y1, int steps = 8, int button = 0)
     {
         MoveTo(x0, y0); Step();

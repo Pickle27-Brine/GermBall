@@ -68,6 +68,10 @@ public sealed class ShapeDef
     /// <summary>Full size along each axis. Capsules, cylinders and cones run along Y.</summary>
     public Vector3 Size = new(0.2f);
     public string Color = "#FFFFFF";
+    /// <summary>-1..1: positive narrows the top (+Y) end, negative the bottom (a limb thinning toward the wrist).</summary>
+    public float Taper;
+    /// <summary>-1..1: bends the shape along its length toward +X; the top end moves this many lengths sideways (rotate the shape to bend another way).</summary>
+    public float Curve;
     /// <summary>Drawn at full brightness, ignoring light (eyes, glows).</summary>
     public bool Unlit;
     public bool Hidden;

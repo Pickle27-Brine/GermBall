@@ -288,7 +288,7 @@ public sealed partial class Game
         var p = Player;
         var feet = PlayerRagdoll != null ? PlayerRagdoll.Center - new Vector3(0, 0.9f, 0) : Vector3.Lerp(p.PrevPos, p.Pos, a);
         // one height whether curled or not, so every jump doesn't bob the camera
-        float targetY = feet.Y + (p.Rolling && p.Grounded ? 1.05f : CameraHeight);
+        float targetY = feet.Y + (p.Rolling && p.Grounded ? 1.3f : CameraHeight);
         // smooth vertical motion (steps, landings) but never lag behind by more than half a metre
         camPivotY = MathX.Lerp(camPivotY, targetY, 1 - MathF.Exp(-14 * dt));
         camPivotY = MathX.Clamp(camPivotY, targetY - 0.5f, targetY + 0.5f);
@@ -313,8 +313,8 @@ public sealed partial class Game
     /// <summary>0 = hip camera, 1 = fully aimed in (eased).</summary>
     public float AimBlend;
     public const float AimBlendTime = 0.2f;
-    /// <summary>Height of the camera's pivot above the feet (lowered from 1.6 m so the view sits lower behind the hero).</summary>
-    public const float CameraHeight = 1.35f;
+    /// <summary>Height of the camera's pivot above the feet.</summary>
+    public const float CameraHeight = 1.6f;
     /// <summary>Interpolation between the last two simulation steps, for drawing.</summary>
     public float Alpha => alpha;
 }

@@ -30,7 +30,7 @@ public sealed class EntityView
     public Matrix4x4 ShapeMatrix(ShapeDef s) => ShapeMatrix(s, s.Size);
 
     /// <summary>Draws every shape. <paramref name="flash"/> turns it white (hit), <paramref name="dim"/> darkens it (dead).</summary>
-    public void Draw(DrawList dl, bool flash = false, float dim = 1, int highlight = -1, float alpha = 1)
+    public void Draw(DrawList dl, bool flash = false, float dim = 1, int highlight = -1, float alpha = 1, int hover = -1)
     {
         for (int i = 0; i < Def.Shapes.Count; i++)
         {
@@ -39,6 +39,7 @@ public sealed class EntityView
             var c = flash ? Vector4.One : ColorHex.Parse(s.Color);
             c = new Vector4(c.X * dim, c.Y * dim, c.Z * dim, alpha);
             if (i == highlight) c = new Vector4(Vector3.Lerp(new Vector3(c.X, c.Y, c.Z), new Vector3(1, 0.85f, 0.2f), 0.45f), alpha);
+            else if (i == hover) c = new Vector4(Vector3.Lerp(new Vector3(c.X, c.Y, c.Z), Vector3.One, 0.3f), alpha);   // under the mouse
             var flags = s.Unlit ? DrawFlags.Unlit : DrawFlags.None;
             DrawShape(dl, this, s, c, flags);
         }
@@ -46,6 +47,12 @@ public sealed class EntityView
 
     public static void DrawShape(DrawList dl, EntityView v, ShapeDef s, Vector4 c, DrawFlags flags)
     {
+        if (MathF.Abs(s.Taper) > 0.004f || MathF.Abs(s.Curve) > 0.004f)
+        {
+            // tapered or curved: its own mesh, built at its size
+            dl.AddCustom(DeformedMeshes.Get(s.Type, Vector3.Abs(s.Size), s.Taper, s.Curve), v.ShapeMatrix(s, Vector3.One), c, flags);
+            return;
+        }
         switch (s.Type)
         {
             case "Sphere": dl.Add(MeshId.Sphere, v.ShapeMatrix(s), c, flags); break;

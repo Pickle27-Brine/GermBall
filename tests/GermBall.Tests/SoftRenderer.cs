@@ -49,7 +49,7 @@ public sealed class SoftRenderer
 
     void DrawItem(DrawList dl, DrawItem it, Matrix4x4 vp, bool blend)
     {
-        var mesh = Mesh.Get(it.Mesh);
+        var mesh = it.Geometry;
         var m = it.World;
         var s2 = new Vector3(new Vector3(m.M11, m.M12, m.M13).LengthSquared(), new Vector3(m.M21, m.M22, m.M23).LengthSquared(), new Vector3(m.M31, m.M32, m.M33).LengthSquared());
         var verts = new Vtx[mesh.Pos.Count];

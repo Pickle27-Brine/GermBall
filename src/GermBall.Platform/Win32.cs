@@ -75,6 +75,25 @@ public static unsafe class Win32
     [DllImport("kernel32", CharSet = CharSet.Unicode)] public static extern IntPtr GetModuleHandleW(string name);
     [DllImport("winmm")] public static extern uint timeBeginPeriod(uint ms);
     [DllImport("user32")] public static extern short GetKeyState(int vk);
+    [DllImport("user32")] public static extern bool OpenClipboard(IntPtr hWnd);
+    [DllImport("user32")] public static extern bool CloseClipboard();
+    [DllImport("user32")] public static extern IntPtr GetClipboardData(uint format);
+    [DllImport("kernel32")] public static extern IntPtr GlobalLock(IntPtr h);
+    [DllImport("kernel32")] public static extern bool GlobalUnlock(IntPtr h);
+
+    /// <summary>The clipboard's text (first line), or null.</summary>
+    public static string ClipboardText(IntPtr hwnd)
+    {
+        if (!OpenClipboard(hwnd)) return null;
+        try
+        {
+            var h = GetClipboardData(13 /* CF_UNICODETEXT */); if (h == IntPtr.Zero) return null;
+            var p = GlobalLock(h); if (p == IntPtr.Zero) return null;
+            try { var s = Marshal.PtrToStringUni(p); int nl = s?.IndexOfAny(new[] { '\r', '\n' }) ?? -1; return nl >= 0 ? s[..nl] : s; }
+            finally { GlobalUnlock(h); }
+        }
+        finally { CloseClipboard(); }
+    }
     [DllImport("winmm")] public static extern uint timeEndPeriod(uint ms);
 
     public static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = new(-4);

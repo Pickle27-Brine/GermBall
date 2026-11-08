@@ -10,11 +10,14 @@ namespace GermBall.Sim;
 public readonly struct Rig
 {
     public readonly float S, PelvisH, Torso, Neck, HeadUp, ShoulderW, ShoulderDrop, HipW, HipDrop, Thigh, Shin, Ankle, Upper, Fore;
+    /// <summary>Pelvis to abdomen (0: one-piece torso).</summary>
+    public readonly float Abdomen;
     public Rig(float s)
         : this(0.98f * s, 0.40f * s, 0.13f * s, 0.16f * s, 0.25f * s, 0.02f * s, 0.11f * s, 0.04f * s, 0.47f * s, 0.46f * s, 0.29f * s, 0.28f * s) { }
 
-    public Rig(float pelvisH, float torso, float neck, float headUp, float shoulderW, float shoulderDrop, float hipW, float hipDrop, float thigh, float shin, float upper, float fore)
+    public Rig(float pelvisH, float torso, float neck, float headUp, float shoulderW, float shoulderDrop, float hipW, float hipDrop, float thigh, float shin, float upper, float fore, float abdomen = 0)
     {
+        Abdomen = abdomen;
         S = MathF.Max(0.05f, pelvisH / 0.98f);
         PelvisH = pelvisH; Torso = torso; Neck = neck; HeadUp = headUp; ShoulderW = shoulderW; ShoulderDrop = shoulderDrop;
         HipW = hipW; HipDrop = hipDrop; Thigh = thigh; Shin = shin; Upper = upper; Fore = fore;
@@ -45,7 +48,18 @@ public readonly struct Rig
     public void Spine(Pose o, Vector3 pelvis, Vector3 torsoDir, Vector3 fwd, Vector3 right, float breathe = 0)
     {
         o[J.Pelvis] = pelvis;
-        o[J.Chest] = pelvis + torsoDir * (Torso + breathe);
+        if (Abdomen > 0)
+        {
+            // two segments: the abdomen bends half as much as the chest
+            var low = Vector3.Normalize(Vector3.UnitY + torsoDir);
+            o[J.Abdomen] = pelvis + low * Abdomen;
+            o[J.Chest] = o[J.Abdomen] + torsoDir * (Torso - Abdomen + breathe);
+        }
+        else
+        {
+            o[J.Chest] = pelvis + torsoDir * (Torso + breathe);
+            o[J.Abdomen] = (pelvis + o[J.Chest]) * 0.5f;
+        }
         o[J.Neck] = o[J.Chest] + torsoDir * Neck;
         o[J.Head] = o[J.Neck] + torsoDir * HeadUp;
         var shBase = o[J.Chest] - torsoDir * ShoulderDrop;

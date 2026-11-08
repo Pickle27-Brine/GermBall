@@ -90,6 +90,7 @@ public sealed unsafe class Window
                     int vk = (int)wp; bool repeat = (((long)lp >> 30) & 1) != 0;
                     if (!repeat && AllowFullscreenKey && ((vk == 0x0D && msg == Win32.WM_SYSKEYDOWN) || vk == 0x7A)) { ToggleFullscreen(); return IntPtr.Zero; }   // Alt+Enter, F11
                     if (!repeat) Input.Key(vk, true); else Input.Repeat(vk);
+                    if (vk == 'V' && (Win32.GetKeyState(0x11) & 0x8000) != 0) { var clip = Win32.ClipboardText(h); if (!string.IsNullOrEmpty(clip)) Input.Typed.Append(clip); }
                     if (msg == Win32.WM_SYSKEYDOWN && vk != 0x73) return IntPtr.Zero;   // keep Alt / F10 from opening the system menu, but allow Alt+F4
                     break;
                 }

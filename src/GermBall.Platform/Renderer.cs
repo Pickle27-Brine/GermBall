@@ -162,7 +162,12 @@ public sealed unsafe class Renderer : IDisposable
             else if (it.Color.W >= 0.999f) opaque.Add(it);
             else transp.Add((it, Vector3.DistanceSquared(it.World.Translation, dl.CamPos)));
         }
-        opaque.Sort((a, b) => a.Mesh.CompareTo(b.Mesh));
+        opaque.Sort((a, b) => a.Mesh != b.Mesh ? a.Mesh.CompareTo(b.Mesh)
+            : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(a.Custom).CompareTo(System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(b.Custom)));
+        frameNo++;
+        if (frameNo % 60 == 0)
+            foreach (var k in new List<Mesh>(custom.Keys))
+                if (frameNo - custom[k].used > 180) { custom[k].vb.Dispose(); custom[k].ib.Dispose(); custom.Remove(k); }
         transp.Sort((a, b) => b.d.CompareTo(a.d));
 
         ctx.OMSetBlendState(bsOpaque); ctx.OMSetDepthStencilState(dsOn);
@@ -205,14 +210,33 @@ public sealed unsafe class Renderer : IDisposable
         int start = 0;
         while (start < n)
         {
-            var mesh = get(start).Mesh; int end = start + 1;
-            while (end < n && get(end).Mesh == mesh) end++;
-            var (vb, ib, count) = meshes[(int)mesh];
+            var first = get(start); int end = start + 1;
+            while (end < n && get(end).Mesh == first.Mesh && get(end).Custom == first.Custom) end++;
+            var (vb, ib, count) = first.Custom != null ? Custom(first.Custom) : meshes[(int)first.Mesh];
             ctx.IASetVertexBuffers(0, new[] { vb, instBuf }, new uint[] { 36, (uint)sizeof(Instance) }, new uint[] { 0, 0 });
             ctx.IASetIndexBuffer(ib, Format.R32_UInt, 0);
             ctx.DrawIndexedInstanced((uint)count, (uint)(end - start), 0, 0, (uint)start);
             start = end;
         }
+    }
+
+    // meshes made on the fly (tapered and curved shapes), uploaded once and dropped when unused for a few seconds
+    readonly Dictionary<Mesh, (ID3D11Buffer vb, ID3D11Buffer ib, int count, int version, long used)> custom = new();
+    long frameNo;
+    (ID3D11Buffer, ID3D11Buffer, int) Custom(Mesh m)
+    {
+        if (custom.TryGetValue(m, out var e) && e.version == m.Version) { custom[m] = (e.vb, e.ib, e.count, e.version, frameNo); return (e.vb, e.ib, e.count); }
+        if (e.vb != null) { e.vb.Dispose(); e.ib.Dispose(); }
+        var data = new float[m.Pos.Count * 9];
+        for (int k = 0; k < m.Pos.Count; k++)
+        {
+            data[k * 9] = m.Pos[k].X; data[k * 9 + 1] = m.Pos[k].Y; data[k * 9 + 2] = m.Pos[k].Z;
+            data[k * 9 + 3] = m.Nrm[k].X; data[k * 9 + 4] = m.Nrm[k].Y; data[k * 9 + 5] = m.Nrm[k].Z;
+            data[k * 9 + 6] = m.Col[k].X; data[k * 9 + 7] = m.Col[k].Y; data[k * 9 + 8] = m.Col[k].Z;
+        }
+        var vb = dev.CreateBuffer(data, BindFlags.VertexBuffer); var ib = dev.CreateBuffer(m.Idx.ToArray(), BindFlags.IndexBuffer);
+        custom[m] = (vb, ib, m.Idx.Count, m.Version, frameNo);
+        return (vb, ib, m.Idx.Count);
     }
 
     void AddQuad(float x, float y, float w, float h, Vector4 tl, Vector4 tr, Vector4 bl, Vector4 br)
@@ -250,6 +274,7 @@ public sealed unsafe class Renderer : IDisposable
     public void Dispose()
     {
         foreach (var (vb, ib, _) in meshes) { vb?.Dispose(); ib?.Dispose(); }
+        foreach (var e in custom.Values) { e.vb.Dispose(); e.ib.Dispose(); }
         instBuf?.Dispose(); buf2d?.Dispose(); frameCb.Dispose(); screenCb.Dispose();
         rs.Dispose(); bsOpaque.Dispose(); bsAlpha.Dispose(); dsOn.Dispose(); dsRead.Dispose(); dsOff.Dispose();
         layout.Dispose(); layout2d.Dispose(); vs.Dispose(); ps.Dispose(); vs2d.Dispose(); ps2d.Dispose();

@@ -30,7 +30,6 @@ public sealed class Gui
     static readonly Vector4[] AxisCol = { new(0.85f, 0.32f, 0.32f, 1), new(0.36f, 0.78f, 0.36f, 1), new(0.36f, 0.55f, 0.92f, 1) };
 
     string active, focus;
-    string editBuf = ""; bool editSelectAll;
     sealed class PanelState { public float Scroll, ContentH; }
     readonly Dictionary<string, PanelState> panels = new();
     readonly Dictionary<string, int> idCount = new();
@@ -68,6 +67,7 @@ public sealed class Gui
         In = input; O = o; W = w; H = h; Changed = false; Tooltip = null; Rects.Clear();
         idCount.Clear(); uiRects.Clear();
         lastPopupRect = popupRect; popupRect = default;
+        ClickAwayCommits();
         MouseOverUi = Inside(lastPopupRect, In.MouseX, In.MouseY);
         foreach (var r in lastUiRects) if (Inside(r, In.MouseX, In.MouseY)) MouseOverUi = true;
     }
@@ -84,14 +84,11 @@ public sealed class Gui
             float tw = Overlay.TextWidth(Tooltip, S) + 2 * Pad, tx = MathF.Min(In.MouseX + 14, W - tw - 2), ty = In.MouseY + 18;
             O.Rect(tx, ty, tw, RowH, new Vector4(0, 0, 0, 0.85f)); O.Text(tx + Pad, ty + (RowH - 7 * S) / 2, Tooltip, S, TextCol);
         }
-        if (focus != null && In.Pressed[0] && !focusHitThisFrame) CommitFocusAway();
         if (!In.Down[0] && !In.Down[1]) active = null;
-        focusHitThisFrame = false;
         lastUiRects = new List<Vector4>(uiRects);
         frame++;
     }
     int frame, popupOpenedFrame = -1;
-    bool focusHitThisFrame;
 
     static bool Inside(Vector4 r, float x, float y) => r.Z > 0 && x >= r.X && y >= r.Y && x < r.X + r.Z && y < r.Y + r.W;
     bool Hover(Vector4 r) =>
@@ -174,10 +171,10 @@ public sealed class Gui
     }
 
     /// <summary>A full-width row with the label on the left; returns the rectangle left for the control.</summary>
-    Vector4 LabeledRow(string label, out Vector4 labelRect)
+    Vector4 LabeledRow(string label, out Vector4 labelRect, float frac = 0.45f)
     {
         var r = Place(0, RowH);
-        float lw = MathF.Min(r.Z * 0.45f, 22 * CharW);
+        float lw = MathF.Min(r.Z * frac, 22 * CharW);
         labelRect = new Vector4(r.X, r.Y, lw, r.W);
         Rec(label, new Vector4(r.X + lw, r.Y, r.Z - lw, r.W));
         TextIn(labelRect, Shown(label), Dim, false, 0);
@@ -253,15 +250,18 @@ public sealed class Gui
 
     bool SliderIn(string id, Vector4 r, ref float v, float min, float max, string fmt)
     {
-        if (NumberEdit(id, r, ref v, fmt)) return true;
+        if (NumberEdit(id, r, ref v, fmt, out bool busy)) return true;
+        if (busy) return false;
         bool hover = Hover(r), changed = false;
-        if (hover && In.Pressed[0]) active = id;
-        if (active == id && In.Down[0])
+        if (hover && In.Pressed[0]) Grab(id);
+        // drag to set (once the mouse has moved a few pixels); a plain click types instead
+        if (active == id && In.Down[0] && DragStarted())
         {
             float t = MathX.Clamp01((In.MouseX - r.X) / r.Z), nv = min + (max - min) * t;
             if (In.Shift) nv = MathF.Round(nv / ((max - min) / 20)) * ((max - min) / 20);   // shift: snap to twentieths
             if (nv != v) { v = nv; changed = true; Changed = true; }
         }
+        ClickToType(id, hover, v);
         if (Visible(r))
         {
             O.Rect(r.X, r.Y, r.Z, r.W, active == id ? ActiveBg : hover ? HoverBg : WidgetBg);
@@ -269,11 +269,11 @@ public sealed class Gui
             O.Rect(r.X, r.Y, r.Z * f, r.W, AccentDim);
             TextIn(r, v.ToString(fmt, CultureInfo.InvariantCulture), TextCol, true);
         }
-        if (hover) Tooltip ??= "drag, shift snaps, right-click to type";
+        if (hover) Tooltip ??= "drag to change (shift snaps), click to type";
         return changed;
     }
 
-    /// <summary>An unbounded number you drag left and right (shift: fine). Right-click to type a value.</summary>
+    /// <summary>An unbounded number you drag left and right (shift: fine, ctrl: coarse). Click to type a value.</summary>
     public bool Drag(string label, ref float v, float speed = 0.01f, string fmt = "0.000")
     {
         string id = Id(label);
@@ -283,29 +283,44 @@ public sealed class Gui
 
     bool DragIn(string id, Vector4 r, ref float v, float speed, string fmt, Vector4? tint)
     {
-        if (NumberEdit(id, r, ref v, fmt)) return true;
+        if (NumberEdit(id, r, ref v, fmt, out bool busy)) return true;
+        if (busy) return false;
         bool hover = Hover(r), changed = false;
-        if (hover && In.Pressed[0]) active = id;
-        if (active == id && In.Down[0] && In.MouseDX != 0)
+        if (hover && In.Pressed[0]) Grab(id);
+        if (active == id && In.Down[0] && DragStarted() && In.MouseDX != 0)
         {
             v += In.MouseDX * speed * (In.Shift ? 0.1f : 1) * (In.Ctrl ? 10 : 1);
             changed = true; Changed = true;
         }
+        ClickToType(id, hover, v);
         if (Visible(r))
         {
             O.Rect(r.X, r.Y, r.Z, r.W, active == id ? ActiveBg : hover ? HoverBg : WidgetBg);
             if (tint is Vector4 t) O.Rect(r.X, r.Y, 2 * S, r.W, t);
-            TextIn(r, v.ToString(fmt, CultureInfo.InvariantCulture), TextCol, true);
+            TextIn(r, v.ToString(fmt, CultureInfo.InvariantCulture), TextCol, true, 2 * S);
         }
-        if (hover) Tooltip ??= "drag (shift fine, ctrl coarse), right-click to type";
+        if (hover) Tooltip ??= "drag to change (shift fine, ctrl coarse), click to type";
         return changed;
+    }
+
+    // a press on a number: dragging changes it, releasing without moving types into it
+    float grabX, grabY; bool grabMoved;
+    void Grab(string id) { active = id; grabX = In.MouseX; grabY = In.MouseY; grabMoved = false; }
+    bool DragStarted()
+    {
+        if (!grabMoved && (MathF.Abs(In.MouseX - grabX) > 3 || MathF.Abs(In.MouseY - grabY) > 3)) grabMoved = true;
+        return grabMoved;
+    }
+    void ClickToType(string id, bool hover, float v)
+    {
+        if (active == id && In.Released[0] && hover && !grabMoved) StartEdit(id, v.ToString("0.####", CultureInfo.InvariantCulture));
     }
 
     /// <summary>Three drags in a row, tinted X red, Y green, Z blue.</summary>
     public bool Vec3(string label, ref Vector3 v, float speed = 0.01f, string fmt = "0.000")
     {
         string id = Id(label);
-        var row = LabeledRow(label, out _);
+        var row = LabeledRow(label, out _, 0.28f);   // three numbers need the room
         float w = (row.Z - 2 * Gap) / 3; bool c = false;
         float x = v.X, y = v.Y, z = v.Z;
         c |= DragIn(id + ".x", new Vector4(row.X, row.Y, w, row.W), ref x, speed, fmt, AxisCol[0]);
@@ -315,50 +330,91 @@ public sealed class Gui
         return c;
     }
 
-    /// <summary>Right-click (or ctrl-click) a number to type it; Enter or clicking away commits, Escape cancels.</summary>
-    bool NumberEdit(string id, Vector4 r, ref float v, string fmt)
-    {
-        bool hover = Hover(r);
-        if (hover && (In.Pressed[1] || (In.Pressed[0] && In.Ctrl)) && focus != id)
-        {
-            focus = id; editBuf = v.ToString("0.####", CultureInfo.InvariantCulture); editSelectAll = true; active = null;
-        }
-        if (pendingCommit == id)
-        {
-            pendingCommit = null;
-            if (float.TryParse(pendingValue, NumberStyles.Float, CultureInfo.InvariantCulture, out float pv) && float.IsFinite(pv)) { v = pv; Changed = true; return true; }
-            return false;
-        }
-        if (focus != id) return false;
-        if (hover && In.Pressed[0]) focusHitThisFrame = true;
-        bool commit = EditKeys(out bool cancel);
-        if (Visible(r))
-        {
-            O.Rect(r.X, r.Y, r.Z, r.W, ActiveBg);
-            O.Frame(r.X, r.Y, r.Z, r.W, S, Accent);
-            TextIn(r, editBuf + ((frame / 30) % 2 == 0 ? "_" : " "), TextCol, false);
-        }
-        if (cancel) { focus = null; return false; }
-        if (commit || pendingCommit == id)
-        {
-            string text = commit ? editBuf : pendingValue;
-            if (pendingCommit == id) pendingCommit = null;
-            focus = null;
-            if (float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out float nv) && float.IsFinite(nv)) { v = nv; Changed = true; return true; }
-        }
-        return false;
-    }
+    // ---------------------------------------------------------------- typing
+    // One field has the keyboard at a time. Its text is edited in editBuf with a caret; typing first replaces the whole
+    // value (it starts selected). Enter or Tab commits, Escape cancels, clicking anywhere else commits.
+    string editBuf = ""; int caret; bool selectAll;
+    Vector4 focusRect;
     string pendingCommit, pendingValue;
+
+    void StartEdit(string id, string text)
+    {
+        if (focus != null && focus != id) CommitFocusAway();
+        focus = id; editBuf = text ?? ""; caret = editBuf.Length; selectAll = true; active = null;
+    }
     void CommitFocusAway() { pendingCommit = focus; pendingValue = editBuf; focus = null; }
 
-    /// <summary>Applies typed characters and editing keys to the edit buffer. Returns true on Enter.</summary>
+    /// <summary>Called from <see cref="Begin"/>: a click outside the field being typed in commits it before anything else is drawn,
+    /// so the value lands even when the click changes what's on screen.</summary>
+    void ClickAwayCommits()
+    {
+        if (focus != null && (In.Pressed[0] || In.Pressed[1]) && !Inside(focusRect, In.MouseX, In.MouseY)) CommitFocusAway();
+    }
+
+    /// <summary>Applies typed characters and editing keys. Returns true on Enter or Tab.</summary>
     bool EditKeys(out bool cancel)
     {
         cancel = In.Key(Keys.Escape);
-        if (In.Typed.Length > 0) { if (editSelectAll) editBuf = ""; editBuf += In.Typed; editSelectAll = false; }
-        if (In.Key(Keys.Backspace) && editBuf.Length > 0) { editBuf = editSelectAll ? "" : editBuf[..^1]; editSelectAll = false; }
-        if (In.Key(Keys.Delete)) { editBuf = ""; editSelectAll = false; }
+        caret = Math.Clamp(caret, 0, editBuf.Length);
+        if (In.Ctrl && In.Key('A')) selectAll = true;
+        if (In.Typed.Length > 0)
+        {
+            if (selectAll) { editBuf = ""; caret = 0; selectAll = false; }
+            editBuf = editBuf.Insert(caret, In.Typed); caret += In.Typed.Length;
+        }
+        if (In.Key(Keys.Backspace))
+        {
+            if (selectAll) { editBuf = ""; caret = 0; selectAll = false; }
+            else if (caret > 0) { editBuf = editBuf.Remove(caret - 1, 1); caret--; }
+        }
+        if (In.Key(Keys.Delete))
+        {
+            if (selectAll) { editBuf = ""; caret = 0; selectAll = false; }
+            else if (caret < editBuf.Length) editBuf = editBuf.Remove(caret, 1);
+        }
+        if (In.Key(Keys.Left)) { caret = selectAll ? 0 : Math.Max(0, caret - 1); selectAll = false; }
+        if (In.Key(Keys.Right)) { caret = selectAll ? editBuf.Length : Math.Min(editBuf.Length, caret + 1); selectAll = false; }
+        if (In.Key(Keys.Home)) { caret = 0; selectAll = false; }
+        if (In.Key(Keys.End)) { caret = editBuf.Length; selectAll = false; }
         return In.Key(Keys.Enter) || In.Key(Keys.Tab);
+    }
+
+    /// <summary>Draws the text being edited: the selection highlighted, or a blinking caret; scrolled to keep the caret in view.</summary>
+    void DrawEditing(Vector4 r)
+    {
+        focusRect = r;
+        O.Rect(r.X, r.Y, r.Z, r.W, ActiveBg);
+        O.Frame(r.X, r.Y, r.Z, r.W, S, Accent);
+        int max = Math.Max(1, (int)((r.Z - 2 * Pad) / CharW));
+        int start = Math.Max(0, caret - max + 1);
+        string shown = editBuf.Substring(start, Math.Min(max, editBuf.Length - start));
+        float tx = r.X + Pad, ty = r.Y + (r.W - 7 * S) / 2;
+        if (selectAll && editBuf.Length > 0) O.Rect(tx - S, ty - S, Overlay.TextWidth(shown, S) + 2 * S, 9 * S, Selected);
+        O.Text(tx, ty, shown, S, TextCol);
+        if (!selectAll && (frame / 30) % 2 == 0) O.Rect(tx + (caret - start) * CharW - S, ty - S, S, 9 * S, Accent);
+    }
+
+    /// <summary>A number being typed into (after a click). Returns true when a new value is committed.</summary>
+    bool NumberEdit(string id, Vector4 r, ref float v, string fmt, out bool busy)
+    {
+        busy = false;
+        bool hover = Hover(r);
+        if (hover && (In.Pressed[1] || (In.Pressed[0] && In.Ctrl) || (In.DoubleClick && In.Pressed[0])) && focus != id)
+            StartEdit(id, v.ToString("0.####", CultureInfo.InvariantCulture));
+        string text = null;
+        if (pendingCommit == id) { pendingCommit = null; text = pendingValue; }
+        else if (focus == id)
+        {
+            bool commit = EditKeys(out bool cancel);
+            if (Visible(r)) DrawEditing(r);
+            busy = true;
+            if (cancel) { focus = null; return false; }
+            if (!commit) return false;   // still typing
+            focus = null; text = editBuf;
+        }
+        if (text == null) return false;
+        if (float.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float nv) && float.IsFinite(nv) && nv != v) { v = nv; Changed = true; return true; }
+        return false;
     }
 
     /// <summary>A text box. Returns true when the edit is committed (Enter or clicking away) with a new value.</summary>
@@ -372,11 +428,7 @@ public sealed class Gui
     bool TextBox(string id, Vector4 r, ref string value, string placeholder)
     {
         bool hover = Hover(r);
-        if (hover && In.Pressed[0])
-        {
-            focusHitThisFrame = true;
-            if (focus != id) { if (focus != null) CommitFocusAway(); focus = id; editBuf = value ?? ""; editSelectAll = false; }
-        }
+        if (hover && In.Pressed[0] && focus != id) StartEdit(id, value ?? "");
         string result = null;
         if (focus == id)
         {
@@ -387,9 +439,12 @@ public sealed class Gui
         else if (pendingCommit == id) { pendingCommit = null; result = pendingValue; }
         if (Visible(r))
         {
-            O.Rect(r.X, r.Y, r.Z, r.W, focus == id ? ActiveBg : hover ? HoverBg : WidgetBg);
-            if (focus == id) { O.Frame(r.X, r.Y, r.Z, r.W, S, Accent); TextIn(r, editBuf + ((frame / 30) % 2 == 0 ? "_" : " "), TextCol); }
-            else TextIn(r, string.IsNullOrEmpty(value) ? placeholder : value, string.IsNullOrEmpty(value) ? Dim : TextCol);
+            if (focus == id) DrawEditing(r);
+            else
+            {
+                O.Rect(r.X, r.Y, r.Z, r.W, hover ? HoverBg : WidgetBg);
+                TextIn(r, string.IsNullOrEmpty(value) ? placeholder : value, string.IsNullOrEmpty(value) ? Dim : TextCol);
+            }
         }
         if (result != null && result != value) { value = result; Changed = true; return true; }
         return false;

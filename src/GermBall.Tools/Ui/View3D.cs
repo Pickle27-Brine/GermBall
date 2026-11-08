@@ -131,7 +131,7 @@ public sealed class View3D
 
     // ---------------------------------------------------------------- the move gizmo
     int dragAxis = -1; Vector3 dragPrev; float gizLen;
-    public bool GizmoActive => dragAxis >= 0;
+    public bool GizmoActive => dragAxis >= 0 || rotAxis >= 0 || scaleAxis >= 0;
 
     /// <summary>Draws the move gizmo at <paramref name="pos"/> and returns how far it was dragged this frame (world units).
     /// <paramref name="axes"/> lets it follow a rotated frame (bones, shapes). Axis 3 is the ground-plane square.</summary>
@@ -179,6 +179,98 @@ public sealed class View3D
         var sd = a1 - a0; float pix = sd.Length(); if (pix < 1) return Vector3.Zero;
         float along = Vector2.Dot(new Vector2(i.MouseDX, i.MouseDY), sd / pix) / pix * gizLen;
         return ax[dragAxis] * along;
+    }
+
+    // ---------------------------------------------------------------- the rotate gizmo
+    int rotAxis = -1; Vector3 rotGrab;
+
+    /// <summary>Three rings around <paramref name="pos"/>, one per axis of <paramref name="axes"/>. Dragging along a ring turns about
+    /// its axis; returns which axis (0-2, or -1) and the angle turned this frame (radians).</summary>
+    public (int axis, float angle) RotateGizmo(DrawList d, UiInput i, Vector3 pos, bool uiOwnsMouse, Matrix4x4? axes = null)
+    {
+        float radius = Vector3.Distance(CamPos, pos) * 0.16f;
+        var ax = Axes(axes);
+        var cols = new[] { new Vector4(0.95f, 0.3f, 0.3f, 1), new Vector4(0.35f, 0.9f, 0.35f, 1), new Vector4(0.35f, 0.55f, 1f, 1) };
+        const int n = 48;
+        var mouse = new Vector2(i.MouseX, i.MouseY);
+        int hover = -1; float best = 9; Vector3 hoverPoint = pos;
+        var ring = new Vector3[3, n + 1];
+        for (int k = 0; k < 3; k++)
+        {
+            var (u, v) = Perp(ax[k]);
+            for (int j = 0; j <= n; j++) { float a = MathF.Tau * j / n; ring[k, j] = pos + (u * MathF.Cos(a) + v * MathF.Sin(a)) * radius; }
+        }
+        if (!uiOwnsMouse && MouseIn(i) && !GizmoActive)
+            for (int k = 0; k < 3; k++)
+                for (int j = 0; j < n; j++)
+                {
+                    if (!Project(ring[k, j], out var s0) || !Project(ring[k, j + 1], out var s1)) continue;
+                    float dd = SegDist(mouse, s0, s1);
+                    if (dd < best) { best = dd; hover = k; hoverPoint = ring[k, j]; }
+                }
+        if (hover >= 0 && i.Pressed[0]) { rotAxis = hover; rotGrab = hoverPoint; }
+        if (!i.Down[0]) rotAxis = -1;
+        int shown = rotAxis >= 0 ? rotAxis : hover;
+        for (int k = 0; k < 3; k++)
+            for (int j = 0; j < n; j++)
+                Line(d, ring[k, j], ring[k, j + 1], k == shown ? new Vector4(1, 0.9f, 0.3f, 1) : cols[k], radius * (k == shown ? 0.03f : 0.018f), true);
+        if (rotAxis < 0) return (-1, 0);
+        // the mouse's movement along the ring's tangent at the grabbed point, over the ring's size on screen
+        var axis = ax[rotAxis]; var t = Vector3.Cross(axis, rotGrab - pos);
+        if (t.LengthSquared() < 1e-10f || !Project(rotGrab, out var g0) || !Project(rotGrab + Vector3.Normalize(t) * radius * 0.2f, out var g1) || !Project(pos, out var c0)) return (rotAxis, 0);
+        var sd = g1 - g0; if (sd.LengthSquared() < 1e-4f) return (rotAxis, 0);
+        float pixRadius = MathF.Max(20, Vector2.Distance(g0, c0));
+        float angle = Vector2.Dot(new Vector2(i.MouseDX, i.MouseDY), Vector2.Normalize(sd)) / pixRadius;
+        rotGrab = pos + Vector3.Transform(rotGrab - pos, Quaternion.CreateFromAxisAngle(axis, angle));
+        return (rotAxis, angle);
+    }
+
+    // ---------------------------------------------------------------- the scale gizmo
+    int scaleAxis = -1;
+
+    /// <summary>Axes with cubes on the ends (drag one to scale along it) and a cube in the middle (drag to scale evenly).
+    /// Returns the axis (0-2, 3 for all, or -1) and the factor to multiply by this frame.</summary>
+    public (int axis, float factor) ScaleGizmo(DrawList d, UiInput i, Vector3 pos, bool uiOwnsMouse, Matrix4x4? axes = null)
+    {
+        float len = Vector3.Distance(CamPos, pos) * 0.16f;
+        var ax = Axes(axes);
+        var cols = new[] { new Vector4(0.95f, 0.3f, 0.3f, 1), new Vector4(0.35f, 0.9f, 0.35f, 1), new Vector4(0.35f, 0.55f, 1f, 1) };
+        var mouse = new Vector2(i.MouseX, i.MouseY);
+        int hover = -1; float best = 9;
+        if (!uiOwnsMouse && MouseIn(i) && !GizmoActive && Project(pos, out var s0))
+        {
+            for (int k = 0; k < 3; k++)
+                if (Project(pos + ax[k] * len, out var s1)) { float dd = SegDist(mouse, s0, s1); if (dd < best) { best = dd; hover = k; } }
+            if (Vector2.Distance(mouse, s0) < 11) hover = 3;
+        }
+        if (hover >= 0 && i.Pressed[0]) scaleAxis = hover;
+        if (!i.Down[0]) scaleAxis = -1;
+        int shown = scaleAxis >= 0 ? scaleAxis : hover;
+        for (int k = 0; k < 3; k++)
+        {
+            var c = k == shown || shown == 3 ? new Vector4(1, 0.9f, 0.3f, 1) : cols[k];
+            Line(d, pos, pos + ax[k] * len, c, len * 0.03f, true);
+            d.Box(pos + ax[k] * len, new Vector3(len * 0.12f), Quaternion.Identity, c, DrawFlags.Unlit | DrawFlags.OnTop);
+        }
+        d.Box(pos, new Vector3(len * 0.14f), shown == 3 ? new Vector4(1, 0.9f, 0.3f, 1) : new Vector4(0.9f, 0.9f, 0.9f, 1), DrawFlags.Unlit | DrawFlags.OnTop);
+        if (scaleAxis < 0) return (-1, 1);
+        if (scaleAxis == 3) return (3, MathF.Max(0.2f, 1 + (i.MouseDX - i.MouseDY) / 150f));
+        if (!Project(pos, out var a0) || !Project(pos + ax[scaleAxis] * len, out var a1)) return (scaleAxis, 1);
+        var sd = a1 - a0; float pix = sd.Length(); if (pix < 1) return (scaleAxis, 1);
+        float along = Vector2.Dot(new Vector2(i.MouseDX, i.MouseDY), sd / pix);
+        return (scaleAxis, MathF.Max(0.2f, (pix + along) / pix));
+    }
+
+    static Vector3[] Axes(Matrix4x4? axes)
+    {
+        var ax = new[] { Vector3.UnitX, Vector3.UnitY, Vector3.UnitZ };
+        if (axes is Matrix4x4 m) for (int k = 0; k < 3; k++) { var v = Vector3.TransformNormal(ax[k], m); if (v.LengthSquared() > 1e-8f) ax[k] = Vector3.Normalize(v); }
+        return ax;
+    }
+    static (Vector3, Vector3) Perp(Vector3 a)
+    {
+        var u = Vector3.Cross(a, MathF.Abs(a.Y) < 0.9f ? Vector3.UnitY : Vector3.UnitX); u = Vector3.Normalize(u);
+        return (u, Vector3.Cross(a, u));
     }
 
     Vector3 PlanePoint(UiInput i, Vector3 through)

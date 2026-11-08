@@ -33,6 +33,9 @@ public sealed partial class EntityEditor
         Ui.SameLine(); if (Ui.Button("Undo", bw)) Undo();
         Ui.SameLine(); if (Ui.Button("Redo", bw)) Redo();
         Ui.SameLine(); if (Ui.Button("Test in game", 14 * Ui.CharW, true, Gui.AccentDim)) TestInGame();
+        Ui.SameLine(); if (Ui.Toggle("Move (W)", Mode == GizmoMode.Move, 10 * Ui.CharW)) Mode = GizmoMode.Move;
+        Ui.SameLine(); if (Ui.Toggle("Rotate (E)", Mode == GizmoMode.Rotate, 12 * Ui.CharW)) Mode = GizmoMode.Rotate;
+        Ui.SameLine(); if (Ui.Toggle("Scale (R)", Mode == GizmoMode.Scale, 11 * Ui.CharW)) Mode = GizmoMode.Scale;
         Ui.SameLine(); Ui.Button($"{Def.Name} ({Def.Kind}){(Dirty ? " *" : "")}##name", 0, false);
         Ui.EndArea();
     }
@@ -41,7 +44,7 @@ public sealed partial class EntityEditor
     void LeftPanel(Vector4 r)
     {
         Ui.BeginPanel("left", r.X, r.Y, r.Z, r.W);
-        Ui.Tabs(ref LeftTab, "Entity", "Rig", "Shapes");
+        if (Ui.Tabs(ref LeftTab, "Entity", "Rig", "Shapes")) { if (LeftTab == 1) Target = EditTarget.Rig; if (LeftTab == 2) Target = EditTarget.Shape; }
         switch (LeftTab)
         {
             case 0: EntityTab(); break;
@@ -173,54 +176,106 @@ public sealed partial class EntityEditor
     void ResetHumanoid()
     {
         var keep = Def.Bones.Where(b => Array.IndexOf(Skeleton.StdNames, b.Name) < 0).ToList();
-        Def.Bones = DefaultEntities.HumanoidBones();
+        Def.Bones = DefaultEntities.HumanoidBones(abdomen: true);
         foreach (var b in keep) Def.Bones.Add(b);
         Status = "Rig reset to the standard humanoid (extra bones kept)";
     }
+
+    // ---------------------------------------------------------------- shapes, by body part
+    static readonly string[] PartNames = { "Head", "Torso", "Left arm", "Right arm", "Left leg", "Right leg", "Other" };
+    readonly Dictionary<string, bool> partOpen = new();
+
+    /// <summary>Which body part a bone belongs to: its own name or its nearest standard ancestor's.</summary>
+    public string PartOf(string bone)
+    {
+        for (var b = bone != null ? Def.Bone(bone) : null; b != null; b = Def.Bone(b.Parent))
+        {
+            switch (b.Name)
+            {
+                case "neck": case "head": return "Head";
+                case "pelvis": case "abdomen": case "chest": return "Torso";
+                case "shoulder.L": case "elbow.L": case "hand.L": return "Left arm";
+                case "shoulder.R": case "elbow.R": case "hand.R": return "Right arm";
+                case "hip.L": case "knee.L": case "foot.L": return "Left leg";
+                case "hip.R": case "knee.R": case "foot.R": return "Right leg";
+            }
+        }
+        return "Other";
+    }
+    static string PartBone(string part) => part switch
+    {
+        "Head" => "head", "Torso" => "chest", "Left arm" => "elbow.L", "Right arm" => "elbow.R", "Left leg" => "knee.L", "Right leg" => "knee.R", _ => null,
+    };
+    void OpenPartOf(ShapeDef s) => partOpen[PartOf(s.Bone)] = true;
 
     void ShapesTab()
     {
         var types = ShapeTypes.All;
         string t = newShapeType; if (Ui.Combo("New shape", ref t, types)) newShapeType = t;
-        if (Ui.Button("Add", Ui.Split(3))) AddShape();
-        Ui.SameLine(); if (Ui.Button("Duplicate", Ui.Split(3), CurShape != null)) DuplicateShape();
+        if (Ui.Button("Duplicate", Ui.Split(3), CurShape != null)) DuplicateShape();
         Ui.SameLine(); if (Ui.Button("Delete", Ui.Split(3), CurShape != null)) DeleteShape();
-        if (Ui.Button("Mirror", Ui.Split(3), CurShape != null)) MirrorShape();
-        Ui.SameLine(); if (Ui.Button("Up", Ui.Split(3), SelShape > 0)) MoveShape(-1);
+        Ui.SameLine(); if (Ui.Button("Mirror", Ui.Split(3), CurShape != null)) MirrorShape();
+        if (Ui.Button("Up", Ui.Split(3), SelShape > 0)) MoveShape(-1);
         Ui.SameLine(); if (Ui.Button("Down", Ui.Split(3), SelShape >= 0 && SelShape < Def.Shapes.Count - 1)) MoveShape(1);
-        Ui.Checkbox("Show shapes", ref ShowShapes);
-        Ui.Heading($"Shapes ({Def.Shapes.Count})");
-        for (int i = 0; i < Def.Shapes.Count; i++)
+        Ui.SameLine(); Ui.Checkbox("Show", ref ShowShapes);
+
+        // the selected shape first, so its controls are always at hand
+        var c = CurShape;
+        if (c != null)
         {
-            var s = Def.Shapes[i];
-            if (Ui.Selectable($"{s.Name}  [{s.Type}] on {s.Bone ?? "origin"}##{i}", i == SelShape, 0, s.Hidden ? Gui.Dim : null)) { SelShape = i; SelBone = s.Bone; }
+            Ui.Heading($"{c.Name}  ({PartOf(c.Bone)})");
+            Ui.TextField("Name", ref c.Name);
+            string tp = c.Type; if (Ui.Combo("Type", ref tp, types)) c.Type = tp;
+            string bone = c.Bone; if (Ui.Combo("Bone", ref bone, Def.Bones.Select(b => b.Name).ToList(), "(origin)")) c.Bone = bone;
+            Ui.Vec3("Position", ref c.Pos, 0.002f);
+            Ui.Vec3("Rotation", ref c.Rot, 0.5f, "0.0");
+            Ui.Vec3("Size", ref c.Size, 0.002f);
+            if (Ui.Button("Size -10%", Ui.Split(2))) c.Size *= 0.9f;
+            Ui.SameLine(); if (Ui.Button("Size +10%", Ui.Split(2))) c.Size *= 1.1f;
+            Ui.Slider("Taper", ref c.Taper, -1, 1);
+            Ui.Label("+ narrows the top end, - the bottom end", Gui.Dim);
+            Ui.Slider("Curve", ref c.Curve, -1, 1);
+            Ui.Label("bends along its length, toward +X", Gui.Dim);
+            if (Ui.Button("Point along bone", Ui.Split(2)) && c.Bone != null)
+            {
+                var kid = Def.Bones.FirstOrDefault(b => b.Parent == c.Bone);
+                if (kid != null) { c.Rot = RotFor(kid.Offset); c.Pos = kid.Offset / 2; if (c.Type is "Capsule" or "Cylinder") c.Size.Y = kid.Offset.Length() + (c.Type == "Capsule" ? c.Size.X : 0); }
+            }
+            Ui.SameLine(); if (Ui.Button("Reset rotation", Ui.Split(2))) c.Rot = Vector3.Zero;
+            Ui.Color("Colour", ref c.Color);
+            Ui.Checkbox("Glow (unlit)", ref c.Unlit);
+            Ui.Checkbox("Hidden", ref c.Hidden);
         }
-        var c = CurShape; if (c == null) return;
-        Ui.Heading("Selected shape");
-        Ui.TextField("Name", ref c.Name);
-        string tp = c.Type; if (Ui.Combo("Type", ref tp, types)) c.Type = tp;
-        string bone = c.Bone; if (Ui.Combo("Bone", ref bone, Def.Bones.Select(b => b.Name).ToList(), "(origin)")) c.Bone = bone;
-        Ui.Vec3("Position", ref c.Pos, 0.002f);
-        Ui.Vec3("Rotation", ref c.Rot, 0.5f, "0.0");
-        Ui.Vec3("Size", ref c.Size, 0.002f);
-        if (Ui.Button("Size -10%", Ui.Split(2))) c.Size *= 0.9f;
-        Ui.SameLine(); if (Ui.Button("Size +10%", Ui.Split(2))) c.Size *= 1.1f;
-        if (Ui.Button("Point along bone", Ui.Split(2)) && c.Bone != null)
+        else Ui.Label("Click a piece of the model, or pick one below.", Gui.Dim);
+
+        // every shape, grouped by the body part its bone belongs to
+        foreach (var part in PartNames)
         {
-            var kid = Def.Bones.FirstOrDefault(b => b.Parent == c.Bone);
-            if (kid != null) { c.Rot = RotFor(kid.Offset); c.Pos = kid.Offset / 2; if (c.Type is "Capsule" or "Cylinder") c.Size.Y = kid.Offset.Length() + (c.Type == "Capsule" ? c.Size.X : 0); }
+            var idx = Enumerable.Range(0, Def.Shapes.Count).Where(i => PartOf(Def.Shapes[i].Bone) == part).ToList();
+            string pb = PartBone(part);
+            if (idx.Count == 0 && (pb == null || Def.Bone(pb) == null)) continue;
+            bool open = !partOpen.TryGetValue(part, out var o) || o;
+            Ui.Header($"{part} ({idx.Count})##part", ref open);
+            partOpen[part] = open;
+            if (!open) continue;
+            foreach (int i in idx)
+            {
+                var sh = Def.Shapes[i];
+                if (Ui.Selectable($"{sh.Name}  [{sh.Type}] {sh.Bone ?? "origin"}##{i}", i == SelShape, 2 * Ui.S, sh.Hidden ? Gui.Dim : null)) { SelShape = i; SelBone = sh.Bone; Target = EditTarget.Shape; }
+            }
+            if (Ui.Button($"+ {newShapeType} on {part.ToLowerInvariant()}##add{part}"))
+            {
+                string onBone = SelBone != null && PartOf(SelBone) == part ? SelBone : pb != null && Def.Bone(pb) != null ? pb : SelBone;
+                AddShape(onBone);
+            }
         }
-        Ui.SameLine(); if (Ui.Button("Reset rotation", Ui.Split(2))) c.Rot = Vector3.Zero;
-        Ui.Color("Colour", ref c.Color);
-        Ui.Checkbox("Glow (unlit)", ref c.Unlit);
-        Ui.Checkbox("Hidden", ref c.Hidden);
     }
 
-    void AddShape()
+    void AddShape(string onBone = null)
     {
-        var bone = SelBone ?? (Def.Bones.Count > 0 ? Def.Bones[0].Name : null);
+        var bone = onBone ?? SelBone ?? (Def.Bones.Count > 0 ? Def.Bones[0].Name : null);
         var s = new ShapeDef { Name = newShapeType.ToLowerInvariant() + (Def.Shapes.Count + 1), Bone = bone, Type = newShapeType, Size = newShapeType is "Capsule" or "Cylinder" ? new Vector3(0.15f, 0.4f, 0.15f) : new Vector3(0.2f), Color = "#D0D4DA" };
-        Def.Shapes.Add(s); SelShape = Def.Shapes.Count - 1; Status = $"Added a {s.Type} on {bone}";
+        Def.Shapes.Add(s); SelShape = Def.Shapes.Count - 1; SelBone = bone; Target = EditTarget.Shape; partOpen[PartOf(bone)] = true; Status = $"Added a {s.Type} on {bone}";
     }
     void DuplicateShape()
     {
@@ -247,7 +302,7 @@ public sealed partial class EntityEditor
     void RightPanel(Vector4 r)
     {
         Ui.BeginPanel("right", r.X, r.Y, r.Z, r.W);
-        Ui.Tabs(ref RightTab, "Clips", "Layers", "States", "Preview");
+        if (Ui.Tabs(ref RightTab, "Clips", "Layers", "States", "Preview") && RightTab == 0) Target = EditTarget.Pose;
         switch (RightTab)
         {
             case 0: ClipsTab(); break;
@@ -502,7 +557,7 @@ public sealed partial class EntityEditor
             if (major) o.Text(x + 2 * Ui.S, ruler.Y + Ui.S, f.ToString(CultureInfo.InvariantCulture), MathF.Max(1, Ui.S - 1), Gui.Dim);
         }
         if (rulerHover && Ui.In.Pressed[0] && Ui.In.MouseX >= tx) Ui.SetActive("timeline/scrub");
-        if (Ui.IsActive("timeline/scrub") && Ui.In.Down[0]) { Playhead = MathF.Round(T(Ui.In.MouseX) * Fps) / Fps; Playing = false; RightTab = 0; }
+        if (Ui.IsActive("timeline/scrub") && Ui.In.Down[0]) { Playhead = MathF.Round(T(Ui.In.MouseX) * Fps) / Fps; Playing = false; RightTab = 0; Target = EditTarget.Pose; }
 
         foreach (var b in bones)
         {
@@ -510,7 +565,7 @@ public sealed partial class EntityEditor
             bool sel = b == SelBone;
             o.Rect(row.X, row.Y, row.Z, row.W, sel ? Gui.Selected with { W = 0.6f } : Gui.WidgetBg with { W = 0.4f });
             o.Text(row.X + Ui.Pad, row.Y + (row.W - 7 * Ui.S) / 2, b.Length > 13 ? b[..12] + "~" : b, Ui.S, sel ? Gui.TextCol : Gui.Dim);
-            if (hover && Ui.In.Pressed[0] && Ui.In.MouseX < tx) SelBone = b;
+            if (hover && Ui.In.Pressed[0] && Ui.In.MouseX < tx) { SelBone = b; Target = EditTarget.Pose; }
             var tr = clip.Track(b); if (tr == null) continue;
             foreach (var k in tr.Keys)
             {
@@ -518,7 +573,7 @@ public sealed partial class EntityEditor
                 var kr = new Vector4(x - half, row.Y + row.W / 2 - half, 2 * half, 2 * half);
                 bool kh = Ui.HoverRect(kr);
                 string kid = "timeline/key/" + b + "/" + tr.Keys.IndexOf(k);
-                if (kh && Ui.In.Pressed[0]) { Ui.SetActive(kid); SelKey = k; SelBone = b; Playhead = k.T; Playing = false; RightTab = 0; }
+                if (kh && Ui.In.Pressed[0]) { Ui.SetActive(kid); SelKey = k; SelBone = b; Playhead = k.T; Playing = false; RightTab = 0; Target = EditTarget.Pose; }
                 if (Ui.IsActive(kid) && Ui.In.Down[0] && Ui.In.MouseDX != 0)
                 {
                     // drag a key along the timeline (snapped to frames)

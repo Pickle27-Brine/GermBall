@@ -24,12 +24,13 @@ public static class DefaultEntities
 
     /// <summary>The standard humanoid rig (16 bones). These names are what the procedural motion and ragdolls look for.</summary>
     public static List<BoneDef> HumanoidBones(float pelvisH = 0.98f, float torso = 0.40f, float neck = 0.13f, float headUp = 0.16f,
-        float shoulderW = 0.25f, float hipW = 0.11f, float thigh = 0.47f, float shin = 0.46f, float upper = 0.29f, float fore = 0.28f)
+        float shoulderW = 0.25f, float hipW = 0.11f, float thigh = 0.47f, float shin = 0.46f, float upper = 0.29f, float fore = 0.28f, bool abdomen = false)
     {
         var b = new List<BoneDef>();
         void B(string n, string p, float x, float y, float z) => b.Add(new BoneDef { Name = n, Parent = p, Offset = new Vector3(x, y, z) });
         B("pelvis", null, 0, pelvisH, 0);
-        B("chest", "pelvis", 0, torso, 0);
+        if (abdomen) { B("abdomen", "pelvis", 0, torso / 2, 0); B("chest", "abdomen", 0, torso / 2, 0); }
+        else B("chest", "pelvis", 0, torso, 0);
         B("neck", "chest", 0, neck, 0);
         B("head", "neck", 0, headUp, 0);
         foreach (var (s, sg) in new[] { ("L", -1f), ("R", 1f) })
@@ -58,7 +59,7 @@ public static class DefaultEntities
 
     public static EntityDef Hero()
     {
-        var e = new EntityDef { Name = "hero", Kind = "player", CurlStyle = "ball", BallColor = Red, Bones = HumanoidBones() };
+        var e = new EntityDef { Name = "hero", Kind = "player", CurlStyle = "ball", BallColor = Red, Bones = HumanoidBones(abdomen: true) };
         e.Stats = new EntityStats { Hp = 100, Scale = 1, Radius = 0.4f, Height = 1.8f, ContactDamage = 0, DashesToFloor = 1 };
         var s = e.Shapes;
         foreach (var (side, sg) in new[] { ("L", -1f), ("R", 1f) })
@@ -73,8 +74,10 @@ public static class DefaultEntities
             s.Add(S("hand." + side, "hand." + side, "Sphere", V(0, 0, 0), U(0.136f), White));
         }
         s.Add(S("hips", "pelvis", "Capsule", V(0, -0.04f, 0), V(0.22f, 0.44f, 0.22f), White, V(0, 0, 90)));
-        s.Add(S("waist", "pelvis", "Capsule", V(0, 0.11f, 0), V(0.24f, 0.38f, 0.24f), White));
-        s.Add(S("torso", "pelvis", "Capsule", V(0, 0.28f, 0), V(0.3f, 0.5f, 0.3f), Red));
+        s.Add(S("waist", "pelvis", "Capsule", V(0, 0.09f, 0), V(0.24f, 0.34f, 0.22f), White));
+        // the torso in two segments: a narrow red abdomen, then the broad chest
+        var ab = S("abdomen", "abdomen", "Capsule", V(0, 0.07f, 0), V(0.27f, 0.42f, 0.24f), Red); ab.Taper = -0.12f; s.Add(ab);
+        var ch = S("ribcage", "chest", "Capsule", V(0, -0.06f, 0), V(0.32f, 0.36f, 0.27f), Red); ch.Taper = -0.15f; s.Add(ch);
         s.Add(S("chest", "chest", "Capsule", V(0, -0.05f, 0), V(0.26f, 0.76f, 0.26f), Red, V(0, 0, 90)));
         s.Add(S("cross.h", "chest", "Box", V(0, -0.06f, -0.135f), V(0.12f, 0.035f, 0.02f), Cyan, unlit: true));
         s.Add(S("cross.v", "chest", "Box", V(0, -0.06f, -0.135f), V(0.035f, 0.12f, 0.02f), Cyan, unlit: true));

@@ -52,6 +52,10 @@ public static class Program
         Run("camera: locked behind the hero, aim eases in", CameraLock);
         Run("entity editor: shapes, colour, bones, keys, layers, undo, save, test in game", EntityEditorWorkflow);
         Run("map editor: add, pick, gizmo with snapping, properties, undo, save, play test", MapEditorWorkflow);
+        Run("editor typing: click to type, select-all, caret, click-away, quick clicks", EditorTyping);
+        Run("entity editor: rotate and scale gizmos, pose keys, rig rotation", EntityGizmos);
+        Run("entity editor: hover and click pieces of the model", EntityPicking);
+        Run("taper and curve shapes; the hero's two-part torso", TaperCurveAbdomen);
         Run("editors survive random clicking and typing", EditorFuzz);
         Run("random input soak (every landmark)", Soak);
 
@@ -669,8 +673,13 @@ public static class Program
         var d = new EditorDriver(1600, 900, (i, dt, dl) => ee.Frame(i, dt, 1600, 900, dl));
         d.Step(3);
         d.Shot(Path.Combine(dir, "ee-01-hero.png"));
-        ee.LeftTab = 2; ee.SelShape = 5; d.Step(2);
+        ee.LeftTab = 2; ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Shape;
+        ee.SelShape = ee.Def.Shapes.FindIndex(x => x.Name == "upperarm.R"); ee.CurShape.Taper = 0.4f; ee.CurShape.Curve = 0.15f;
+        ee.Mode = GermBall.Tools.EntityEditor.EntityEditor.GizmoMode.Rotate; ee.ShowBones = false; d.Step(2);
         d.Shot(Path.Combine(dir, "ee-02-shapes.png"));
+        ee.Mode = GermBall.Tools.EntityEditor.EntityEditor.GizmoMode.Scale; d.Step(2);
+        d.Shot(Path.Combine(dir, "ee-02b-scale.png"));
+        ee.ShowBones = true; ee.Mode = GermBall.Tools.EntityEditor.EntityEditor.GizmoMode.Move;
         ee.LeftTab = 1; ee.SelBone = "elbow.R"; ee.RightTab = 1; d.Step(2);
         d.Shot(Path.Combine(dir, "ee-03-rig-layers.png"));
         ee.RightTab = 0; ee.SelClip = 0; ee.SelBone = "chest"; ee.Playhead = 0.1f; d.Step(2);
@@ -704,8 +713,8 @@ public static class Program
         // shapes: add one through the Shapes tab and recolour it by typing a hex code
         GuiDriving.ClickLabel(ui, d, "Shapes");
         int before = ee.Def.Shapes.Count;
-        GuiDriving.ClickLabel(ui, d, "Add");
-        Check(ee.Def.Shapes.Count == before + 1 && ee.SelShape == before, $"Add didn't add a shape ({ee.Def.Shapes.Count})");
+        GuiDriving.ClickLabel(ui, d, "+ Capsule on torso");
+        Check(ee.Def.Shapes.Count == before + 1 && ee.SelShape == before && ee.PartOf(ee.CurShape.Bone) == "Torso", $"adding on the torso didn't ({ee.Def.Shapes.Count}, on {ee.CurShape?.Bone})");
         GuiDriving.TypeInto(ui, d, "left/Name", "spike");
         Check(ee.CurShape.Name == "spike", $"name is {ee.CurShape.Name}");
         var colour = GuiDriving.Find(ui, d, "Colour");
@@ -836,6 +845,163 @@ public static class Program
         Check(game.Germs.Count == 1 && game.Level.Zones.Exists(z => z.Kind == ZoneKind.JumpPad) && game.Level.Solids.Count == 2, "game level from the saved map");
         for (int i = 0; i < 120; i++) game.Frame(Game.DT, default);
         Check(game.Player.Alive && MathX.Finite(game.Player.Pos), "playing the new map");
+    }
+
+    static (GermBall.Tools.EntityEditor.EntityEditor, EditorDriver) NewEntityEditor(string entity = "hero")
+    {
+        var ee = new GermBall.Tools.EntityEditor.EntityEditor(ScratchContent(), entity); ee.LaunchGame = _ => { };
+        var d = new EditorDriver(1600, 900, (i, dt, dl) => ee.Frame(i, dt, 1600, 900, dl));
+        d.Step(2);
+        return (ee, d);
+    }
+
+    static void EditorTyping()
+    {
+        var (ee, d) = NewEntityEditor("coccus"); var ui = ee.Ui;
+        // a click (no drag) on a slider types into it; typing replaces the whole value
+        var hp = GuiDriving.Find(ui, d, "Health");
+        d.Click(hp.X + hp.Z / 2, hp.Y + hp.W / 2);
+        Check(ui.TextFocused, "clicking a number should start typing");
+        d.Type("77"); d.Key(GermBall.Engine.Keys.Enter);
+        Check(ee.Def.Stats.Hp == 77, $"typed health: {ee.Def.Stats.Hp}");
+        // dragging the same slider still drags
+        d.Drag(hp.X + 10, hp.Y + hp.W / 2, hp.X + hp.Z - 10, hp.Y + hp.W / 2);
+        Check(ee.Def.Stats.Hp > 1500 && !ui.TextFocused, $"dragged health: {ee.Def.Stats.Hp}");
+        // caret editing in a text field: End, Left, insert, Home, insert
+        var name = GuiDriving.Find(ui, d, "left/Name");
+        d.Click(name.X + name.Z / 2, name.Y + name.W / 2);
+        d.Key(GermBall.Engine.Keys.End); d.Key(GermBall.Engine.Keys.Left); d.Type("X");
+        d.Key(GermBall.Engine.Keys.Home); d.Type("Y");
+        d.Key(GermBall.Engine.Keys.Enter);
+        Check(ee.Def.Name == "YcoccuXs", $"caret editing gave {ee.Def.Name}");
+        // ctrl+A then typing replaces
+        d.Click(name.X + name.Z / 2, name.Y + name.W / 2);
+        d.Key('A', ctrl: true); d.Type("germ_b"); d.Key(GermBall.Engine.Keys.Enter);
+        Check(ee.Def.Name == "germ_b", $"ctrl+A replace gave {ee.Def.Name}");
+        // typing, then clicking another tab without Enter, still commits
+        d.Click(name.X + name.Z / 2, name.Y + name.W / 2);
+        d.Type("germ_c");
+        GuiDriving.ClickLabel(ui, d, "Rig");
+        Check(ee.Def.Name == "germ_c", $"click-away commit gave {ee.Def.Name}");
+        // quick clicks (press and release in one frame) work on buttons
+        var add = GuiDriving.Find(ui, d, "Add child bone");
+        int bones = ee.Def.Bones.Count;
+        d.QuickClick(add.X + add.Z / 2, add.Y + add.W / 2);
+        Check(ee.Def.Bones.Count == bones + 1, "a quick click didn't press the button");
+        // escape cancels
+        var drag = GuiDriving.Find(ui, d, "Offset");
+        d.Click(drag.X + 10, drag.Y + drag.W / 2);
+        var before = ee.Def.Bone(ee.SelBone).Offset;
+        d.Type("9"); d.Key(GermBall.Engine.Keys.Escape);
+        Check(ee.Def.Bone(ee.SelBone).Offset == before && !ui.TextFocused, "escape should cancel");
+    }
+
+    /// <summary>A point on the rotate gizmo's ring for an axis (the gizmo's own construction).</summary>
+    static Vector3 RingPoint(Vector3 pos, Vector3 axis, float radius)
+    {
+        var u = Vector3.Normalize(Vector3.Cross(axis, MathF.Abs(axis.Y) < 0.9f ? Vector3.UnitY : Vector3.UnitX));
+        var v = Vector3.Cross(axis, u);
+        return pos + (u + v) * (radius / MathF.Sqrt(2));   // 45 degrees round: on this ring only
+    }
+    static void DragRing(GermBall.Tools.EntityEditor.EntityEditor ee, EditorDriver d, Vector3 pos, Vector3 axis, float pixels)
+    {
+        float radius = Vector3.Distance(ee.View.CamPos, pos) * 0.16f;
+        var p = RingPoint(pos, axis, radius);
+        var t = Vector3.Normalize(Vector3.Cross(axis, p - pos));
+        ee.View.Project(p, out var s0); ee.View.Project(p + t * radius * 0.2f, out var s1);
+        var dir = Vector2.Normalize(s1 - s0);
+        d.Drag(s0.X, s0.Y, s0.X + dir.X * pixels, s0.Y + dir.Y * pixels, 10);
+    }
+
+    static void EntityGizmos()
+    {
+        var (ee, d) = NewEntityEditor("hero");
+        // a shape: rotate it about its own up axis, then scale it evenly
+        ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Shape;
+        ee.SelShape = ee.Def.Shapes.FindIndex(x => x.Name == "visor"); ee.LeftTab = 2;
+        ee.ShowBones = false; d.Step(2);
+        ee.Mode = GermBall.Tools.EntityEditor.EntityEditor.GizmoMode.Rotate; d.Step(2);
+        var visor = ee.CurShape; var frame = ee.Preview.ShapeMatrix(visor, Vector3.One);
+        var up = Vector3.Normalize(Vector3.TransformNormal(Vector3.UnitY, frame));
+        DragRing(ee, d, frame.Translation, up, 80);
+        Check(MathF.Abs(visor.Rot.Y) > 5, $"rotate gizmo turned the visor to {visor.Rot}");
+        ee.Mode = GermBall.Tools.EntityEditor.EntityEditor.GizmoMode.Scale; d.Step(2);
+        var size0 = visor.Size;
+        ee.View.Project(ee.Preview.ShapeMatrix(visor, Vector3.One).Translation, out var c);
+        d.Drag(c.X, c.Y, c.X + 60, c.Y - 30, 8);
+        Check(visor.Size.X > size0.X * 1.3f && MathF.Abs(visor.Size.X / size0.X - visor.Size.Y / size0.Y) < 0.01f, $"uniform scale: {size0} -> {visor.Size}");
+        // a pose: rotate the right elbow in a new clip; it gets keyed
+        GuiDriving.ClickLabel(ee.Ui, d, "Clips");
+        GuiDriving.ClickLabel(ee.Ui, d, "New clip");
+        ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Pose; ee.SelBone = "elbow.R"; ee.SoloClip = true; ee.ClipOverProcedural = false;
+        ee.Mode = GermBall.Tools.EntityEditor.EntityEditor.GizmoMode.Rotate; d.Step(2);
+        int eb = ee.Preview.Sk.IndexOf("elbow.R");
+        var bm = ee.Preview.Pose.World[eb];
+        DragRing(ee, d, bm.Translation, Vector3.Normalize(Vector3.TransformNormal(Vector3.UnitX, bm)), 70);
+        var tr = ee.CurClip.Track("elbow.R");
+        Check(tr != null && tr.Keys.Count == 1 && Animator.Euler(tr.Keys[0].Rot) != Quaternion.Identity, "posing the elbow should key a rotation");
+        // the rig: turning the knee's rest pose swings the foot but keeps the shin length
+        ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Rig;
+        float len = ee.Def.Bone("foot.L").Offset.Length();
+        ee.RotateRest("knee.L", Quaternion.CreateFromAxisAngle(Vector3.UnitX, 0.5f));
+        Check(MathF.Abs(ee.Def.Bone("foot.L").Offset.Length() - len) < 1e-4f && MathF.Abs(ee.Def.Bone("foot.L").Offset.Z) > 0.1f, "rig rotation");
+        ee.ScaleRest("knee.L", new Vector3(1, 2, 1));
+        Check(MathF.Abs(ee.Def.Bone("foot.L").Offset.Length() - len) > 0.1f, "rig scale should lengthen the shin");
+    }
+
+    static void EntityPicking()
+    {
+        var (ee, d) = NewEntityEditor("hero");
+        ee.ShowBones = false; ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Shape; d.Step(2);
+        // the head under the mouse lights up; clicking it selects a head shape
+        int head = ee.Preview.Sk.IndexOf("head");
+        ee.View.Project(ee.Preview.Pose.Joint(head), out var hs);
+        d.MoveTo(hs.X, hs.Y); d.Step(2);
+        Check(ee.HoverShape >= 0 && ee.PartOf(ee.Def.Shapes[ee.HoverShape].Bone) == "Head", $"hovering the head lit {(ee.HoverShape >= 0 ? ee.Def.Shapes[ee.HoverShape].Name : "nothing")}");
+        d.Click(hs.X, hs.Y);
+        Check(ee.CurShape != null && ee.PartOf(ee.CurShape.Bone) == "Head" && ee.LeftTab == 2, $"clicking the head selected {ee.CurShape?.Name}");
+        // posing: clicking the shin picks the knee bone
+        ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Pose; d.Step();
+        var shin = ee.Def.Shapes.Find(x => x.Name == "shin.R");
+        ee.View.Project(ee.Preview.ShapeMatrix(shin, Vector3.One).Translation, out var ss);
+        d.Click(ss.X, ss.Y);
+        Check(ee.SelBone == "knee.R", $"clicking the shin selected bone {ee.SelBone}");
+        // empty space selects nothing new
+        var v = ee.View.Rect; string before = ee.SelBone;
+        d.Click(v.X + 15, v.Y + 40);
+        Check(ee.SelBone == before, "clicking the sky shouldn't change the selection");
+    }
+
+    static void TaperCurveAbdomen()
+    {
+        // a tapered capsule is narrower at the top, a curved one bends toward +X
+        var m = DeformedMeshes.Get("Capsule", new Vector3(0.2f, 1, 0.2f), 0.5f, 0);
+        float topW = 0, botW = 0;
+        foreach (var p in m.Pos) { if (p.Y > 0.35f) topW = MathF.Max(topW, MathF.Abs(p.X)); if (p.Y < -0.35f) botW = MathF.Max(botW, MathF.Abs(p.X)); }
+        Check(topW < botW * 0.75f, $"taper: top {topW:0.000} vs bottom {botW:0.000}");
+        var c = DeformedMeshes.Get("Box", new Vector3(0.2f, 1, 0.2f), 0, 0.5f);
+        float tipX = 0; foreach (var p in c.Pos) if (p.Y > 0.49f) tipX = MathF.Max(tipX, p.X);
+        Check(tipX > 0.45f, $"curve: tip at x {tipX:0.00}");
+        foreach (var n in c.Nrm) Check(MathX.Finite(n) && MathF.Abs(n.Length() - 1) < 1e-3f, "bad normal");
+        // drawing a tapered shape uses its own mesh
+        var hero = new EntityView(DefaultEntities.Hero()); var ctx = new AnimContext();
+        hero.Update(ctx); hero.Evaluate(ctx); var dl = new DrawList(); hero.Draw(dl);
+        Check(dl.Items.Exists(i => i.Custom != null), "the hero's tapered torso should draw custom meshes");
+        // the two-part torso: pelvis -> abdomen -> chest, bending at the abdomen, and the ragdoll keeps it
+        var sk = hero.Sk;
+        Check(sk.HasAbdomen && sk.Humanoid && sk.Names[sk.Parent[sk.IndexOf("chest")]] == "abdomen", "hero rig should be pelvis, abdomen, chest");
+        var g = New(); RunStart(g); Steps(g, Sec(0.5f), Fwd());
+        var joints = g.HeroPose;
+        var hctx = new AnimContext(); g.FillHeroContext(hctx, g.Player.Pos, g.Player.Yaw, 0); g.Hero.Evaluate(hctx); g.Hero.Anim.WorldJoints(g.Hero.Pose, joints);
+        float a1 = Vector3.Distance(joints[J.Pelvis], joints[J.Abdomen]), a2 = Vector3.Distance(joints[J.Abdomen], joints[J.Chest]);
+        Check(MathF.Abs(a1 - 0.2f) < 0.01f && MathF.Abs(a2 - 0.2f) < 0.02f, $"torso segments {a1:0.000}, {a2:0.000}");
+        var lean1 = Vector3.Normalize(joints[J.Abdomen] - joints[J.Pelvis]); var lean2 = Vector3.Normalize(joints[J.Chest] - joints[J.Abdomen]);
+        Check(lean2.Y < lean1.Y - 0.005f, "running: the chest should lean further than the abdomen");
+        g.Player.Die("test"); Steps(g, Sec(1.5f), default);
+        Check(g.PlayerRagdoll != null && g.PlayerRagdoll.Finite() && g.PlayerRagdoll.Pos[J.Abdomen].Y > 0.02f, "hero ragdoll with an abdomen");
+        // a germ without an abdomen bone is still humanoid (one-piece torso)
+        var germ = new EntityView(DefaultEntities.Coccus());
+        Check(germ.Sk.Humanoid && !germ.Sk.HasAbdomen, "germs keep a one-piece torso");
     }
 
     static void EditorFuzz()

@@ -101,6 +101,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.18, 0.65, 0.18],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -112,6 +114,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.16, 0.62, 0.16],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -123,6 +127,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.14, 0.43, 0.14],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -134,6 +140,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.12, 0.4, 0.12],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -145,6 +153,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.17, 0.17, 0.17],
       "Color": "#C060D8",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -156,6 +166,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.18, 0.65, 0.18],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -167,6 +179,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.16, 0.62, 0.16],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -178,6 +192,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.14, 0.43, 0.14],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -189,6 +205,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.12, 0.4, 0.12],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -200,6 +218,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.17, 0.17, 0.17],
       "Color": "#C060D8",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -211,6 +231,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.72, 0.72, 0.72],
       "Color": "#C060D8",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -222,6 +244,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.18, 0.18, 0.18],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -233,6 +257,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.18, 0.18, 0.18],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -244,6 +270,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.18, 0.18, 0.18],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -255,6 +283,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.18, 0.18, 0.18],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -266,6 +296,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.18, 0.18, 0.18],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -277,6 +309,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.18, 0.18, 0.18],
       "Color": "#6A2A80",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -288,6 +322,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.14, 0.14, 0.14],
       "Color": "#FFFFFF",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -299,6 +335,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.07, 0.07, 0.07],
       "Color": "#101010",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -310,6 +348,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.14, 0.14, 0.14],
       "Color": "#FFFFFF",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     },
@@ -321,6 +361,8 @@
       "Rot": [0, 0, 0],
       "Size": [0.07, 0.07, 0.07],
       "Color": "#101010",
+      "Taper": 0,
+      "Curve": 0,
       "Unlit": false,
       "Hidden": false
     }

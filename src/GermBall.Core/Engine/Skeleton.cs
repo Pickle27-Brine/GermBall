@@ -5,7 +5,8 @@ using System.Numerics;
 namespace GermBall.Engine;
 
 /// <summary>The joints of every humanoid body (the hero and the germs).</summary>
-public enum J { Pelvis, Chest, Neck, Head, ShL, ElL, HaL, ShR, ElR, HaR, HipL, KnL, FtL, HipR, KnR, FtR, Count }
+/// <summary>The joints of every humanoid body. Abdomen is optional in a rig: without it the torso is one segment.</summary>
+public enum J { Pelvis, Chest, Neck, Head, ShL, ElL, HaL, ShR, ElR, HaR, HipL, KnL, FtL, HipR, KnR, FtR, Abdomen, Count }
 
 /// <summary>World-space joint positions for one body.</summary>
 public sealed class Pose
@@ -22,7 +23,7 @@ public static class Skel
     /// <summary>The visible bones.</summary>
     public static readonly (J a, J b)[] Bones =
     {
-        (J.Pelvis, J.Chest), (J.Chest, J.Neck), (J.Neck, J.Head),
+        (J.Pelvis, J.Abdomen), (J.Abdomen, J.Chest), (J.Chest, J.Neck), (J.Neck, J.Head),
         (J.Chest, J.ShL), (J.ShL, J.ElL), (J.ElL, J.HaL),
         (J.Chest, J.ShR), (J.ShR, J.ElR), (J.ElR, J.HaR),
         (J.Pelvis, J.HipL), (J.HipL, J.KnL), (J.KnL, J.FtL),
@@ -32,7 +33,8 @@ public static class Skel
     public static readonly (J a, J b)[] Braces =
     {
         (J.ShL, J.ShR), (J.HipL, J.HipR), (J.ShL, J.HipL), (J.ShR, J.HipR), (J.ShL, J.HipR), (J.ShR, J.HipL),
-        (J.Head, J.ShL), (J.Head, J.ShR), (J.Neck, J.Pelvis), (J.Chest, J.HipL), (J.Chest, J.HipR),
+        (J.Head, J.ShL), (J.Head, J.ShR), (J.Neck, J.Pelvis), (J.Chest, J.HipL), (J.Chest, J.HipR), (J.Chest, J.Pelvis),
+        (J.Abdomen, J.HipL), (J.Abdomen, J.HipR), (J.Abdomen, J.ShL), (J.Abdomen, J.ShR),
     };
     /// <summary>Collision radius of each joint for a body of scale 1 (1.8 m tall).</summary>
     public static readonly float[] Radius =
@@ -42,6 +44,7 @@ public static class Skel
         0.09f, 0.06f, 0.06f,          // right arm
         0.09f, 0.07f, 0.07f,          // left leg
         0.09f, 0.07f, 0.07f,          // right leg
+        0.14f,                        // abdomen
     };
 
     /// <summary>Two-bone IK: places the middle joint (elbow or knee) so the chain reaches toward <paramref name="target"/>,

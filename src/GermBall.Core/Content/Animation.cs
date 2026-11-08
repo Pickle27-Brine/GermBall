@@ -21,8 +21,10 @@ public sealed class Skeleton
     public static readonly string[] StdNames =
     {
         "pelvis", "chest", "neck", "head", "shoulder.L", "elbow.L", "hand.L", "shoulder.R", "elbow.R", "hand.R",
-        "hip.L", "knee.L", "foot.L", "hip.R", "knee.R", "foot.R",
+        "hip.L", "knee.L", "foot.L", "hip.R", "knee.R", "foot.R", "abdomen",
     };
+    /// <summary>The rig splits its torso into abdomen and chest.</summary>
+    public bool HasAbdomen => Std[(int)J.Abdomen] >= 0;
 
     public Skeleton(List<BoneDef> bones)
     {
@@ -50,7 +52,7 @@ public sealed class Skeleton
             RestModel[i] = (Parent[i] >= 0 ? RestModel[Parent[i]] : Vector3.Zero) + Offset[i];
         }
         Humanoid = true;
-        for (int j = 0; j < (int)J.Count; j++) { Std[j] = IndexOf(StdNames[j]); if (Std[j] < 0) Humanoid = false; }
+        for (int j = 0; j < (int)J.Count; j++) { Std[j] = IndexOf(StdNames[j]); if (Std[j] < 0 && (J)j != J.Abdomen) Humanoid = false; }
     }
 
     public int IndexOf(string name) => name != null && index.TryGetValue(name, out int i) ? i : -1;
@@ -68,11 +70,12 @@ public sealed class Skeleton
     {
         if (!Humanoid) return new Rig(1);
         var p = RestModel; int I(J j) => Std[(int)j];
+        float abd = HasAbdomen ? Len(J.Pelvis, J.Abdomen) : 0, torso = HasAbdomen ? abd + Len(J.Abdomen, J.Chest) : Len(J.Pelvis, J.Chest);
         return new Rig(
-            pelvisH: p[I(J.Pelvis)].Y, torso: Len(J.Pelvis, J.Chest), neck: Len(J.Chest, J.Neck), headUp: Len(J.Neck, J.Head),
+            pelvisH: p[I(J.Pelvis)].Y, torso: torso, neck: Len(J.Chest, J.Neck), headUp: Len(J.Neck, J.Head),
             shoulderW: MathF.Abs(p[I(J.ShR)].X - p[I(J.Chest)].X), shoulderDrop: p[I(J.Chest)].Y - p[I(J.ShR)].Y,
             hipW: MathF.Abs(p[I(J.HipR)].X - p[I(J.Pelvis)].X), hipDrop: p[I(J.Pelvis)].Y - p[I(J.HipR)].Y,
-            thigh: Len(J.HipL, J.KnL), shin: Len(J.KnL, J.FtL), upper: Len(J.ShL, J.ElL), fore: Len(J.ElL, J.HaL));
+            thigh: Len(J.HipL, J.KnL), shin: Len(J.KnL, J.FtL), upper: Len(J.ShL, J.ElL), fore: Len(J.ElL, J.HaL), abdomen: abd);
     }
 }
 
@@ -347,7 +350,8 @@ public sealed class Animator
             Quaternion world;
             if (j < 0) { modelRot[i] = parentRot; continue; }   // extra bones ride along; clip layers move them
             var J0 = (J)j;
-            if (J0 == J.Pelvis) world = Basis(o[J.Chest] - o[J.Pelvis], o[J.HipR] - o[J.HipL]);
+            if (J0 == J.Pelvis) world = Basis((Sk.HasAbdomen ? o[J.Abdomen] : o[J.Chest]) - o[J.Pelvis], o[J.HipR] - o[J.HipL]);
+            else if (J0 == J.Abdomen) world = Basis(o[J.Chest] - o[J.Abdomen], (o[J.HipR] - o[J.HipL]) + (o[J.ShR] - o[J.ShL]));
             else if (J0 == J.Chest) world = Basis(o[J.Neck] - o[J.Chest], o[J.ShR] - o[J.ShL]);
             else if (J0 == J.FtL || J0 == J.FtR) world = flatFeet ? Quaternion.Identity : parentRot;
             else if (J0 == J.Head || J0 == J.HaL || J0 == J.HaR) world = parentRot;
@@ -394,5 +398,7 @@ public sealed class Animator
     public void WorldJoints(EntityPose pose, Pose outJoints)
     {
         for (int j = 0; j < (int)J.Count; j++) outJoints.P[j] = pose.Joint(Sk.Std[j]);
+        // a one-piece torso still gets a middle joint, so ragdolls bend there
+        if (!Sk.HasAbdomen) outJoints[J.Abdomen] = (outJoints[J.Pelvis] + outJoints[J.Chest]) * 0.5f;
     }
 }

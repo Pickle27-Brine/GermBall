@@ -12,7 +12,7 @@ public static class Input
     public const int VK_LBUTTON = 0x01, VK_RBUTTON = 0x02, VK_MBUTTON = 0x04, VK_XBUTTON1 = 0x05, VK_XBUTTON2 = 0x06;
     const int VK_SHIFT = 0x10, VK_ESCAPE = 0x1B, VK_SPACE = 0x20, VK_LEFT = 0x25, VK_UP = 0x26, VK_RIGHT = 0x27, VK_DOWN = 0x28, VK_F1 = 0x70;
 
-    static readonly bool[] down = new bool[256], pressed = new bool[256];
+    static readonly bool[] down = new bool[256], pressed = new bool[256], released = new bool[256];
     public static float MouseDX, MouseDY, Wheel;
     public static float MouseSensitivity = 0.0022f;   // radians per raw mouse count
     public static float StickLookSpeed = 3.2f;        // radians per second at full deflection
@@ -24,6 +24,7 @@ public static class Input
     {
         vk &= 0xFF;
         if (isDown && !down[vk]) pressed[vk] = true;
+        if (!isDown && down[vk]) released[vk] = true;   // kept even when the press was in the same frame (a quick click)
         down[vk] = isDown;
     }
     internal static void ReleaseAll() => Array.Clear(down);
@@ -41,11 +42,11 @@ public static class Input
         u.MouseDX = CursorX - lastUiX; u.MouseDY = CursorY - lastUiY; lastUiX = CursorX; lastUiY = CursorY;
         u.MouseX = CursorX; u.MouseY = CursorY; u.Wheel = Wheel;
         int[] vks = { VK_LBUTTON, VK_RBUTTON, VK_MBUTTON };
-        for (int i = 0; i < 3; i++) { bool was = u.Down[i]; u.Down[i] = down[vks[i]]; u.Pressed[i] = pressed[vks[i]]; u.Released[i] = was && !u.Down[i]; }
+        for (int i = 0; i < 3; i++) { u.Down[i] = down[vks[i]]; u.Pressed[i] = pressed[vks[i]]; u.Released[i] = released[vks[i]]; }
         u.Ctrl = down[0x11]; u.Shift = down[0x10]; u.Alt = down[0x12];
         u.KeysDown.Clear();
         for (int k = 8; k < 256; k++) { if (down[k]) u.KeysDown.Add(k); if (pressed[k]) u.KeysPressed.Add(k); }
-        u.Typed = u.Ctrl ? "" : Typed.ToString(); Typed.Clear();
+        u.Typed = Typed.ToString(); Typed.Clear();   // WM_CHAR only brings printable characters (and Ctrl+V pastes)
         u.DoubleClick = DoubleClicked; DoubleClicked = false;
     }
 
@@ -120,7 +121,7 @@ public static class Input
         return v / l * MathF.Min(1, (l - dead) / (1 - dead));
     }
 
-    public static void EndFrame() { Array.Clear(pressed); MouseDX = MouseDY = 0; Wheel = 0; Typed.Clear(); DoubleClicked = false; }
+    public static void EndFrame() { Array.Clear(pressed); Array.Clear(released); MouseDX = MouseDY = 0; Wheel = 0; Typed.Clear(); DoubleClicked = false; }
 
     // ---- cursor capture for mouse look
     public static bool Captured { get; private set; }
