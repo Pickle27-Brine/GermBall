@@ -82,7 +82,10 @@ public static class GuiDriving
             if (r.Y >= y0) break;
         }
         d.Click(r.X + r.Z / 2, r.Y + r.W / 2);
-        float y = r.Y + r.W + 1 + (option + (hasNone ? 1 : 0) + 0.5f) * ui.RowH;
+        d.Step();
+        // the list opens below, or above when there's no room below
+        var list = ui.OpenListRect;
+        float y = list.W > 0 ? list.Y + (option + (hasNone ? 1 : 0) + 0.5f) * ui.RowH : r.Y + r.W + 1 + (option + (hasNone ? 1 : 0) + 0.5f) * ui.RowH;
         d.Click(r.X + r.Z / 2, y);
     }
     public static void TypeInto(GermBall.Tools.Ui.Gui ui, EditorDriver d, string label, string text)

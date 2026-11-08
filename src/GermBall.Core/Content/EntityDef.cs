@@ -29,6 +29,8 @@ public sealed class EntityDef
     public string BallColor = "#E8303C";
     /// <summary>Limbs that can be shot off.</summary>
     public LimbSettings Limbs = new();
+    /// <summary>How the upper body turns ahead of the legs.</summary>
+    public TurnSettings Turn = new();
 
     public BoneDef Bone(string name) => Bones.Find(b => b.Name == name);
     public ClipDef Clip(string name) => string.IsNullOrEmpty(name) ? null : Clips.Find(c => c.Name == name);
@@ -163,6 +165,21 @@ public sealed class StateClip
 
 /// <summary>Destructible limbs: hits on a limb wear it down, and a big enough hit takes it off.
 /// Deliberately hard to trigger: only hits of at least <see cref="MinHit"/> count, and only a few limbs can go.</summary>
+/// <summary>The upper body faces where the entity looks; the hips and legs follow behind.
+/// Standing still, the feet stay put until the twist passes <see cref="MaxTwist"/>, then the legs step round.</summary>
+public sealed class TurnSettings
+{
+    public bool Enabled;
+    /// <summary>Degrees the upper body can turn before the legs follow (standing still).</summary>
+    public float MaxTwist = 50;
+    /// <summary>How quickly the legs catch up when they step round (per second; higher is snappier).</summary>
+    public float StepSpeed = 7;
+    /// <summary>How quickly the legs follow while moving or in the air.</summary>
+    public float MoveSpeed = 12;
+    /// <summary>How much of the twist the chest takes (the rest goes to the abdomen, if there is one).</summary>
+    public float ChestShare = 0.6f;
+}
+
 public sealed class LimbSettings
 {
     public bool Enabled;
@@ -187,7 +204,7 @@ public sealed class LimbDef
 /// <summary>The game states an entity can be in, for state layers.</summary>
 public static class AnimStates
 {
-    public static readonly string[] All = { "idle", "run", "skid", "jump", "fall", "curl", "spin", "hover", "aim", "fire", "punch", "reload", "hurt", "stagger", "down", "dead" };
+    public static readonly string[] All = { "idle", "turn", "run", "skid", "jump", "fall", "curl", "spin", "hover", "aim", "fire", "punch", "reload", "hurt", "stagger", "down", "dead" };
 }
 
 /// <summary>Friendly names for the standard bones (a bone is the segment from its joint to its child's).</summary>

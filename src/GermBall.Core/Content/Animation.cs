@@ -104,6 +104,11 @@ public sealed class AnimContext
 {
     public float Time, Dt;
     public Vector3 Feet; public float Yaw;
+    /// <summary>Which way the hips and legs face (radians). NaN: the same as <see cref="Yaw"/>.
+    /// When it differs, the root follows the legs and the spine twists the upper body round to <see cref="Yaw"/>.</summary>
+    public float LegYaw = float.NaN;
+    /// <summary>How far the upper body is turned from the legs (radians).</summary>
+    public float Twist => float.IsNaN(LegYaw) ? 0 : MathX.AngleWrap(Yaw - LegYaw);
     public float Speed; public Vector3 MoveDir = -Vector3.UnitZ;
     public bool Grounded = true, Rolling, Skidding, Hovering, Charging;
     public bool Armed, TwoHanded, Aiming; public Vector3 AimDir = -Vector3.UnitZ;
@@ -197,7 +202,8 @@ public sealed class Animator
     static Matrix4x4 RootFor(AnimContext c, float scale)
     {
         if (c.Joints != null) return Matrix4x4.CreateScale(scale);
-        var root = Matrix4x4.CreateScale(scale) * Matrix4x4.CreateRotationY(c.Yaw) * Matrix4x4.CreateTranslation(c.Feet);
+        float yaw = c.Yaw - c.Twist;   // the body's root faces the legs' way
+        var root = Matrix4x4.CreateScale(scale) * Matrix4x4.CreateRotationY(yaw) * Matrix4x4.CreateTranslation(c.Feet);
         if (c.Spin != Quaternion.Identity)
             root = Matrix4x4.CreateScale(scale) * Matrix4x4.CreateTranslation(0, -c.SpinCenter, 0) * Matrix4x4.CreateFromQuaternion(c.Spin)
                  * Matrix4x4.CreateRotationY(c.Yaw) * Matrix4x4.CreateTranslation(c.Feet + new Vector3(0, c.SpinCenter, 0));
@@ -248,6 +254,7 @@ public sealed class Animator
             JointsToLocal(joints, false);
             Apply(new LayerDef { Mode = "override" }, pose, 1);
         }
+        else TwistSpine(c, pose);
         Fk(pose);
         if (footIk > 0) FootIk(c, pose, footIk, scale);
     }
@@ -259,8 +266,22 @@ public sealed class Animator
         var root = RootFor(c, scale); pose.Root = root;
         for (int i = 0; i < Sk.Count; i++) pose.Local[i] = BoneXf.Rest;
         if (clip != null) { Array.Clear(driven); SampleInto(clip, t); Apply(new LayerDef { Mode = "override" }, pose, 1); }
+        TwistSpine(c, pose);
         Fk(pose);
         if (footIk) FootIk(c, pose, 1, scale);
+    }
+
+    /// <summary>Turns the upper body from the legs' facing to the look direction, through the abdomen and chest.</summary>
+    void TwistSpine(AnimContext c, EntityPose pose)
+    {
+        float twist = c.Twist;
+        if (MathF.Abs(twist) < 1e-4f) return;
+        int chest = Sk.IndexOf("chest"), abdomen = Sk.IndexOf("abdomen");
+        if (chest < 0) return;
+        float share = abdomen >= 0 ? MathX.Clamp01(Def.Turn.ChestShare) : 1;
+        // about the parent's up axis, after the clip's own rotation
+        pose.Local[chest].Rot = Quaternion.Normalize(Quaternion.CreateFromAxisAngle(Vector3.UnitY, twist * share) * pose.Local[chest].Rot);
+        if (abdomen >= 0) pose.Local[abdomen].Rot = Quaternion.Normalize(Quaternion.CreateFromAxisAngle(Vector3.UnitY, twist * (1 - share)) * pose.Local[abdomen].Rot);
     }
 
     void Apply(LayerDef L, EntityPose pose, float w)

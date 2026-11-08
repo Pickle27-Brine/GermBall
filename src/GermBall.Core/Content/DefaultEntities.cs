@@ -61,6 +61,7 @@ public static class DefaultEntities
     {
         var e = new EntityDef { Name = "hero", Kind = "player", CurlStyle = "ball", BallColor = Red, Bones = HumanoidBones(abdomen: true) };
         e.Stats = new EntityStats { Hp = 100, Scale = 1, Radius = 0.4f, Height = 1.8f, ContactDamage = 0, DashesToFloor = 1 };
+        e.Turn = new TurnSettings { Enabled = true };   // the upper body faces the camera, the legs follow
         var s = e.Shapes;
         foreach (var (side, sg) in new[] { ("L", -1f), ("R", 1f) })
         {
@@ -128,6 +129,12 @@ public static class DefaultEntities
             .R("abdomen", 0, -8, 6).R("abdomen", 0.25f, -8, -6).R("chest", 0, -6, -8).R("chest", 0.25f, -6, 8)
             .R("head", 0, 8)
             .P("pelvis", 0, 0, -0.04f, 0).P("pelvis", 0.125f, 0, 0, 0).P("pelvis", 0.25f, 0, -0.04f, 0).P("pelvis", 0.375f, 0, 0, 0);
+        // stepping round on the spot, when the legs catch up with the upper body
+        var turn = new ClipBuilder("turn", 0.5f, true)
+            .R("hip.L", 0, 0).R("hip.L", 0.125f, 28).R("hip.L", 0.25f, 0).R("knee.L", 0, 0).R("knee.L", 0.125f, -50).R("knee.L", 0.25f, 0)
+            .R("hip.R", 0.25f, 0).R("hip.R", 0.375f, 28).R("hip.R", 0.5f, 0).R("knee.R", 0.25f, 0).R("knee.R", 0.375f, -50).R("knee.R", 0.5f, 0)
+            .R("foot.L", 0.125f, -15).R("foot.L", 0.25f, 0).R("foot.R", 0.375f, -15).R("foot.R", 0.5f, 0)
+            .P("pelvis", 0, 0, 0, 0).P("pelvis", 0.125f, 0, -0.02f, 0).P("pelvis", 0.25f, 0, 0, 0).P("pelvis", 0.375f, 0, -0.02f, 0);
         var skid = new ClipBuilder("skid", 0.4f, false)
             .R("abdomen", 0, 12).R("chest", 0, 6).R("hip.R", 0, 35).R("knee.R", 0, -10).R("hip.L", 0, -15).R("knee.L", 0, -35)
             .R("shoulder.L", 0, 20, 0, -35).R("shoulder.R", 0, 20, 0, 35).R("elbow.L", 0, 30).R("elbow.R", 0, 30);
@@ -150,11 +157,12 @@ public static class DefaultEntities
         var reload = new ClipBuilder("reload", 0.6f, true)
             .R("shoulder.R", 0, 45, 0, -25).R("shoulder.L", 0, 50, 0, 25).R("shoulder.L", 0.3f, 40, 0, 30)
             .R("elbow.R", 0, 100).R("elbow.L", 0, 95).R("elbow.L", 0.3f, 110);
-        foreach (var c in new[] { idle, run, skid, fall, hover, aim, aimUp, aimDown, punch, reload }) e.Clips.Add(c.Clip);
+        foreach (var c in new[] { idle, run, turn, skid, fall, hover, aim, aimUp, aimDown, punch, reload }) e.Clips.Add(c.Clip);
         e.Clips.Add(Flinch());
 
         e.States.Add(new StateClip { State = "idle", Clip = "idle", Fade = 0.25f });
         e.States.Add(new StateClip { State = "run", Clip = "run", Fade = 0.15f, SpeedParam = "speed", SpeedRef = 5.2f, MinRate = 0.5f });
+        e.States.Add(new StateClip { State = "turn", Clip = "turn", Fade = 0.1f });
         e.States.Add(new StateClip { State = "skid", Clip = "skid", Fade = 0.1f });
         e.States.Add(new StateClip { State = "jump", Clip = "fall", Fade = 0.15f });
         e.States.Add(new StateClip { State = "fall", Clip = "fall", Fade = 0.2f });

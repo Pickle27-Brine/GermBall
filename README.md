@@ -22,6 +22,7 @@ Keep the `content` folder next to them: the editors save into it and the game lo
   - Idle, run, skid, fall and hover clips play by movement state. The run clip plays faster the faster you run, so planted feet don't slide.
   - The gun arms blend between aim-down, aim and aim-up clips by your aim pitch. Punch, reload and flinch clips play over the top on the arms or body.
   - Foot IK is the only procedural part: it puts each foot on its own floor on steps and slopes.
+  - The upper body turns with the camera, and the hips and legs follow behind. Standing still, small looks only twist the waist and chest; past 50° the legs step round (the turn clip) to catch up. Running, the legs face the way you run.
 - **Movement.** Movement uses 1.0's momentum-based tuning.
   - **Running has inertia.** Speed builds over about 2.6 s to top speed (9.8 m/s). Let go and you coast to a stop over about 2 s. Reverse at speed and you skid. The faster you go, the wider you turn. Slopes slow you going up and speed you up going down, so steep ramps need a run-up.
   - **Jumping curls you into a ball.** Hold jump for full height (2.7 m) or tap it for a short hop. You land on your feet, unless you hold roll, in which case you land rolling with your momentum.
@@ -149,6 +150,7 @@ The game uses all of this.
   - **Limbs:** whether limbs can come off, the smallest hit that counts, how many it can lose, and how long debris lasts.
     - Each limb is a bone and everything below it, with its own health and a "losing it kills" option.
     - Add a limb at any bone, or add both arms and legs in one go.
+  - **Turning:** "Upper body leads" makes the upper body face where it looks while the legs follow. Set the twist limit before the legs step round, the step and follow speeds, and how the twist splits between chest and abdomen.
 
 **Right panel:**
 
@@ -164,7 +166,7 @@ The game uses all of this.
 
   Layers **override** or are **additive**, with a weight and speed. **Plays in** picks the states a layer is active in (aim, punch, hurt...), with a fade. **Bones** is the mask.
 - **Preview:**
-  - **State:** a movement (idle, run, fall...), an action on top (aim, punch, reload, hurt...), run speed, aim up and down, on the ground, curled up, and holding a gun.
+  - **State:** a movement (idle, run, fall...), an action on top (aim, punch, reload, hurt...), run speed, aim up and down, body twist (upper body against the legs), on the ground, curled up, and holding a gun.
   - **Ragdoll and limbs:** drop the ragdoll and stand it up, or cut off a limb and put the limbs back.
   - **View:** turntable, grid, bones, shapes, collision and frame.
 

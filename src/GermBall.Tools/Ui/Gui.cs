@@ -36,6 +36,8 @@ public sealed class Gui
     readonly List<Vector4> uiRects = new();
     List<Vector4> lastUiRects = new();
     Vector4 popupRect, lastPopupRect;
+    /// <summary>Where the open drop-down list was drawn last frame (tests click its rows).</summary>
+    public Vector4 OpenListRect => lastPopupRect;
     Action popup;   // drawn last, on top
     string openPopup;
 

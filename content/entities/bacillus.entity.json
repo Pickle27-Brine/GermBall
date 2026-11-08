@@ -696,5 +696,12 @@
         "Critical": false
       }
     ]
+  },
+  "Turn": {
+    "Enabled": false,
+    "MaxTwist": 50,
+    "StepSpeed": 7,
+    "MoveSpeed": 12,
+    "ChestShare": 0.6
   }
 }

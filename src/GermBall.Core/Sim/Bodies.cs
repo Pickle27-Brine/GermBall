@@ -52,7 +52,7 @@ public sealed partial class Game
     public void FillHeroContext(AnimContext c, Vector3 feet, float yaw, float dt)
     {
         var p = Player; var w = Weapon;
-        c.Time = Time; c.Dt = dt; c.Feet = feet; c.Yaw = yaw;
+        c.Time = Time; c.Dt = dt; c.Feet = feet; c.Yaw = yaw; c.LegYaw = HeroLegYaw;
         c.Speed = MathX.FlatLen(p.Vel); c.MoveDir = c.Speed > 0.01f ? MathX.Flat(p.Vel) / c.Speed : MathX.Forward(yaw, 0);
         c.Grounded = p.Grounded; c.Rolling = p.Rolling; c.Skidding = p.Skidding; c.Hovering = p.Hovering; c.Charging = p.Charging;
         c.Armed = w != null && p.Alive; c.TwoHanded = w != null && w.Def != WeaponDef.Pistol;
@@ -76,7 +76,7 @@ public sealed partial class Game
         if (p.Hovering) return "hover";
         if (!p.Grounded) return p.Vel.Y > 0 ? "jump" : "fall";
         if (p.Skidding) return "skid";
-        return MathX.FlatLen(p.Vel) > 0.3f ? "run" : "idle";
+        return MathX.FlatLen(p.Vel) > 0.3f ? "run" : legsStepping ? "turn" : "idle";
     }
 
     /// <summary>The hero's game state, for state animation layers.</summary>
@@ -94,11 +94,49 @@ public sealed partial class Game
         if (aimHeld) return "aim";
         if (!p.Grounded) return p.Vel.Y > 0 ? "jump" : "fall";
         if (p.Skidding) return "skid";
-        return MathX.FlatLen(p.Vel) > 0.3f ? "run" : "idle";
+        return MathX.FlatLen(p.Vel) > 0.3f ? "run" : legsStepping ? "turn" : "idle";
     }
+
+    /// <summary>Which way the hero's hips and legs face. The upper body faces the camera (<see cref="Player.Yaw"/>);
+    /// the legs follow behind, and standing still they only step round once the twist gets too big.</summary>
+    public float HeroLegYaw = float.NaN;
+    bool legsStepping;
+
+    void TurnLegs(float dt)
+    {
+        var p = Player; var T = Hero.Def.Turn;
+        if (!T.Enabled || !p.Alive || p.Rolling || p.Charging || float.IsNaN(HeroLegYaw)) { HeroLegYaw = p.Yaw; legsStepping = false; return; }
+        float twist = MathX.AngleWrap(p.Yaw - HeroLegYaw), max = T.MaxTwist * MathX.Deg;
+        float speed = MathX.FlatLen(p.Vel), rate;
+        float target = p.Yaw;
+        if (p.Grounded && speed > 0.3f)
+        {
+            // running: the legs run the way you're going (within the twist limit; backwards they face forward)
+            float off = MathX.AngleWrap(MathX.YawOf(MathX.Flat(p.Vel)) - p.Yaw);
+            if (MathF.Abs(off) < 110 * MathX.Deg) target = p.Yaw + Math.Clamp(off, -max, max);
+            rate = T.MoveSpeed; legsStepping = false;
+        }
+        else if (p.Grounded)
+        {
+            // standing: feet stay planted until the twist is too much, then the legs step round to face forward
+            if (MathF.Abs(twist) > max) legsStepping = true;
+            if (legsStepping && MathF.Abs(twist) < 3 * MathX.Deg) legsStepping = false;
+            rate = legsStepping ? T.StepSpeed : 0;
+        }
+        else { rate = T.MoveSpeed; legsStepping = false; }
+        HeroLegYaw += MathX.AngleWrap(target - HeroLegYaw) * (1 - MathF.Exp(-rate * dt));
+        // never twist further than the limit plus a little, however fast the camera turns
+        float hard = max + 25 * MathX.Deg;
+        twist = MathX.AngleWrap(p.Yaw - HeroLegYaw);
+        if (MathF.Abs(twist) > hard) HeroLegYaw = p.Yaw - MathF.CopySign(hard, twist);
+        HeroLegYaw = MathX.AngleWrap(HeroLegYaw);
+    }
+    /// <summary>The legs are stepping round to catch up with the upper body.</summary>
+    public bool LegsStepping => legsStepping;
 
     void TickBodies(float dt)
     {
+        TurnLegs(dt);
         FillHeroContext(HeroCtx, Player.Pos, Player.Yaw, dt);
         Hero.Update(HeroCtx);
         foreach (var gm in Germs) gm.Update(this, dt);

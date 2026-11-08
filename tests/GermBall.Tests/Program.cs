@@ -52,6 +52,7 @@ public static class Program
         Run("animation: clips, layers, masks, additive, crossfades", AnimationLayers);
         Run("camera: locked behind the hero, aim eases in", CameraLock);
         Run("animation: layers by state, blends by parameter, foot IK", AnimationPipeline);
+        Run("turning: the upper body follows the camera, the legs step round after", UpperBodyTurn);
         Run("entity editor: shapes, colour, bones, keys, layers, undo, save, test in game", EntityEditorWorkflow);
         Run("map editor: add, pick, gizmo with snapping, properties, undo, save, play test", MapEditorWorkflow);
         Run("editor typing: click to type, select-all, caret, click-away, quick clicks", EditorTyping);
@@ -710,6 +711,36 @@ public static class Program
         Check(hero.Layers.All(l => l.Source != "procedural") && hero.Layers.Exists(l => l.Source == "footik"), "the hero should be all clips plus foot IK");
     }
 
+    static void UpperBodyTurn()
+    {
+        var g = New(); Place(g, g.Player.Pos, 0); Steps(g, Sec(0.5f), default);
+        float Facing(string bone)
+        {
+            var h = g.HeroCtx; g.FillHeroContext(h, g.Player.Pos, g.Player.Yaw, 0); g.Hero.Evaluate(h);
+            int b = g.Hero.Sk.IndexOf(bone);
+            return MathX.YawOf(MathX.Flat(Vector3.TransformNormal(-Vector3.UnitZ, g.Hero.Pose.World[b])));
+        }
+        float legs0 = g.HeroLegYaw;
+        Facing("pelvis"); var foot0 = g.Hero.Pose.Joint(g.Hero.Sk.IndexOf("foot.L"));
+        // a small look round: the upper body turns, the legs and feet stay put
+        g.CamYaw = 30 * MathX.Deg; Steps(g, Sec(0.6f), default);
+        Check(MathF.Abs(MathX.AngleWrap(g.HeroLegYaw - legs0)) < 1e-3f && !g.LegsStepping, $"legs moved for a small turn ({g.HeroLegYaw / MathX.Deg:0.0})");
+        Check(MathF.Abs(MathX.AngleWrap(Facing("chest") - g.CamYaw)) < 8 * MathX.Deg, $"chest faces {Facing("chest") / MathX.Deg:0.0}, camera {g.CamYaw / MathX.Deg:0.0}");
+        Check(MathF.Abs(MathX.AngleWrap(Facing("pelvis") - legs0)) < 8 * MathX.Deg, $"hips turned to {Facing("pelvis") / MathX.Deg:0.0}");
+        Check(Vector3.Distance(g.Hero.Pose.Joint(g.Hero.Sk.IndexOf("foot.L")), foot0) < 0.03f, $"the feet should stay planted ({P(foot0)} -> {P(g.Hero.Pose.Joint(g.Hero.Sk.IndexOf("foot.L")))})");
+        // a big turn: the legs step round (playing the turn clip) and catch up
+        g.CamYaw = 100 * MathX.Deg; Steps(g, 3, default);
+        Check(g.LegsStepping && g.HeroMove() == "turn", "a big turn should make the legs step round");
+        Check(MathF.Abs(MathX.AngleWrap(g.CamYaw - g.HeroLegYaw)) <= 76 * MathX.Deg, "the twist should be limited");
+        Steps(g, Sec(1.2f), default);
+        Check(!g.LegsStepping && MathF.Abs(MathX.AngleWrap(g.CamYaw - g.HeroLegYaw)) < 4 * MathX.Deg, $"legs caught up to {g.HeroLegYaw / MathX.Deg:0.0}");
+        // running: the legs face the way you run
+        Steps(g, Sec(1.5f), new InputFrame { Move = new Vector2(1, 0.3f) });
+        float run = MathX.YawOf(MathX.Flat(g.Player.Vel));
+        float want = g.CamYaw + Math.Clamp(MathX.AngleWrap(run - g.CamYaw), -50 * MathX.Deg, 50 * MathX.Deg);
+        Check(MathF.Abs(MathX.AngleWrap(g.HeroLegYaw - want)) < 10 * MathX.Deg, $"running legs at {g.HeroLegYaw / MathX.Deg:0}, expected {want / MathX.Deg:0}");
+    }
+
     static void CameraLock()
     {
         var g = New();
@@ -757,6 +788,8 @@ public static class Program
         d.Shot(Path.Combine(dir, "ee-06-brute-ragdoll.png"));
         ee.Load("coccus"); ee.LeftTab = 2; ee.RightTab = 2; ee.CutLimb("shoulder.R"); d.Step(20);
         d.Shot(Path.Combine(dir, "ee-07-limbs.png"));
+        ee.Load("hero"); ee.LeftTab = 2; ee.RightTab = 2; ee.SoloClip = false; ee.PreviewTwist = 45; ee.ShowBones = false; d.Step(20);
+        d.Shot(Path.Combine(dir, "ee-08-twist.png"));
 
         var me = new GermBall.Tools.MapEditor.MapEditor(ScratchContent(), "debug");
         var m = new EditorDriver(1600, 900, (i, dt, dl) => me.Frame(i, dt, 1600, 900, dl));
@@ -837,13 +870,17 @@ public static class Program
         int ci = ee.Def.Clips.IndexOf(clip);
         var unmapped = AnimStates.All.Where(st => !ee.Def.States.Exists(x => x.State == st)).ToList();
         GuiDriving.PickCombo(ui, d, "Give a state a clip...", unmapped.IndexOf("hurt"));
-        Check(ee.Def.States.Exists(st => st.State == "hurt"), "giving hurt a clip");
+        Check(ee.Def.States.Exists(st => st.State == "hurt"), $"giving hurt a clip (menu at {GuiDriving.Find(ui, d, "Give a state a clip...")}, states {string.Join(",", ee.Def.States.Select(x => x.State))})");
         GuiDriving.PickCombo(ui, d, "hurt", ci, hasNone: true);
         Check(ee.Def.States.Exists(st => st.State == "hurt" && st.Clip == clip.Name), "state combo didn't map hurt");
 
         // save under a new name, and the game's store sees it
         GuiDriving.ClickLabel(ui, d, "Settings");
         GuiDriving.TypeInto(ui, d, "left/Name", "spiky");
+        GuiDriving.ClickLabel(ui, d, "Upper body leads");
+        Check(ee.Def.Turn.Enabled, "turning on upper body leads");
+        GuiDriving.TypeInto(ui, d, "Twist limit", "35");
+        Check(ee.Def.Turn.MaxTwist == 35, $"twist limit {ee.Def.Turn.MaxTwist}");
         GuiDriving.ClickLabel(ui, d, "Save");
         store.Forget();
         var saved = store.Entity("spiky");
@@ -1087,6 +1124,8 @@ public static class Program
         Check(ge.Debris.Count == 1 && ge.Preview.HiddenBones.Count == 1, "cutting off a limb in the preview");
         gd.Step(10);
         GuiDriving.ClickLabel(gui, gd, "Put limbs back");
+        GuiDriving.TypeInto(gui, gd, "Body twist", "40");
+        Check(ge.PreviewTwist == 40, "preview twist");
         Check(ge.Preview.HiddenBones.Count == 0 && ge.Debris.Count == 0, "putting limbs back");
         // the layer stack: a layer only plays in the states ticked for it
         GuiDriving.ClickLabel(gui, gd, "Layers");

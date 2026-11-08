@@ -40,7 +40,7 @@ public sealed partial class EntityEditor
     // preview
     public readonly AnimContext Ctx = new() { State = "idle", Grounded = true };
     public bool ShowBones = true, ShowShapes = true, ShowGrid = true, ShowCollision, Turntable;
-    public float PreviewYaw;
+    public float PreviewYaw, PreviewTwist;
     Ragdoll rag; readonly StaticWorld floor = new();
 
     public const float Fps = 30;
@@ -96,7 +96,7 @@ public sealed partial class EntityEditor
         e.Shapes.Add(new ShapeDef { Name = "hand.R", Bone = "hand.R", Type = "Sphere", Size = new Vector3(0.13f), Color = "#B0B6C0" });
         // start from the hero's animation: clips, the clip for each state, and the layer stack (foot IK included)
         var hero = DefaultEntities.Hero();
-        e.Clips = hero.Clips; e.States = hero.States; e.Layers = hero.Layers;
+        e.Clips = hero.Clips; e.States = hero.States; e.Layers = hero.Layers; e.Turn = hero.Turn;
         return e;
     }
     /// <summary>The rotation (degrees) that turns a capsule's Y axis along a direction.</summary>
@@ -256,6 +256,7 @@ public sealed partial class EntityEditor
         // pose: the solo clip at the playhead while animating, the full layer stack otherwise
         if (Playing && CurClip != null && AnimTab) { Playhead += dt; if (Playhead > CurClip.Length) Playhead = CurClip.Loop ? Playhead % MathF.Max(1e-3f, CurClip.Length) : CurClip.Length; }
         Ctx.Dt = Playing || !AnimTab || !SoloClip ? dt : 0; Ctx.Time = time; Ctx.Feet = Vector3.Zero; Ctx.Yaw = PreviewYaw;
+        Ctx.LegYaw = PreviewTwist != 0 && Def.Turn.Enabled ? PreviewYaw - PreviewTwist * MathX.Deg : float.NaN;
         Ctx.GroundAt = p => 0; Ctx.Joints = null; Ctx.Spin = Quaternion.Identity;
         Ctx.MoveDir = MathX.Forward(PreviewYaw, 0);
         Ctx.AimDir = MathX.Forward(PreviewYaw + aimYaw * MathX.Deg, aimPitch * MathX.Deg);

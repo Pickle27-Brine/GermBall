@@ -20,7 +20,7 @@ public sealed partial class EntityEditor
     public const int TabModel = 0, TabRig = 1, TabSettings = 2;
     public const int TabAnimate = 0, TabLayers = 1, TabPreview = 2;
     string newShapeType = "Capsule";
-    bool hdrForm, hdrPoseTools, hdrMask, hdrActive, hdrStateClips = true, hdrBlend = true, hdrLook = true, hdrLimbs = true, hdrGame = true, hdrRagdoll = true, hdrView;
+    bool hdrForm, hdrPoseTools, hdrMask, hdrActive, hdrStateClips = true, hdrBlend = true, hdrLook = true, hdrLimbs = true, hdrGame = true, hdrRagdoll = true, hdrView, hdrTurn = true;
     static readonly string[] Kinds = { "player", "enemy", "prop" }, CurlStyles = { "ball", "pose" }, Eases = { "smooth", "linear", "step" };
     static readonly string[] Templates = { "humanoid", "hero copy", "germ copy", "empty" };
     string BoneLabel(string bone) { var f = BoneNames.Friendly(bone); return f == bone || bone == null ? f : $"{f}  ({bone})"; }
@@ -303,6 +303,18 @@ public sealed partial class EntityEditor
             Ui.Hint("ball: a striped ball. pose: its own shapes, spun");
             Ui.Color("Ball colour", ref Def.BallColor);
         }
+        if (Ui.Header("Turning", ref hdrTurn))
+        {
+            var T = Def.Turn;
+            Ui.Checkbox("Upper body leads", ref T.Enabled); Ui.Hint("the upper body faces where it looks; the hips and legs follow behind");
+            if (T.Enabled)
+            {
+                Ui.Slider("Twist limit", ref T.MaxTwist, 5, 90, "0"); Ui.Hint("degrees the upper body turns, standing still, before the legs step round");
+                Ui.Slider("Step speed", ref T.StepSpeed, 1, 20, "0.0"); Ui.Hint("how quickly the legs catch up when they step round (the turn clip plays meanwhile)");
+                Ui.Slider("Follow speed", ref T.MoveSpeed, 1, 30, "0.0"); Ui.Hint("how quickly the legs follow while running or in the air");
+                Ui.Slider("Chest share", ref T.ChestShare, 0, 1); Ui.Hint("how much of the twist the chest takes; the abdomen takes the rest");
+            }
+        }
         if (Ui.Header("Limbs", ref hdrLimbs)) LimbsSection();
     }
 
@@ -558,6 +570,7 @@ public sealed partial class EntityEditor
             if (Ctx.State != Ctx.Move && act == null) Ctx.State = Ctx.Move;
             Ui.Slider("Speed", ref Ctx.Speed, 0, Player.TopSpeed, "0.0"); Ui.Hint("running speed, m/s");
             Ui.Slider("Aim up/down", ref Ctx.AimPitch, -80, 80, "0");
+            Ui.Slider("Body twist", ref PreviewTwist, -90, 90, "0"); Ui.Hint("degrees the upper body is turned from the legs (the game sets this as you look round)");
             Ui.Checkbox("On the ground", ref Ctx.Grounded);
             Ui.Checkbox("Curled up", ref Ctx.Rolling);
             Ui.Checkbox("Holding a gun", ref Ctx.Armed);
