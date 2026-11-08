@@ -29,7 +29,7 @@ public sealed class Player
     public const float SlopeRollUp = 7.9f, SlopeRollDown = 31.5f;
     // spin dash: press roll while (nearly) still, tap jump to rev, let go of roll to launch
     public const float SpinDashBase = 20.2f, SpinDashPerRev = 1.26f, MaxRev = 8;
-    public const float DashSpeed = 18f, DashLift = 2.2f, DashTime = 0.4f;
+    public const float DashSpeed = 18f, DashLift = 2.2f, DashTime = 0.4f, DashAssist = 0.15f;
     public const float PoundSpeed = 34f, PoundWindup = 0.13f, PoundMinHeight = 0.8f;
     public const float HoverFuelMax = 2.5f;
     public const float MaxHp = 100, MaxShield = 50, ShieldDelay = 3, ShieldRegen = 25;
@@ -84,7 +84,14 @@ public sealed class Player
     public void Die(string cause)
     {
         if (!Alive) return;
-        Hp = 0; Alive = false; DeadT = 2; LastEvent = "Killed by " + cause; Vel = Vector3.Zero;
+        Hp = 0; Alive = false; DeadT = 2; LastEvent = "Killed by " + cause;   // Vel is kept: the ragdoll starts with it
+    }
+    /// <summary>Thrown back into the air by a hit that connected (a dash into a germ): curled, with the dash available again.</summary>
+    public void Bounce(Vector3 vel)
+    {
+        Vel = vel; Grounded = false; Rolling = true; Jumping = true; JumpRolled = false;
+        DashUsed = false; DashT = 0; PoundPhase = 0; Hovering = false; CoyoteT = 0;
+        StartAir();
     }
     public void Heal(float amount) { if (Alive) Hp = MathF.Min(MaxHp, Hp + amount); }
 
@@ -327,8 +334,18 @@ public sealed class Player
         {
             var dir = m > 0.1f ? wd : MathX.Forward(Yaw, 0);
             float along = Vector3.Dot(Vel, dir);
-            float vy = MathF.Max(Vel.Y, DashLift);
-            Vel = dir * MathF.Max(DashSpeed, along + 5); Vel.Y = vy;
+            float vy = MathF.Max(Vel.Y, DashLift), sp = MathF.Max(DashSpeed, along + 5);
+            // 1.0's dash assist: bend a little toward the best germ ahead, and toward its height
+            var tgt = g.DashTarget(Pos, dir);
+            if (tgt != null)
+            {
+                var e = tgt.Center - (Pos + new Vector3(0, BallRadius, 0)); float hd = MathX.FlatLen(e);
+                var to = MathX.Flat(e) / hd;
+                dir = Vector3.Normalize(dir + (to - dir) * DashAssist);
+                float t = hd / sp, vyI = e.Y / t + 0.5f * Gravity * t;
+                vy = MathX.Lerp(vy, MathX.Clamp(vyI, -8, 14), DashAssist);
+            }
+            Vel = dir * sp; Vel.Y = vy;
             DashUsed = true; DashT = DashTime; Rolling = true; Jumping = true; JumpRolled = false; HoverFuel = 0; Hovering = false;
             Yaw = MathX.YawOf(dir); JumpBufferT = 0;
             g.Effects.Burst(Center, MathX.Rgb(0x80E0FF), 10, 4);

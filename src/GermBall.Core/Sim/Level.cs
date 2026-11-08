@@ -40,6 +40,7 @@ public sealed class Level
     public readonly List<DummySpawn> Dummies = new();
     public readonly List<PropSpawn> Props = new();
     public readonly List<PickupSpawn> Pickups = new();
+    public readonly List<GermSpawn> Germs = new();
     public Vector3 Spawn; public float SpawnYaw;
     /// <summary>Anything that falls below this is dead.</summary>
     public float KillY = -40;
@@ -130,6 +131,7 @@ public sealed class Level
         BuildCombat(L);
         BuildPhysics(L);
         BuildZones(L);
+        BuildGermYard(L);
         return L;
     }
 
@@ -293,6 +295,27 @@ public sealed class Level
                 L.Block(c.X + sx * (flat + run / 2 + 1), c.Z + sz * (flat + run / 2 + 1), run + 2, run + 2, h, PhysCol);
         L.Sign(c + new Vector3(0, 4.5f, 0), "SKATE BOWL");
         L.Mark("Skate bowl", c + new Vector3(0, 0.1f, 4), 0);
+    }
+
+    /// <summary>Static germs (no AI) to dash, roll, shoot, punch and pound. They face west, toward where you come in.</summary>
+    static void BuildGermYard(Level L)
+    {
+        L.AddZone("Germ yard", ZoneKind.Area, new Vector3(56, -1, 26), new Vector3(118, 60, 100));
+        float face = MathF.PI / 2;
+        void G(GermKind k, float x, float z, float y = 0) => L.Germs.Add(new GermSpawn { Kind = k, Pos = new Vector3(x, y, z), Yaw = face });
+        // a row of cocci on the ground: one dash (or a fast roll) each
+        for (int i = 0; i < 5; i++) G(GermKind.Coccus, 72 + i * 5, 36);
+        L.Sign(new Vector3(82, 3, 33), "COCCI  (1 dash)", 50);
+        // a dash chain: cocci on 1.5 m posts, 6 m apart
+        for (int i = 0; i < 4; i++) { float x = 72 + i * 6; L.Block(x, 48, 1.5f, 1.5f, 1.5f, HazCol); G(GermKind.Coccus, x, 48, 1.5f); }
+        L.Sign(new Vector3(81, 4.5f, 45), "DASH CHAIN", 50);
+        for (int i = 0; i < 3; i++) G(GermKind.Bacillus, 72 + i * 8, 60);
+        L.Sign(new Vector3(80, 4, 57), "BACILLI  (1 dash)", 50);
+        G(GermKind.Brute, 74, 74); G(GermKind.Brute, 90, 74);
+        L.Sign(new Vector3(82, 5, 71), "BRUTES  (2 dashes)", 60);
+        G(GermKind.Titan, 104, 58);
+        L.Sign(new Vector3(104, 7.5f, 58), "PHAGE TITAN  (4 dashes)", 80);
+        L.Mark("Germ yard", new Vector3(62, 0.1f, 42), -MathF.PI / 2);
     }
 
     static void BuildZones(Level L)

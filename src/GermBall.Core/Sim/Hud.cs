@@ -13,7 +13,7 @@ public sealed partial class Game
     {
         "MOVE        WASD / left stick",
         "LOOK        mouse / right stick",
-        "JUMP        Space / A   (hold: higher; again: dash)",
+        "JUMP        Space / A   (hold: higher; again: dash attack)",
         "ROLL        Shift or C / B   (hold to stay curled)",
         "SPIN DASH   roll when still, tap jump, let go",
         "POUND       Q / RB while curled in the air",
@@ -126,7 +126,7 @@ public sealed partial class Game
         if (ShowHelp) DrawPanel(o, 10 * s, statusY + 4 * s, HelpLines, MathF.Max(1, MathF.Round(s * 0.5f)));
         if (ShowDebug) DrawDebug(dl, o, w, h, s);
 
-        if (!p.Alive)
+        if (!p.Alive && !Paused)
         {
             o.Rect(0, h * 0.42f, w, 36 * s, new Vector4(0.3f, 0, 0, 0.55f));
             o.TextCentered(w / 2f, h * 0.42f + 6 * s, "DOWN", s * 2, White);
@@ -188,6 +188,7 @@ public sealed partial class Game
             $"area {(Area?.Name ?? "-")}",
             $"dps (5s) {RecentDps:0.0}   hits {ShotsHit}/{ShotsFired}",
             $"items {dl.Items.Count}  fx {Effects.Particles.Count}  proj {Projectiles.Count}",
+            $"germs {Germs.FindAll(x => x.Standing).Count} up  {Germs.FindAll(x => x.Ragdoll != null).Count} ragdolled  {Germs.FindAll(x => !x.Alive).Count} dead",
             $"event {p.LastEvent}",
         };
         float sc = MathF.Max(1, MathF.Round(s * 0.5f));

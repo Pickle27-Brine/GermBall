@@ -47,6 +47,7 @@ public sealed partial class Game
         foreach (var s in level.Props) Props.Add(new Prop(s));
         foreach (var s in level.Pickups) Pickups.Add(new Pickup(s));
         Weapons.Add(new WeaponSlot(WeaponDef.Pistol));
+        InitBodies();
         RespawnPos = level.Spawn; RespawnYaw = level.SpawnYaw;
         Player.Place(level.Spawn, level.SpawnYaw);
         CamYaw = level.SpawnYaw;
@@ -110,6 +111,7 @@ public sealed partial class Game
         ToastT -= DT; AreaBannerT -= DT;
         Player.Update(this, input, DT);
         UpdateWeapons(input, DT);
+        TickBodies(DT);
         foreach (var d in Dummies) d.Update(DT);
         PushPlayerOutOfDummies();
         foreach (var p in Props) p.Update(Level, DT);
@@ -125,6 +127,7 @@ public sealed partial class Game
     {
         Player.Alive = true; Player.Hp = Player.MaxHp; Player.Shield = Player.MaxShield;
         Player.Place(RespawnPos, RespawnYaw);
+        PlayerRagdoll = null;
         CamYaw = RespawnYaw; CamPitch = -0.15f;
         camPivotY = Player.Pos.Y + 1.5f;
     }
@@ -132,6 +135,7 @@ public sealed partial class Game
     public void Teleport(Vector3 feet, float yaw)
     {
         if (!Player.Alive) { Player.Alive = true; Player.Hp = Player.MaxHp; Player.Shield = Player.MaxShield; }
+        PlayerRagdoll = null;
         Player.Place(feet, yaw);
         CamYaw = yaw; CamPitch = -0.15f;
         camPivotY = Player.Pos.Y + 1.5f;
@@ -276,7 +280,7 @@ public sealed partial class Game
     void UpdateCamera(float a, float dt)
     {
         var p = Player;
-        var feet = Vector3.Lerp(p.PrevPos, p.Pos, a);
+        var feet = PlayerRagdoll != null ? PlayerRagdoll.Center - new Vector3(0, 0.9f, 0) : Vector3.Lerp(p.PrevPos, p.Pos, a);
         // one height whether curled or not, so every jump doesn't bob the camera
         float targetY = feet.Y + (p.Rolling && p.Grounded ? 1.3f : 1.6f);
         // smooth vertical motion (steps, landings) but never lag behind by more than half a metre

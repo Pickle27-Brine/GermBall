@@ -37,6 +37,11 @@ public static class Program
         Run("pistol kills a dummy", ShootDummy);
         Run("lobber blast moves balls and hurts dummies", LobberBlast);
         Run("punch and ground pound", PunchAndPound);
+        Run("hero rig: limb lengths, feet on the floor, planted feet", HeroRig);
+        Run("jump dashes floor germs (1 / 2 / 4)", DashFloorsGerms);
+        Run("germ contact hurts; spin dash bowls germs over", GermContactAndRoll);
+        Run("shooting a germ to death, and its respawn", ShootGermDead);
+        Run("the hero ragdolls on death", PlayerRagdoll);
         Run("random input soak (every landmark)", Soak);
 
         if (args.Length >= 2 && args[0] == "shots") Shots(args[1], args.Length >= 4 ? int.Parse(args[2]) : 1280, args.Length >= 4 ? int.Parse(args[3]) : 720);
@@ -400,6 +405,127 @@ public static class Program
         Check(!g.Player.Pounding, "pounded from a few centimetres up");
     }
 
+    // ---------------------------------------------------------------- bodies
+    static void HeroRig()
+    {
+        var g = New(); RunStart(g);
+        var rig = g.Anim.Rig; var pose = new Pose(); var prev = new Pose();
+        float stanceSpeed = 0; int stanceN = 0, bad = 0; string why = "";
+        for (int i = 0; i < Sec(2); i++)
+        {
+            Steps(g, 1, Fwd());
+            prev.CopyFrom(pose);
+            g.Anim.Build(pose, g, g.Player.Pos, g.Player.Yaw);
+            void Len(J a, J b, float want) { float l = Vector3.Distance(pose[a], pose[b]); if (MathF.Abs(l - want) > 0.01f) { bad++; why = $"{a}-{b} {l:0.00} vs {want:0.00}"; } }
+            Len(J.HipL, J.KnL, rig.Thigh); Len(J.KnL, J.FtL, rig.Shin); Len(J.HipR, J.KnR, rig.Thigh); Len(J.KnR, J.FtR, rig.Shin);
+            Len(J.ShL, J.ElL, rig.Upper); Len(J.ElL, J.HaL, rig.Fore); Len(J.ShR, J.ElR, rig.Upper); Len(J.ElR, J.HaR, rig.Fore);
+            foreach (var ft in new[] { J.FtL, J.FtR }) if (pose[ft].Y < 0 || pose[ft].Y > 0.55f) { bad++; why = $"{ft} at height {pose[ft].Y:0.00}"; }
+            if (i < 2) continue;
+            // a foot in its stance half should stay (nearly) put on the ground
+            for (int side = 0; side < 2; side++)
+            {
+                float ph = g.Anim.Phase + side * 0.5f; ph -= MathF.Floor(ph);
+                if (ph < 0.05f || ph > 0.45f) continue;
+                var ft = side == 0 ? J.FtL : J.FtR;
+                stanceSpeed += MathX.FlatLen(pose[ft] - prev[ft]) / Game.DT; stanceN++;
+            }
+        }
+        Check(bad == 0, $"{bad} pose problems, e.g. {why}");
+        float avg = stanceSpeed / Math.Max(1, stanceN), body = MathX.FlatLen(g.Player.Vel);
+        Check(avg < body * 0.3f, $"planted feet slide at {avg:0.0} m/s while running at {body:0.0}");
+    }
+
+    static Germ GermOf(Game g, GermKind k, int nth = 0)
+    {
+        foreach (var gm in g.Germs) if (gm.Spawn.Kind == k && nth-- == 0) return gm;
+        throw new Exception("no " + k);
+    }
+
+    /// <summary>Hops at a germ from 6 m and dashes into it. Returns true if the dash connected.</summary>
+    static bool DashInto(Game g, Germ gm)
+    {
+        Place(g, gm.Pos - new Vector3(6 + gm.Radius, 0, 0), -MathF.PI / 2);
+        int before = gm.DashHits; bool wasDown = gm.Ragdoll != null; float hp = gm.Hp;
+        Steps(g, Sec(0.12f), default, Btn.Jump);
+        Steps(g, 1, Fwd(), Btn.Jump);
+        for (int i = 0; i < Sec(1); i++)
+        {
+            Steps(g, 1, Fwd());
+            if (gm.Hp < hp) return true;
+        }
+        return false;
+    }
+
+    static void DashFloorsGerms()
+    {
+        var g = New(); var c = GermOf(g, GermKind.Coccus);
+        Check(DashInto(g, c), "dash missed the coccus: player " + P(g.Player.Pos));
+        Check(c.Ragdoll != null, "one dash should floor a coccus");
+        Check(g.Player.Vel.Y > 3 && !g.Player.DashUsed, $"should bounce up with the dash back (vel {P(g.Player.Vel)}, dash used {g.Player.DashUsed})");
+        // the ragdoll settles on the floor and gets back up
+        Steps(g, Sec(1.2f), default);
+        Check(c.Ragdoll != null && c.Ragdoll.Finite() && c.Ragdoll.Center.Y > 0.05f && c.Ragdoll.Center.Y < 1.2f, "ragdoll pelvis at " + (c.Ragdoll == null ? "-" : P(c.Ragdoll.Center)));
+        Steps(g, Sec(1.5f), default);
+        Check(c.Standing && MathF.Abs(c.Pos.Y) < 0.05f, $"coccus should be back up on the floor ({c.Standing}, {P(c.Pos)})");
+
+        var b = GermOf(g, GermKind.Brute);
+        Check(DashInto(g, b), "dash missed the brute");
+        Check(b.Standing && b.DashHits == 1, $"one dash shouldn't floor a brute (hits {b.DashHits})");
+        Check(DashInto(g, b), "second dash missed the brute");
+        Check(b.Ragdoll != null, "two dashes should floor a brute");
+
+        var t = GermOf(g, GermKind.Titan);
+        for (int i = 1; i <= 4; i++)
+        {
+            Check(DashInto(g, t), $"dash {i} missed the titan");
+            Check(i < 4 ? t.Standing : t.Ragdoll != null, $"titan after {i} dashes: {(t.Standing ? "standing" : "down")}");
+        }
+    }
+
+    static void GermContactAndRoll()
+    {
+        // walking into a germ hurts and shoves you away
+        var g = New(); var bac = GermOf(g, GermKind.Bacillus);
+        Place(g, bac.Pos - new Vector3(3, 0, 0), -MathF.PI / 2);
+        float before = g.Player.Hp + g.Player.Shield;
+        Steps(g, Sec(1.5f), Fwd());
+        Check(g.Player.Hp + g.Player.Shield < before, "walking into a bacillus didn't hurt");
+        Check(bac.Standing && bac.Hp == bac.Type.Hp, "walking into it shouldn't hurt the germ");
+        // a spin dash bowls a coccus over
+        g = New(); var c = GermOf(g, GermKind.Coccus);
+        Place(g, c.Pos - new Vector3(5, 0, 0), -MathF.PI / 2);
+        Steps(g, Sec(0.3f), new InputFrame { Held = Btn.Roll, Move = new Vector2(0, 1) }, Btn.Roll);
+        Steps(g, 1, new InputFrame { Held = Btn.Roll | Btn.Jump }, Btn.Jump);
+        Steps(g, Sec(0.2f), new InputFrame { Held = Btn.Roll });
+        Steps(g, Sec(0.6f), default);
+        Check(c.Hp < c.Type.Hp && (c.Ragdoll != null || !c.Alive), $"spin dash into a coccus: hp {c.Hp}, down {c.Ragdoll != null}, player {P(g.Player.Pos)}");
+    }
+
+    static void ShootGermDead()
+    {
+        var g = New(); var bac = GermOf(g, GermKind.Bacillus);
+        Place(g, bac.Pos - new Vector3(10, 0, 0), -MathF.PI / 2);
+        AimAt(g, bac.Pos + new Vector3(0, 1.0f, 0));
+        for (int i = 0; i < 5; i++) { Steps(g, 1, new InputFrame { Held = Btn.Fire }, Btn.Fire); Steps(g, Sec(0.25f), default); }
+        Check(!bac.Alive, $"bacillus has {bac.Hp} hp after 5 pistol shots");
+        Check(bac.Ragdoll != null, "dead germs should ragdoll");
+        Steps(g, Sec(6.5f), default);
+        Check(bac.Standing && bac.Hp == bac.Type.Hp, "dead germ should come back");
+    }
+
+    static void PlayerRagdoll()
+    {
+        var g = New(); RunStart(g);
+        g.Player.Die("test");
+        Steps(g, 2, default);
+        Check(g.PlayerRagdoll != null, "no ragdoll on death");
+        Steps(g, Sec(1.5f), default);
+        var c = g.PlayerRagdoll.Center;
+        Check(g.PlayerRagdoll.Finite() && c.Y > 0.05f && c.Y < 0.8f, "hero ragdoll pelvis at " + P(c));
+        Steps(g, Sec(1), default);
+        Check(g.Player.Alive && g.PlayerRagdoll == null, "should respawn and clear the ragdoll");
+    }
+
     // ---------------------------------------------------------------- soak
     static void Soak()
     {
@@ -427,6 +553,7 @@ public static class Program
                 Check(!p.Alive || p.Pos.Y > g.Level.KillY - 1, "fell through the world at " + g.Level.Landmarks[lm].Name + " " + P(p.Pos));
                 Check(!p.Alive || p.Noclip || !p.BodyBlocked(g, p.Pos) || p.Rolling, $"stuck in geometry at {g.Level.Landmarks[lm].Name} {P(p.Pos)}");
                 foreach (var pr in g.Props) Check(MathX.Finite(pr.Pos), "ball NaN");
+                foreach (var gm in g.Germs) Check(gm.Pose.Finite(), "germ NaN");
                 if (i % 60 == 0) g.Draw(dl, 1280, 720);
             }
         }
@@ -456,6 +583,21 @@ public static class Program
         g.ShowDebug = false; g.Player.Noclip = true;
         g.Teleport(new Vector3(0, 70, 95), 0); g.CamPitch = -0.55f; Steps(g, 2, default);
         Shot("08-overview", g);
+        // the germ yard, and a dash into a coccus caught mid-ragdoll
+        g = New(); g.ShowDebug = false;
+        var gy = g.Level.Landmarks.Find(m => m.Name == "Germ yard");
+        g.Teleport(gy.Pos, gy.Yaw); Steps(g, 30, default); g.CamPitch = -0.1f;
+        Shot("10-germ-yard", g);
+        var cc = GermOf(g, GermKind.Coccus, 1);
+        DashInto(g, cc); Steps(g, Sec(0.25f), default);
+        g.CamYaw = -MathF.PI / 2 + 0.3f; g.CamPitch = -0.25f;
+        Shot("11-dash-ragdoll", g);
+        // the hero running, close up
+        g = New(); RunStart(g); Steps(g, Sec(0.4f), Fwd());
+        g.CamYaw = g.Player.Yaw + 2.2f; g.CamPitch = -0.1f; Steps(g, 1, Fwd());
+        Shot("12-hero-run", g);
+        g.CamYaw = g.Player.Yaw + MathF.PI; Steps(g, Sec(0.5f), new InputFrame { Held = Btn.Aim }); g.Frame(0, new InputFrame { Held = Btn.Aim });
+        g.Draw(dl, w, h); sr.Render(dl); sr.SavePng(Path.Combine(dir, "13-hero-aim.png")); Console.WriteLine("  shot  13-hero-aim");
         // shooting at the dummies
         g = New(); g.GiveWeapon(WeaponDef.Rifle);
         g.Teleport(new Vector3(18, 0, 2), -MathF.PI / 2); Steps(g, 20, default);

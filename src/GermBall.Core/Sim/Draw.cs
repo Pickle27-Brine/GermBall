@@ -35,6 +35,7 @@ public sealed partial class Game
         DrawZones(dl);
         DrawPlayer(dl, a);
         DrawDummies(dl, a);
+        DrawGerms(dl);
         foreach (var pr in Props)
         {
             var pos = Vector3.Lerp(pr.PrevPos, pr.Pos, a);
@@ -98,51 +99,28 @@ public sealed partial class Game
     void DrawPlayer(DrawList dl, float a)
     {
         var p = Player;
+        if (PlayerRagdoll != null) { DrawHero(dl, PlayerRagdoll.Pos, false, false); return; }
         if (!p.Alive || p.Noclip) return;
         var feet = Vector3.Lerp(p.PrevPos, p.Pos, a);
         float yaw = p.PrevYaw + MathX.AngleWrap(p.Yaw - p.PrevYaw) * a;
         bool hurt = Time - p.LastHurt < 0.12f;
-        var red = hurt ? MathX.Rgb(0xFFFFFF) : MathX.Rgb(0xE04848); var white = MathX.Rgb(0xF2F2EA);
         BlobShadow(dl, feet + new Vector3(0, 0.3f, 0), 0.5f);
         if (p.Rolling)
         {
+            // curled up: the gelcap ball
             var c = feet + new Vector3(0, Player.BallRadius, 0);
-            dl.Add(MeshId.BallStriped, MathX.Trs(c, Quaternion.Slerp(p.PrevBallRot, p.BallRot, a), new Vector3(Player.BallRadius * 2)), red);
+            dl.Add(MeshId.BallStriped, MathX.Trs(c, Quaternion.Slerp(p.PrevBallRot, p.BallRot, a), new Vector3(Player.BallRadius * 2)), hurt ? MathX.Rgb(0xFFFFFF) : HeroRed);
             if (p.Pounding) dl.Rod(c + new Vector3(0, 0.6f, 0), c + new Vector3(0, 2.2f, 0), 0.3f, MathX.Rgb(0xFFFFFF, 0.35f), DrawFlags.Unlit);
+            if (p.DashT > 0 && !p.Grounded) dl.Sphere(c, Player.BallRadius * 1.25f, MathX.Rgb(0x80E0FF, 0.25f), DrawFlags.Unlit);   // the dash is an attack
             return;
         }
-        // a gelcap: white lower half, red upper half, a visor, and the gun
-        const float r = 0.42f;
-        var rot = Quaternion.CreateFromAxisAngle(Vector3.UnitY, yaw);
-        float lowC = r + 0.02f, highC = Player.Height - r;
-        var lo = feet + new Vector3(0, lowC, 0); var hi = feet + new Vector3(0, highC, 0); var mid = (lo + hi) * 0.5f;
-        dl.Sphere(lo, r, white);
-        dl.Rod(lo, mid, r, white);
-        dl.Rod(mid, hi, r, red);
-        dl.Sphere(hi, r, red);
-        var fwd = MathX.Forward(yaw, 0); var right = MathX.Right(yaw);
-        dl.Box(hi + fwd * (r - 0.05f) + new Vector3(0, 0.02f, 0), new Vector3(0.5f, 0.14f, 0.16f), rot, MathX.Rgb(0x202830));
-        // feet, so you can see which way it walks
-        float stride = MathX.FlatLen(p.Vel) > 0.5f && p.Grounded ? MathF.Sin(Time * 14) * 0.18f : 0;
-        dl.Box(feet + right * 0.18f + fwd * (0.05f + stride) + new Vector3(0, 0.08f, 0), new Vector3(0.2f, 0.16f, 0.34f), rot, MathX.Rgb(0x505860));
-        dl.Box(feet - right * 0.18f + fwd * (0.05f - stride) + new Vector3(0, 0.08f, 0), new Vector3(0.2f, 0.16f, 0.34f), rot, MathX.Rgb(0x505860));
-        // weapon, pointed along the aim when firing or aiming
-        var w = Weapon;
-        if (w != null && SwitchT <= 0.15f)
-        {
-            bool aimed = p.FacingLockT > 0 || aimHeld;
-            var gunRot = aimed ? Quaternion.CreateFromYawPitchRoll(CamYaw, CamPitch, 0) : rot;
-            var gunFwd = Vector3.Transform(-Vector3.UnitZ, gunRot);
-            float recoil = MathX.Clamp01(FireCooldown / MathF.Max(0.01f, w.Def.Interval)) * 0.08f;
-            var hand = feet + new Vector3(0, 1.25f, 0) + right * 0.42f + gunFwd * (0.3f - recoil);
-            if (ReloadT > 0) gunRot = gunRot * Quaternion.CreateFromAxisAngle(Vector3.UnitX, -0.6f);
-            dl.Box(hand + Vector3.Transform(new Vector3(0, 0, -w.Def.Size.Z * 0.3f), gunRot), w.Def.Size, gunRot, w.Def.Color);
-        }
-        if (PunchT > 0)
-        {
-            float k = PunchT / 0.2f;
-            dl.Sphere(feet + new Vector3(0, 1.2f, 0) + fwd * (0.5f + (1 - k) * 0.6f) - right * 0.2f, 0.17f, MathX.Rgb(0xF2F2EA));
-        }
+        Anim.Build(HeroPose, this, feet, yaw);
+        DrawHero(dl, HeroPose, hurt, true);
+    }
+
+    void DrawGerms(DrawList dl)
+    {
+        foreach (var gm in Germs) if (gm.Alive || gm.Ragdoll != null) DrawGerm(dl, gm);
     }
 
     void DrawDummies(DrawList dl, float a)

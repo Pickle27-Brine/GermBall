@@ -153,6 +153,14 @@ public sealed partial class Game
                     Effects.Burst(hit.Point, head ? MathX.Rgb(0xFFE040) : MathX.Rgb(0xFF8060), 6, 3);
                     break;
                 }
+            case Germ gm:
+                {
+                    bool head = gm.Standing && hit.Point.Y > gm.Pos.Y + gm.Height * 0.8f;
+                    ShotsHit++;
+                    HitGerm(gm, head ? damage * 2 : damage, dir * knock, hit.Point, head, false);
+                    Effects.Burst(hit.Point, gm.Type.Color, 6, 3);
+                    break;
+                }
             case Prop pr:
                 pr.Vel += dir * knock * 2.5f / pr.Mass;
                 Effects.Burst(hit.Point, pr.Color, 5, 3);
@@ -193,6 +201,12 @@ public sealed partial class Game
             var c = dm.Pos + new Vector3(0, MathX.Clamp(at.Y - dm.Pos.Y, 0, dm.Height), 0);
             if (Vector3.Distance(c, at) < PunchRange * 0.6f + dm.Radius) { DamageDummy(dm, PunchDamage, fwd * 6, c + (at - c) * 0.5f, false); any = true; }
         }
+        foreach (var gm in Germs)
+        {
+            if (!gm.Alive) continue;
+            var c = gm.Ragdoll != null ? gm.Ragdoll.Pos.P[gm.Ragdoll.Nearest(at)] : gm.Pos + new Vector3(0, MathX.Clamp(at.Y - gm.Pos.Y, 0, gm.Height), 0);
+            if (Vector3.Distance(c, at) < PunchRange * 0.6f + (gm.Ragdoll != null ? 0.2f : gm.Radius)) { HitGerm(gm, PunchDamage, fwd * 7 + new Vector3(0, 2, 0), c + (at - c) * 0.5f, false, true); any = true; }
+        }
         foreach (var pr in Props)
         {
             if (Vector3.Distance(pr.Pos, at) < PunchRange * 0.6f + pr.Radius) { pr.Vel += (fwd * 9 + new Vector3(0, 3, 0)) / MathF.Max(0.6f, pr.Mass); any = true; }
@@ -214,6 +228,15 @@ public sealed partial class Game
             float k = 1 - MathX.Clamp01(d / radius) * 0.6f;
             var dir = MathX.Flat(c - at); if (dir.LengthSquared() > 1e-4f) dir = Vector3.Normalize(dir);
             DamageDummy(dm, damage * k, dir * knock, c, false);
+        }
+        foreach (var gm in Germs)
+        {
+            if (!gm.Alive && gm.Ragdoll == null) continue;
+            var c = gm.Center; var v = c - at; float d = MathF.Max(0, v.Length() - gm.Radius);
+            if (d >= radius) continue;
+            float k = 1 - MathX.Clamp01(d / radius);
+            var dir = v.LengthSquared() > 1e-4f ? Vector3.Normalize(v) : Vector3.UnitY;
+            HitGerm(gm, damage * (1 - (1 - k) * 0.6f), (dir + new Vector3(0, 0.6f, 0)) * knock * k, c, false, k > 0.35f);
         }
         foreach (var pr in Props)
         {
@@ -251,6 +274,7 @@ public sealed partial class Game
             if (Shapes.RayCylinder(o, d, dm.Pos, dm.Radius, dm.Height, limit, out float t, out var n) && t < limit)
             { limit = t; best = new RayHit { Hit = true, T = t, Normal = n, Other = dm }; }
         }
+        best = RaycastGerms(o, d, limit, best); if (best.Hit) limit = best.T;
         foreach (var pr in Props)
         {
             if (Shapes.RaySphere(o, d, pr.Pos, pr.Radius, limit, out float t) && t < limit)
