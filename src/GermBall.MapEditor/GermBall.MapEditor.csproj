@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The Germ Ball MapEditor for Windows: the editor in ../GermBall.Tools, hosted in a Win32 window with Direct3D 11. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
+    <SelfContained>false</SelfContained>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>MapEditor</AssemblyName>
+    <RootNamespace>GermBall.MapEditor.Host</RootNamespace>
+    <Product>Germ Ball MapEditor</Product>
+    <Version>2.0.0</Version>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GermBall.Core\GermBall.Core.csproj" />
+    <ProjectReference Include="..\GermBall.Platform\GermBall.Platform.csproj" />
+    <ProjectReference Include="..\GermBall.Tools\GermBall.Tools.csproj" />
+  </ItemGroup>
+
+</Project>

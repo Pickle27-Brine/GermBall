@@ -42,7 +42,7 @@ public sealed partial class Game
 
     void InitBodies()
     {
-        Hero = new EntityView(Store.Entity("hero"));
+        Hero = new EntityView(Store.Entity(HeroName));
         foreach (var s in Level.Germs) Germs.Add(new Germ(s, Store.Entity(s.Entity)));
     }
 

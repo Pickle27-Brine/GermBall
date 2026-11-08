@@ -11,5 +11,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\GermBall.Core\GermBall.Core.csproj" />
+    <ProjectReference Include="..\..\src\GermBall.Tools\GermBall.Tools.csproj" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The editors' logic and interface (immediate-mode GUI, Entity Editor, Map Editor). Platform-free, so the tests can
+       drive the editors with scripted input and screenshot them; the Windows exes in ../GermBall.EntityEditor and
+       ../GermBall.MapEditor host them. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>GermBall.Tools</RootNamespace>
+    <AssemblyName>GermBall.Tools</AssemblyName>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GermBall.Core\GermBall.Core.csproj" />
+  </ItemGroup>
+</Project>

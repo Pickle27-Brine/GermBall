@@ -4,14 +4,14 @@ using System.Runtime.InteropServices;
 namespace GermBall.Win;
 
 /// <summary>The few Win32 calls the game needs.</summary>
-internal static unsafe class Win32
+public static unsafe class Win32
 {
     public const uint WS_OVERLAPPEDWINDOW = 0x00CF0000, WS_VISIBLE = 0x10000000, WS_POPUP = 0x80000000;
     public const int CW_USEDEFAULT = unchecked((int)0x80000000);
     public const uint WM_DESTROY = 0x0002, WM_SIZE = 0x0005, WM_SETFOCUS = 0x0007, WM_KILLFOCUS = 0x0008, WM_CLOSE = 0x0010, WM_QUIT = 0x0012,
         WM_KEYDOWN = 0x0100, WM_KEYUP = 0x0101, WM_SYSKEYDOWN = 0x0104, WM_SYSKEYUP = 0x0105, WM_INPUT = 0x00FF,
         WM_LBUTTONDOWN = 0x0201, WM_LBUTTONUP = 0x0202, WM_RBUTTONDOWN = 0x0204, WM_RBUTTONUP = 0x0205,
-        WM_MBUTTONDOWN = 0x0207, WM_MBUTTONUP = 0x0208, WM_MOUSEWHEEL = 0x020A, WM_XBUTTONDOWN = 0x020B, WM_XBUTTONUP = 0x020C;
+        WM_MBUTTONDOWN = 0x0207, WM_MBUTTONUP = 0x0208, WM_MOUSEWHEEL = 0x020A, WM_MOUSEMOVE = 0x0200, WM_CHAR = 0x0102, WM_LBUTTONDBLCLK = 0x0203, WM_XBUTTONDOWN = 0x020B, WM_XBUTTONUP = 0x020C;
     public const uint PM_REMOVE = 1;
     public const int SW_SHOW = 5, IDC_ARROW = 32512, GWL_STYLE = -16;
     public const uint SWP_NOZORDER = 0x0004, SWP_FRAMECHANGED = 0x0020, SWP_NOOWNERZORDER = 0x0200, MONITOR_DEFAULTTONEAREST = 2;
@@ -74,8 +74,10 @@ internal static unsafe class Win32
     [DllImport("user32", CharSet = CharSet.Unicode)] public static extern bool SetWindowTextW(IntPtr hWnd, string text);
     [DllImport("kernel32", CharSet = CharSet.Unicode)] public static extern IntPtr GetModuleHandleW(string name);
     [DllImport("winmm")] public static extern uint timeBeginPeriod(uint ms);
+    [DllImport("user32")] public static extern short GetKeyState(int vk);
     [DllImport("winmm")] public static extern uint timeEndPeriod(uint ms);
 
     public static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = new(-4);
     public static int HiWord(IntPtr v) => (short)(((long)v >> 16) & 0xFFFF);
+    public static int LoWord(IntPtr v) => (short)((long)v & 0xFFFF);
 }

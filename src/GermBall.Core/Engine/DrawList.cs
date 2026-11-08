@@ -12,6 +12,8 @@ public enum DrawFlags
     Grid = 1,
     /// <summary>Ignore lighting: the colour is drawn as is (effects, markers, zone volumes).</summary>
     Unlit = 2,
+    /// <summary>Drawn last, over everything, ignoring depth (editor gizmos, bones, selection outlines).</summary>
+    OnTop = 4,
 }
 
 public struct DrawItem
@@ -31,10 +33,25 @@ public sealed class DrawList
     public Vector3 SunDir = Vector3.Normalize(new Vector3(-0.4f, -1f, -0.3f));
     public Vector3 SkyColor = new(0.55f, 0.66f, 0.78f), GroundColor = new(0.30f, 0.28f, 0.26f), FogColor = new(0.62f, 0.70f, 0.80f);
     public float FogStart = 80, FogEnd = 260;
+    /// <summary>The 3D view's rectangle in window pixels (x, y, width, height); zero width means the whole window.
+    /// The 2D overlay always covers the whole window.</summary>
+    public Vector4 Viewport;
+    public Vector4 ViewportOr(int w, int h) => Viewport.Z > 0 && Viewport.W > 0 ? Viewport : new Vector4(0, 0, w, h);
     public readonly List<DrawItem> Items = new();
     public readonly Overlay Overlay = new();
 
     public void Clear() { Items.Clear(); Overlay.Clear(); }
+
+    /// <summary>A ray from the camera through a window pixel (for picking in the editors).</summary>
+    public (Vector3 origin, Vector3 dir) ScreenRay(float x, float y, int w, int h)
+    {
+        var vp = ViewportOr(w, h);
+        float nx = (x - vp.X) / vp.Z * 2 - 1, ny = 1 - (y - vp.Y) / vp.W * 2;
+        Matrix4x4.Invert(View * Proj, out var inv);
+        var a = Vector4.Transform(new Vector4(nx, ny, 0, 1), inv); var b = Vector4.Transform(new Vector4(nx, ny, 1, 1), inv);
+        var pa = new Vector3(a.X, a.Y, a.Z) / a.W; var pb = new Vector3(b.X, b.Y, b.Z) / b.W;
+        return (pa, Vector3.Normalize(pb - pa));
+    }
 
     public void Add(MeshId mesh, Matrix4x4 world, Vector4 color, DrawFlags flags = DrawFlags.None) =>
         Items.Add(new DrawItem { Mesh = mesh, World = world, Color = color, Flags = flags });
@@ -57,7 +74,8 @@ public sealed class DrawList
         var c = Vector4.Transform(new Vector4(p, 1), View * Proj);
         screen = default; depth = c.W;
         if (c.W < 0.05f) return false;
-        screen = new Vector2((c.X / c.W * 0.5f + 0.5f) * w, (0.5f - c.Y / c.W * 0.5f) * h);
+        var vp = ViewportOr(w, h);
+        screen = new Vector2(vp.X + (c.X / c.W * 0.5f + 0.5f) * vp.Z, vp.Y + (0.5f - c.Y / c.W * 0.5f) * vp.W);
         return true;
     }
 }
@@ -68,9 +86,19 @@ public sealed class Overlay
 {
     public struct Quad { public float X, Y, W, H; public Vector4 Color; }
     public readonly List<Quad> Quads = new();
-    public void Clear() => Quads.Clear();
+    public void Clear() { Quads.Clear(); Clip = null; }
 
-    public void Rect(float x, float y, float w, float h, Vector4 c) { if (w > 0 && h > 0 && c.W > 0) Quads.Add(new Quad { X = x, Y = y, W = w, H = h, Color = c }); }
+    /// <summary>When set (x, y, width, height), rectangles are clipped to it (scrolling panels).</summary>
+    public Vector4? Clip;
+    public void Rect(float x, float y, float w, float h, Vector4 c)
+    {
+        if (Clip is Vector4 cl)
+        {
+            float x1 = MathF.Min(x + w, cl.X + cl.Z), y1 = MathF.Min(y + h, cl.Y + cl.W);
+            x = MathF.Max(x, cl.X); y = MathF.Max(y, cl.Y); w = x1 - x; h = y1 - y;
+        }
+        if (w > 0 && h > 0 && c.W > 0) Quads.Add(new Quad { X = x, Y = y, W = w, H = h, Color = c });
+    }
     public void Frame(float x, float y, float w, float h, float t, Vector4 c)
     { Rect(x, y, w, t, c); Rect(x, y + h - t, w, t, c); Rect(x, y + t, t, h - 2 * t, c); Rect(x + w - t, y + t, t, h - 2 * t, c); }
 

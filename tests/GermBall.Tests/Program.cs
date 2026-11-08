@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using GermBall.Content;
 using GermBall.Engine;
@@ -20,6 +21,7 @@ public static class Program
     public static int Main(string[] args)
     {
         if (args.Length >= 2 && args[0] == "export-content") { ExportContent(args[1]); return 0; }
+        if (args.Length >= 2 && args[0] == "editor-shots") { EditorShots(args[1]); return 0; }
         Run("spawn settles on the pad", SpawnSettles);
         Run("run speed builds slowly", WalkSpeed);
         Run("inertia: coasting, skids, wide turns", Inertia);
@@ -48,6 +50,9 @@ public static class Program
         Run("content: a level rebuilt from its map is identical", MapRebuild);
         Run("animation: clips, layers, masks, additive, crossfades", AnimationLayers);
         Run("camera: locked behind the hero, aim eases in", CameraLock);
+        Run("entity editor: shapes, colour, bones, keys, layers, undo, save, test in game", EntityEditorWorkflow);
+        Run("map editor: add, pick, gizmo with snapping, properties, undo, save, play test", MapEditorWorkflow);
+        Run("editors survive random clicking and typing", EditorFuzz);
         Run("random input soak (every landmark)", Soak);
 
         if (args.Length >= 2 && args[0] == "shots") Shots(args[1], args.Length >= 4 ? int.Parse(args[2]) : 1280, args.Length >= 4 ? int.Parse(args[3]) : 720);
@@ -59,7 +64,11 @@ public static class Program
     static void Run(string name, Action test)
     {
         try { test(); Console.WriteLine("  ok    " + name); passed++; }
-        catch (Exception e) { Console.WriteLine("  FAIL  " + name + "\n        " + e.Message.Replace("\n", "\n        ")); failed++; }
+        catch (Exception e)
+        {
+            string where = e.GetType() == typeof(Exception) ? "" : "\n        " + (e.StackTrace ?? "").Split('\n')[0].Trim();
+            Console.WriteLine("  FAIL  " + name + "\n        " + e.Message.Replace("\n", "\n        ") + where); failed++;
+        }
     }
     static void Check(bool ok, string what) { if (!ok) throw new Exception(what); }
 
@@ -643,6 +652,217 @@ public static class Program
         float prev = g.AimBlend; int rising = 0;
         for (int i = 0; i < 30; i++) { g.Frame(1 / 120f, new InputFrame { Held = Btn.Aim }); if (g.AimBlend > prev) rising++; Check(g.AimBlend - prev <= 1 / 120f / Game.AimBlendTime + 1e-4f, "aim jumped"); prev = g.AimBlend; }
         Check(rising >= 20 && g.AimBlend > 0.99f, $"aim blend {g.AimBlend:0.00} after {rising} rising frames");
+    }
+
+    /// <summary>A scratch copy of the built-in content, so editor tests never touch the repository's files.</summary>
+    static ContentStore ScratchContent()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "gb-editor-" + Environment.ProcessId + "-" + Guid.NewGuid().ToString("N")[..6]);
+        ExportContent(dir);
+        return new ContentStore(dir);
+    }
+
+    static void EditorShots(string dir)
+    {
+        Directory.CreateDirectory(dir);
+        var ee = new GermBall.Tools.EntityEditor.EntityEditor(ScratchContent(), "hero");
+        var d = new EditorDriver(1600, 900, (i, dt, dl) => ee.Frame(i, dt, 1600, 900, dl));
+        d.Step(3);
+        d.Shot(Path.Combine(dir, "ee-01-hero.png"));
+        ee.LeftTab = 2; ee.SelShape = 5; d.Step(2);
+        d.Shot(Path.Combine(dir, "ee-02-shapes.png"));
+        ee.LeftTab = 1; ee.SelBone = "elbow.R"; ee.RightTab = 1; d.Step(2);
+        d.Shot(Path.Combine(dir, "ee-03-rig-layers.png"));
+        ee.RightTab = 0; ee.SelClip = 0; ee.SelBone = "chest"; ee.Playhead = 0.1f; d.Step(2);
+        d.Shot(Path.Combine(dir, "ee-04-clips.png"));
+        ee.RightTab = 3; ee.SoloClip = false; ee.Ctx.Speed = 6; ee.Ctx.Armed = true; ee.Ctx.Aiming = true; d.Step(30);
+        d.Shot(Path.Combine(dir, "ee-05-preview-run.png"));
+        ee.Load("brute"); ee.DropRagdoll(); d.Step(70);
+        d.Shot(Path.Combine(dir, "ee-06-brute-ragdoll.png"));
+
+        var me = new GermBall.Tools.MapEditor.MapEditor(ScratchContent(), "debug");
+        var m = new EditorDriver(1600, 900, (i, dt, dl) => me.Frame(i, dt, 1600, 900, dl));
+        m.Step(2);
+        m.Shot(Path.Combine(dir, "me-01-overview.png"));
+        me.View.Eye = new Vector3(62, 10, 58); me.View.Yaw = -2.0f; me.View.Pitch = -0.35f;
+        me.Sel = me.Map.Objects.FindIndex(o => o.Type == MapTypes.Germ && o.Entity == "brute"); m.Step(2);
+        m.Shot(Path.Combine(dir, "me-02-germ-selected.png"));
+        me.View.Eye = new Vector3(20, 8, 16); me.View.Yaw = MathF.PI; me.View.Pitch = -0.4f;
+        me.Sel = me.Map.Objects.FindIndex(o => o.Type == MapTypes.Zone && o.Zone == "JumpPad"); m.Step(2);
+        m.Shot(Path.Combine(dir, "me-03-jumppad.png"));
+    }
+
+    // ---------------------------------------------------------------- editors
+    static void EntityEditorWorkflow()
+    {
+        var store = ScratchContent();
+        var ee = new GermBall.Tools.EntityEditor.EntityEditor(store, "coccus");
+        string launched = null; ee.LaunchGame = a => launched = a;
+        var d = new EditorDriver(1600, 900, (i, dt, dl) => ee.Frame(i, dt, 1600, 900, dl));
+        var ui = ee.Ui;
+        d.Step(2);
+        // shapes: add one through the Shapes tab and recolour it by typing a hex code
+        GuiDriving.ClickLabel(ui, d, "Shapes");
+        int before = ee.Def.Shapes.Count;
+        GuiDriving.ClickLabel(ui, d, "Add");
+        Check(ee.Def.Shapes.Count == before + 1 && ee.SelShape == before, $"Add didn't add a shape ({ee.Def.Shapes.Count})");
+        GuiDriving.TypeInto(ui, d, "left/Name", "spike");
+        Check(ee.CurShape.Name == "spike", $"name is {ee.CurShape.Name}");
+        var colour = GuiDriving.Find(ui, d, "Colour");
+        float sw = colour.W * 1.6f;
+        d.Click(colour.X + sw + 20, colour.Y + colour.W / 2);
+        for (int i = 0; i < 10; i++) d.Key(GermBall.Engine.Keys.Backspace);
+        d.Type("#12AB34"); d.Key(GermBall.Engine.Keys.Enter);
+        Check(ee.CurShape.Color == "#12AB34", $"colour is {ee.CurShape.Color}");
+        // drag the X position field to the right
+        var pos = GuiDriving.Find(ui, d, "Position");
+        float x0 = ee.CurShape.Pos.X;
+        d.Drag(pos.X + 10, pos.Y + pos.W / 2, pos.X + 60, pos.Y + pos.W / 2);
+        Check(ee.CurShape.Pos.X > x0 + 0.05f, $"dragging Position X moved it {ee.CurShape.Pos.X - x0:0.000}");
+        // undo twice: the drag, then the colour
+        d.Key('Z', ctrl: true);
+        Check(MathF.Abs(ee.CurShape.Pos.X - x0) < 1e-4f, "undo didn't revert the drag");
+        d.Key('Z', ctrl: true);
+        Check(ee.CurShape.Color != "#12AB34", "undo didn't revert the colour");
+        d.Key('Y', ctrl: true);
+        Check(ee.CurShape.Color == "#12AB34", "redo didn't bring the colour back");
+
+        // rig: rename a bone and everything that refers to it follows
+        GuiDriving.ClickLabel(ui, d, "Rig");
+        GuiDriving.ClickLabel(ui, d, "pelvis");
+        Check(ee.SelBone == "pelvis", "clicking a bone in the list should select it");
+        GuiDriving.ClickLabel(ui, d, "Add child bone");
+        Check(ee.Def.Bones.Count == 17 && ee.Def.Bone(ee.SelBone).Parent == "pelvis", "Add child bone");
+        GuiDriving.TypeInto(ui, d, "left/Name", "tail");
+        Check(ee.Def.Bone("tail") != null, "rename to tail");
+
+        // clips: make one, key the tail at frame 0 and at 0.5 s through the panel, then it animates
+        GuiDriving.ClickLabel(ui, d, "Clips");
+        GuiDriving.ClickLabel(ui, d, "New clip");
+        var clip = ee.CurClip; Check(clip != null && clip.Tracks.Count == 0, "New clip");
+        GuiDriving.ClickLabel(ui, d, "Set key");
+        ee.Playhead = 0.5f; d.Step();
+        var rot = GuiDriving.Find(ui, d, "Rotate");
+        d.Drag(rot.X + 10, rot.Y + rot.W / 2, rot.X + 90, rot.Y + rot.W / 2);
+        var tr = clip.Track("tail");
+        Check(tr != null && tr.Keys.Count == 2 && tr.Keys[1].Rot.X > 10, $"keys on tail: {tr?.Keys.Count}, rot {tr?.Keys[^1].Rot}");
+        // layers: add a clip layer for it
+        GuiDriving.ClickLabel(ui, d, "Layers");
+        int layers = ee.Def.Layers.Count;
+        GuiDriving.ClickLabel(ui, d, "Add layer");
+        Check(ee.Def.Layers.Count == layers + 1 && ee.Def.Layers[^1].Clip == ee.Def.Clips[0].Name, "Add layer");
+        // states: map "hurt" to the new clip through its combo
+        GuiDriving.ClickLabel(ui, d, "States");
+        int ci = ee.Def.Clips.IndexOf(clip);
+        GuiDriving.PickCombo(ui, d, "hurt", ci, hasNone: true);
+        Check(ee.Def.States.Exists(st => st.State == "hurt" && st.Clip == clip.Name), "state combo didn't map hurt");
+
+        // save under a new name, and the game's store sees it
+        GuiDriving.ClickLabel(ui, d, "Entity");
+        GuiDriving.TypeInto(ui, d, "left/Name", "spiky");
+        GuiDriving.ClickLabel(ui, d, "Save");
+        store.Forget();
+        var saved = store.Entity("spiky");
+        Check(saved.Bone("tail") != null && saved.Shapes.Exists(x => x.Name == "spike" && x.Color == "#12AB34") && saved.Clip(clip.Name) != null, "saved file is missing edits");
+        var game = new Game(Level.BuildDebug(), store);   // the game loads the edited entity without complaint
+        Check(game.Store.Entity("spiky").Kind == "enemy", "game store");
+        GuiDriving.ClickLabel(ui, d, "Test in game");
+        Check(launched == "--spawn spiky", $"test in game launched with \"{launched}\"");
+        // the view picks shapes with a click: the coccus's body fills the middle of the view
+        ee.LeftTab = 2; ee.SelShape = -1; ee.ShowBones = false; d.Step(2);
+        var v = ee.View.Rect;
+        d.Click(v.X + v.Z / 2, v.Y + v.W / 2);
+        Check(ee.SelShape >= 0, "clicking the model in the view should select a shape");
+    }
+
+    static void MapEditorWorkflow()
+    {
+        var store = ScratchContent();
+        var me = new GermBall.Tools.MapEditor.MapEditor(store, "debug");
+        string launched = null; me.LaunchGame = a => launched = a;
+        var d = new EditorDriver(1600, 900, (i, dt, dl) => me.Frame(i, dt, 1600, 900, dl));
+        var ui = me.Ui;
+        d.Step(2);
+        GuiDriving.ClickLabel(ui, d, "New");
+        Check(me.Map.Objects.Count == 1 && me.Map.Name == "new_map", "New map should have just a floor");
+        // look down at the middle of the floor and add a box: it lands on the floor, snapped
+        me.View.Eye = new Vector3(6, 12, 12); me.View.Yaw = 0; me.View.Pitch = -0.78f; d.Step();
+        GuiDriving.ClickLabel(ui, d, "Box");
+        var box = me.Cur;
+        Check(box != null && box.Type == MapTypes.Box && MathF.Abs(box.Pos.Y - 0.5f) < 0.3f, $"box at {P(box?.Pos ?? default)}");
+        Check(MathF.Abs(box.Pos.X / 0.5f - MathF.Round(box.Pos.X / 0.5f)) < 1e-3f, "box position should be snapped to 0.5");
+        // pick: click on empty floor selects the floor, click on the box selects the box
+        me.Sel = -1; d.Step(2);
+        Check(me.View.Project(box.Pos + new Vector3(0, 0.5f, 0), out var bs), "box on screen");
+        d.Click(bs.X, bs.Y);
+        Check(me.Cur == box, $"clicking the box selected {me.Sel}");
+        // drag the gizmo's X arrow: the box moves along X in snapped steps
+        float x0 = box.Pos.X;
+        me.View.Project(box.Pos, out var g0); me.View.Project(box.Pos + Vector3.UnitX * Vector3.Distance(me.View.CamPos, box.Pos) * 0.16f, out var g1);
+        var mid = (g0 + g1) / 2;
+        d.Drag(mid.X, mid.Y, mid.X + 120, mid.Y, 12);
+        Check(box.Pos.X > x0 + 0.4f && MathF.Abs(box.Pos.X / 0.5f - MathF.Round(box.Pos.X / 0.5f)) < 1e-3f, $"gizmo drag: x {x0} -> {box.Pos.X}");
+        d.Key('Z', ctrl: true);
+        Check(MathF.Abs(me.Map.Objects[me.Sel >= 0 ? me.Sel : 1].Pos.X - x0) < 1e-3f || MathF.Abs(me.Map.Objects[1].Pos.X - x0) < 1e-3f, "undo the move");
+        me.Sel = 1;
+        // properties: type a size
+        var size = GuiDriving.Find(ui, d, "Size");
+        float w3 = (size.Z - 2 * ui.Gap) / 3;
+        d.Click(size.X + w3 / 2, size.Y + size.W / 2, 1);   // right-click to type
+        d.Type("7"); d.Key(GermBall.Engine.Keys.Enter);
+        Check(MathF.Abs(me.Cur.Size.X - 7) < 1e-3f, $"typed size x: {me.Cur.Size.X}");
+        // add a jump pad and aim it at a ledge with the helper
+        GuiDriving.PickCombo(ui, d, "Zone kind", Array.IndexOf(Enum.GetNames(typeof(ZoneKind)), "JumpPad"));
+        GuiDriving.ClickLabel(ui, d, "Zone: JumpPad");
+        Check(me.Cur.Type == MapTypes.Zone && me.Cur.Zone == "JumpPad", "jump pad added");
+        GuiDriving.ClickLabel(ui, d, "Compute launch");
+        Check(me.Cur.Dir.Y > 5, $"pad launch {P(me.Cur.Dir)}");
+        // a germ, rotated with R
+        GuiDriving.ClickLabel(ui, d, "Germ: coccus");
+        float yaw0 = me.Cur.Yaw; d.Key('R');
+        Check(MathF.Abs(me.Cur.Yaw - yaw0 - 15) < 1e-3f, "R rotates 15 degrees");
+        d.Key('D', ctrl: true);
+        Check(me.Map.Objects.Count(o => o.Type == MapTypes.Germ) == 2, "ctrl+D duplicates");
+        d.Key(GermBall.Engine.Keys.Delete);
+        Check(me.Map.Objects.Count(o => o.Type == MapTypes.Germ) == 1, "Delete removes");
+        // save, play test, and the game builds the same level from the file
+        me.Sel = -1; d.Step();
+        GuiDriving.TypeInto(ui, d, "Name", "arena");
+        GuiDriving.ClickLabel(ui, d, "Play test");
+        Check(launched == "--map arena", $"play test launched with \"{launched}\"");
+        var map = store.Map("arena");
+        Check(map != null && map.Objects.Count == me.Map.Objects.Count, "saved map");
+        var game = new Game(Level.FromMap(map), store);
+        Check(game.Germs.Count == 1 && game.Level.Zones.Exists(z => z.Kind == ZoneKind.JumpPad) && game.Level.Solids.Count == 2, "game level from the saved map");
+        for (int i = 0; i < 120; i++) game.Frame(Game.DT, default);
+        Check(game.Player.Alive && MathX.Finite(game.Player.Pos), "playing the new map");
+    }
+
+    static void EditorFuzz()
+    {
+        var rng = new Rng(5);
+        foreach (var which in new[] { 0, 1 })
+        {
+            var store = ScratchContent();
+            Action<UiInput, float, DrawList> frame; GermBall.Tools.Ui.Gui ui;
+            if (which == 0) { var ee = new GermBall.Tools.EntityEditor.EntityEditor(store, "hero"); ee.LaunchGame = _ => { }; frame = (i, dt, dl) => ee.Frame(i, dt, 1280, 720, dl); ui = ee.Ui; }
+            else { var me = new GermBall.Tools.MapEditor.MapEditor(store, "debug"); me.LaunchGame = _ => { }; frame = (i, dt, dl) => me.Frame(i, dt, 1280, 720, dl); ui = me.Ui; }
+            var d = new EditorDriver(1280, 720, frame);
+            d.Step();
+            for (int k = 0; k < 400; k++)
+            {
+                float x = rng.Range(0, 1280), y = rng.Range(0, 720);
+                switch (rng.Next() % 6)
+                {
+                    case 0: case 1: d.Click(x, y); break;
+                    case 2: d.Drag(x, y, x + rng.Range(-80, 80), y + rng.Range(-40, 40), 4); break;
+                    case 3: d.Click(x, y, 1); d.Type("1.5"); d.Key(GermBall.Engine.Keys.Enter); break;
+                    case 4: d.In.Wheel = rng.Range(-2, 2); d.MoveTo(x, y); d.Step(); break;
+                    default: d.Key(GermBall.Engine.Keys.Escape); break;
+                }
+            }
+            d.Step(3);
+        }
     }
 
     // ---------------------------------------------------------------- soak

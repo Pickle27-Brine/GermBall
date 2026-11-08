@@ -33,7 +33,12 @@ public static class Program
         string Arg(string name) { int i = Array.IndexOf(args, name); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
         var store = ContentStore.Find(Arg("--content"));
         var map = store.Map(Arg("--map") ?? "debug");
-        var game = new Game(map != null ? Level.FromMap(map) : Level.BuildDebug(), store);
+        var level = map != null ? Level.FromMap(map) : Level.BuildDebug();
+        // --spawn <entity>: put one in front of the player (the Entity Editor's "Test in game")
+        var spawnName = Arg("--spawn");
+        if (spawnName != null) level.Germ(level.Spawn + MathX.Forward(level.SpawnYaw, 0) * 6, level.SpawnYaw / MathX.Deg + 180, spawnName);
+        // --hero <entity>: play as another entity
+        var game = new Game(level, store, Arg("--hero") ?? "hero");
         var dl = new DrawList();
         var clock = Stopwatch.StartNew();
         double last = 0, fpsT = 0; int frames = 0;

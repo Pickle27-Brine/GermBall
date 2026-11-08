@@ -15,27 +15,33 @@ public sealed class SoftRenderer
 {
     public readonly int W, H;
     readonly Vector3[] color; readonly float[] depth;
+    Vector4 vp; bool noDepth;
 
     public SoftRenderer(int w, int h) { W = w; H = h; color = new Vector3[w * h]; depth = new float[w * h]; }
 
     public void Render(DrawList dl)
     {
         // sky: fog colour at the horizon, sky colour overhead (the D3D renderer draws the same gradient)
+        vp = dl.ViewportOr(W, H);
         for (int y = 0; y < H; y++)
         {
-            var c = Vector3.Lerp(dl.SkyColor * 0.85f, dl.FogColor, MathF.Pow(y / (float)H, 0.6f));
-            for (int x = 0; x < W; x++) { color[y * W + x] = c; depth[y * W + x] = 1; }
+            var c = Vector3.Lerp(dl.SkyColor * 0.85f, dl.FogColor, MathF.Pow(MathX.Clamp01((y - vp.Y) / vp.W), 0.6f));
+            for (int x = 0; x < W; x++) { color[y * W + x] = y >= vp.Y && y < vp.Y + vp.W && x >= vp.X && x < vp.X + vp.Z ? c : dl.FogColor; depth[y * W + x] = 1; }
         }
-        var vp = dl.View * dl.Proj;
-        var opaque = new List<DrawItem>(); var transp = new List<(DrawItem it, float d)>();
+        var viewProj = dl.View * dl.Proj;
+        var opaque = new List<DrawItem>(); var transp = new List<(DrawItem it, float d)>(); var top = new List<DrawItem>();
         foreach (var it in dl.Items)
         {
-            if (it.Color.W >= 0.999f) opaque.Add(it);
+            if ((it.Flags & DrawFlags.OnTop) != 0) top.Add(it);
+            else if (it.Color.W >= 0.999f) opaque.Add(it);
             else transp.Add((it, Vector3.DistanceSquared(it.World.Translation, dl.CamPos)));
         }
         transp.Sort((a, b) => b.d.CompareTo(a.d));
-        foreach (var it in opaque) DrawItem(dl, it, vp, false);
-        foreach (var (it, _) in transp) DrawItem(dl, it, vp, true);
+        foreach (var it in opaque) DrawItem(dl, it, viewProj, false);
+        foreach (var (it, _) in transp) DrawItem(dl, it, viewProj, true);
+        noDepth = true;
+        foreach (var it in top) DrawItem(dl, it, viewProj, true);
+        noDepth = false;
         foreach (var q in dl.Overlay.Quads) Quad(q);
     }
 
@@ -76,7 +82,7 @@ public sealed class SoftRenderer
 
     void Tri(DrawList dl, DrawItem it, Vtx a, Vtx b, Vtx c, bool blend)
     {
-        Vector3 S(Vtx v) => new((v.Clip.X / v.Clip.W * 0.5f + 0.5f) * W, (0.5f - v.Clip.Y / v.Clip.W * 0.5f) * H, v.Clip.Z / v.Clip.W);
+        Vector3 S(Vtx v) => new(vp.X + (v.Clip.X / v.Clip.W * 0.5f + 0.5f) * vp.Z, vp.Y + (0.5f - v.Clip.Y / v.Clip.W * 0.5f) * vp.W, v.Clip.Z / v.Clip.W);
         var p0 = S(a); var p1 = S(b); var p2 = S(c);
         float area = (p1.X - p0.X) * (p2.Y - p0.Y) - (p2.X - p0.X) * (p1.Y - p0.Y);
         if (MathF.Abs(area) < 1e-6f) return;
@@ -93,7 +99,8 @@ public sealed class SoftRenderer
                 if (w0 < 0 || w1 < 0 || w2 < 0) continue;
                 float z = w0 * p0.Z + w1 * p1.Z + w2 * p2.Z;
                 int idx = y * W + x;
-                if (z < 0 || z > depth[idx]) continue;
+                if (z < 0 || (!noDepth && z > depth[idx])) continue;
+                if (x < vp.X || x >= vp.X + vp.Z || y < vp.Y || y >= vp.Y + vp.W) continue;
                 float q0 = w0 * iw0, q1 = w1 * iw1, q2 = w2 * iw2, qs = q0 + q1 + q2;
                 q0 /= qs; q1 /= qs; q2 /= qs;
                 var wp = a.World * q0 + b.World * q1 + c.World * q2;

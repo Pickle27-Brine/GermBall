@@ -15,6 +15,9 @@ public sealed unsafe class Window
     bool fullscreen; Win32.RECT savedRect; int savedStyle;
     readonly Win32.WndProc proc;   // keep the delegate alive for the lifetime of the window
 
+    /// <summary>Editors keep the cursor visible and handle F11 themselves.</summary>
+    public bool AllowFullscreenKey = true;
+
     public Window(string title, int w, int h)
     {
         try { Win32.SetProcessDpiAwarenessContext(Win32.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2); } catch { }
@@ -22,7 +25,7 @@ public sealed unsafe class Window
         var inst = Win32.GetModuleHandleW(null);
         var wc = new Win32.WNDCLASSEX
         {
-            cbSize = (uint)Marshal.SizeOf<Win32.WNDCLASSEX>(), style = 0x0003, lpfnWndProc = Marshal.GetFunctionPointerForDelegate(proc),
+            cbSize = (uint)Marshal.SizeOf<Win32.WNDCLASSEX>(), style = 0x0003 | 0x0008 /* CS_DBLCLKS */, lpfnWndProc = Marshal.GetFunctionPointerForDelegate(proc),
             hInstance = inst, hCursor = Win32.LoadCursorW(IntPtr.Zero, new IntPtr(Win32.IDC_ARROW)), lpszClassName = "GermBall2",
         };
         Win32.RegisterClassExW(ref wc);
@@ -85,8 +88,8 @@ public sealed unsafe class Window
             case Win32.WM_SYSKEYDOWN:
                 {
                     int vk = (int)wp; bool repeat = (((long)lp >> 30) & 1) != 0;
-                    if (!repeat && ((vk == 0x0D && msg == Win32.WM_SYSKEYDOWN) || vk == 0x7A)) { ToggleFullscreen(); return IntPtr.Zero; }   // Alt+Enter, F11
-                    if (!repeat) Input.Key(vk, true);
+                    if (!repeat && AllowFullscreenKey && ((vk == 0x0D && msg == Win32.WM_SYSKEYDOWN) || vk == 0x7A)) { ToggleFullscreen(); return IntPtr.Zero; }   // Alt+Enter, F11
+                    if (!repeat) Input.Key(vk, true); else Input.Repeat(vk);
                     if (msg == Win32.WM_SYSKEYDOWN && vk != 0x73) return IntPtr.Zero;   // keep Alt / F10 from opening the system menu, but allow Alt+F4
                     break;
                 }
@@ -95,6 +98,9 @@ public sealed unsafe class Window
                 Input.Key((int)wp, false);
                 if (msg == Win32.WM_SYSKEYUP) return IntPtr.Zero;
                 break;
+            case Win32.WM_MOUSEMOVE: Input.MouseMove(Win32.LoWord(lp), Win32.HiWord(lp)); break;
+            case Win32.WM_CHAR: { char ch = (char)(long)wp; if (ch >= 32 && ch != 127) Input.Typed.Append(ch); return IntPtr.Zero; }
+            case Win32.WM_LBUTTONDBLCLK: Win32.SetCapture(h); Input.Key(Input.VK_LBUTTON, true); Input.DoubleClicked = true; break;
             case Win32.WM_LBUTTONDOWN: Win32.SetCapture(h); Input.Key(Input.VK_LBUTTON, true); break;
             case Win32.WM_LBUTTONUP: Win32.ReleaseCapture(); Input.Key(Input.VK_LBUTTON, false); break;
             case Win32.WM_RBUTTONDOWN: Input.Key(Input.VK_RBUTTON, true); break;

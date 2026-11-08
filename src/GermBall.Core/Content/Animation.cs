@@ -200,6 +200,19 @@ public sealed class Animator
         Fk(pose);
     }
 
+    /// <summary>Editor preview: optionally the procedural motion, then one clip at an exact time on top (override or additive).</summary>
+    public void EvaluateSolo(AnimContext c, EntityPose pose, float scale, ClipDef clip, float t, bool procedural, bool additive)
+    {
+        pose.Ensure(Sk.Count);
+        var root = Matrix4x4.CreateScale(scale) * Matrix4x4.CreateRotationY(c.Yaw) * Matrix4x4.CreateTranslation(c.Feet);
+        if (c.Joints != null) root = Matrix4x4.CreateScale(scale);
+        pose.Root = root;
+        for (int i = 0; i < Sk.Count; i++) pose.Local[i] = BoneXf.Rest;
+        if (procedural) { Array.Clear(driven); Procedural(c, root, scale); Apply(new LayerDef { Mode = "override" }, pose); }
+        if (clip != null) { Array.Clear(driven); SampleInto(clip, t, 1); Apply(new LayerDef { Mode = additive ? "additive" : "override" }, pose); }
+        Fk(pose);
+    }
+
     void Apply(LayerDef L, EntityPose pose)
     {
         float w = MathX.Clamp01(L.Weight);

@@ -2,11 +2,19 @@
 
 Germ Ball 2.0 is a rebuild on a new, small engine. It has the core game systems, a humanoid hero, static germ enemies with ragdolls, and one debug level made of plain boxes. There is no AI yet. Each build iterates on this version.
 
+It comes with two editors, **EntityEditor.exe** and **MapEditor.exe**. Everything the game shows can be built or changed with them: the hero, the germs and their animation, and the maps.
+
 **Germ Ball 1.0 is deprecated.** The original full game is frozen in [`legacy/`](legacy/README.md) and published once as the **Germ Ball 1.0** release. It isn't rebuilt or changed any more.
 
 ## Download and play
 
-Every push builds the game for Windows automatically. On the repository's **Releases** page, open **Germ Ball 2.0-dev: <branch>** and download `GermBall-win-x64.zip`. Unzip it and double-click `GermBall.exe`. Nothing else needs installing.
+Every push builds everything for Windows. On the repository's **Releases** page, open **Germ Ball 2.0-dev: <branch>** and download `GermBall-win-x64.zip`. Unzip it, then double-click:
+
+- `GermBall.exe`: the game
+- `EntityEditor.exe`: build and animate the hero, enemies and props
+- `MapEditor.exe`: build maps
+
+Keep the `content` folder next to them: the editors save into it and the game loads from it. Nothing else needs installing.
 
 ## What's in it
 
@@ -49,6 +57,9 @@ Every push builds the game for Windows automatically. On the repository's **Rele
 - **Trigger zones:** area names, acid, a heal pad, a kill volume, jump pads, boost pads, low gravity, an updraft and a checkpoint.
 
 ## Controls
+
+The camera is locked behind the hero: looking turns the hero. Aiming eases the camera in over a fifth of a second.
+
 
 | Action | Keyboard / mouse | Controller |
 |---|---|---|
@@ -97,20 +108,116 @@ The level is a flat 240 m square. North is -Z. Every solid has a 1 m grid, and s
 | Germ yard | south-east | a row of cocci, a dash chain of cocci on posts, bacilli, two brutes and a phage titan |
 | Zones | south | acid, heal pad, a pit with a 0.6 m beam and a checkpoint, 3/6/10 m jump pads, low gravity, updraft, boost lane |
 
+## The Entity Editor
+
+`EntityEditor.exe [name]` opens `content/entities/<name>.entity.json` (default: hero).
+
+**What an entity is:**
+
+- **A rig:** bones, each an offset from its parent joint.
+- **Shapes** fixed to bones: box, sphere, capsule, cylinder, cone or striped ball, each with a position, rotation, size, colour, and glow or hidden flags.
+- **Animation clips:** keyframes per bone (rotation, movement, and scale for squash and stretch), each easing smooth, linear or step to the next key.
+- **A layer stack** that blends everything into the final pose.
+- **State mappings:** which clip plays in each game state.
+- **Stats:** health, scale, contact damage, dashes to floor, and collision size.
+
+The game uses all of this.
+
+**Left panel:**
+
+- **Entity:** name, kind (player, enemy or prop), gameplay stats, and curled-up style (striped ball or its own shapes spun).
+- **Rig:** the bone tree. Add, delete, rename and reparent bones, edit offsets and lengths with sliders or the move gizmo, mirror left to right, or reset to the standard humanoid. Renaming a bone updates every shape, clip and mask that uses it.
+- **Shapes:** add, duplicate, delete, mirror and reorder shapes. Sliders cover position, rotation and size; "Point along bone" fits a capsule to its bone. There's a colour picker (hue, saturation and brightness, or type a hex code). Click a shape in the view to select it, or drag it with the gizmo.
+
+**Right panel:**
+
+- **Clips:** create, duplicate, rename and delete clips, and set length and looping.
+  - Pick a bone (click a joint in the view) and set its rotation, movement and scale at the playhead. Editing a value keys it.
+  - Other tools: copy and paste a pose, mirror a pose left to right, key all bones, and preview the clip alone, over the procedural motion, or as additive.
+- **Layers:** the animation pipeline, evaluated top to bottom.
+  - Each layer takes its motion from **procedural** (players get the run cycle, foot IK, aim, punch and reload; others an idle sway), **clip** (loops a clip) or **state** (plays the clip mapped to the current game state, with crossfades).
+  - Layers can **override** or be **additive**, with weight, speed and a bone mask. "Upper body" is a one-click mask, and children can be included.
+- **States:** pick a clip and a crossfade time for each game state: idle, run, skid, jump, fall, curl, spin, hover, aim, fire, punch, reload, hurt, stagger, down and dead.
+- **Preview:** drive the procedural motion by hand to see the whole stack.
+  - Settings: run speed, on the ground, skidding, hovering, curled, holding a one- or two-handed gun, aiming (with direction), plus punch and reload buttons.
+  - Enemy idle: sway and raised arms.
+  - Other tools: drop the ragdoll, turntable view, and toggles for the grid, bones, shapes and collision.
+
+**Bottom: the timeline.** Play, pause and step through frames (30 a second). Scrub the ruler, click a key to select it, drag keys to retime them, and press Delete to remove the selected one.
+
+**Keys and mouse:**
+
+- File: Ctrl+S save, Ctrl+Z / Ctrl+Y undo and redo.
+- Editing: Space play, F frame the selection, Ctrl+D duplicate a shape, Del delete.
+- View: right-drag orbits, middle-drag pans, the wheel zooms.
+- Numbers: right-click any slider or number to type an exact value. Shift drags finely, Ctrl drags coarsely.
+
+**Test in game** saves, then starts the game. Players start the game as the entity (`--hero <name>`); enemies spawn one in front of you (`--spawn <name>`).
+
+## The Map Editor
+
+`MapEditor.exe [name]` opens `content/maps/<name>.map.json` (default: debug).
+
+**What a map is:** the player spawn, a kill height, and a list of objects. Each object is one of:
+
+- box, with any size and rotation
+- ramp (angle, height, width, landing)
+- trigger zone, any kind: area, damage, heal, kill, jump pad, boost, low gravity, updraft or checkpoint
+- germ (any entity)
+- target dummy (optionally on a rail)
+- physics ball
+- pickup
+- sign
+- landmark (F6/F7 teleport targets)
+
+**The view** draws the map exactly as the game does, including the germs' idle animation. It also shows the spawn, signs, landmarks and zone outlines.
+
+- **Flying:** hold the right mouse button and use WASD (Q/E down and up, Shift fast); the wheel sets the speed.
+- **Editing:** click to select. Drag the gizmo's arrows (or its ground square) to move, snapped to the grid size (0.1–2 m) unless Snap is off.
+- **Keys:** R / Shift+R rotate 15°, Ctrl+D duplicate, Del delete, F focus, Esc deselect, Ctrl+Z / Ctrl+Y undo and redo, Ctrl+S save.
+
+**Left panel:**
+
+- **Add palette:** new things go where the view is pointing, on the floor.
+- **Outliner:** filter by type, search, and double-click to focus.
+
+**Right panel:**
+
+- **Properties** for the selection, all sliders and fields.
+- **Jump pads** have an aiming helper: give it a ledge height and a landing point, and it computes the launch velocity.
+- **With nothing selected:** map settings (name, kill height, player spawn).
+
+**Play test** saves, then starts the game on the map (`--map <name>`).
+
+## Content files
+
+- **Where they live:** `content/entities/*.entity.json` and `content/maps/*.map.json` are plain, readable JSON (vectors are `[x, y, z]`). The editors write them, and you can also edit them by hand.
+- **How the game uses them:** it loads `content/` next to the exe (or `--content <dir>`), plays `--map <name>` (default `debug`), and falls back to built-in defaults for anything missing.
+- **Standard rig:** entities with the 16 standard humanoid bones (pelvis, chest, neck, head, shoulder/elbow/hand and hip/knee/foot, .L and .R) get the procedural motion and ragdolls. Extra bones (tails, antennae) are animated by clips.
+
 ## For development
 
 ```
 src/GermBall.Core/    platform-free engine and game
-  Engine/             math, oriented-box collision, unit meshes, the draw list, a 5x7 pixel HUD font, skeleton and ragdoll
-  Sim/                Level (and the debug level), Player, HeroAnim, Enemies (germs), Bodies (dash hits, contact, ragdolls),
-                      BodyDraw, Weapons, Entities, Game (loop, camera), Draw, Hud
-src/GermBall/         Windows: Win32 window, keyboard/mouse/XInput, Direct3D 11 renderer -> GermBall.exe
+  Engine/             math, oriented-box collision, unit meshes, the draw list, a 5x7 pixel font, skeleton and ragdoll, UI input
+  Content/            entity and map formats, the content store, the animation pipeline, entity drawing, the default entities
+  Sim/                Level (built from maps), Player, HeroAnim (procedural motion), Enemies (germs), Bodies (dash hits,
+                      contact, ragdolls), BodyDraw, Weapons, Entities, Game (loop, camera), Draw, Hud
+src/GermBall.Platform/ Windows: Win32 window, keyboard/mouse/XInput, Direct3D 11 renderer, the editor host
+src/GermBall/         GermBall.exe (the game)
+src/GermBall.Tools/   platform-free editors: an immediate-mode GUI and 3D view, the Entity Editor, the Map Editor
+src/GermBall.EntityEditor/, src/GermBall.MapEditor/   EntityEditor.exe and MapEditor.exe
+content/              the default entities and the debug map, shipped next to the exes
 tests/GermBall.Tests/ headless checks and a software rasteriser for screenshots
 legacy/               Germ Ball 1.0 (deprecated, frozen)
 ```
 
-- **Tuning.** Movement is the constants at the top of `src/GermBall.Core/Sim/Player.cs`. Weapons are in `WeaponDef` in `Sim/Weapons.cs`. The level is `Level.BuildDebug` in `Sim/Level.cs`.
-- **Tests.** The tests are 25 scripted checks (movement, inertia, jump curl, spin dash, zones, combat, the hero rig, dash hits on every germ size, contact damage, germ deaths and respawns, ragdolls, plus a random-input soak). CI runs them before every build. To run them yourself, or to write screenshots:
+- **Tuning.** Movement is the constants at the top of `src/GermBall.Core/Sim/Player.cs`, and weapons are in `WeaponDef` in `Sim/Weapons.cs`. Entities and maps are edited with the editors.
+- **Tests.** There are 32 scripted checks, and CI runs them before every build. They cover:
+  - movement, the camera, zones, combat and germs
+  - content round-trips and animation layers
+  - both editors driven through their real interface (clicking, typing, dragging the gizmo, undo, save, play test)
+  - random clicking in the editors, and a random-input soak in the game. To run them yourself, or to write screenshots:
 
 ```bash
 dotnet run --project tests/GermBall.Tests -c Release
@@ -118,6 +225,12 @@ dotnet run --project tests/GermBall.Tests -c Release
 
 ```bash
 dotnet run --project tests/GermBall.Tests -c Release -- shots out 1280 720
+```
+
+To screenshot both editors:
+
+```bash
+dotnet run --project tests/GermBall.Tests -c Release -- editor-shots out
 ```
 
 ## Not in 2.0 yet

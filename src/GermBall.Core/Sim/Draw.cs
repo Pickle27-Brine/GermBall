@@ -28,13 +28,19 @@ public sealed partial class Game
         dl.CamPos = CamPos;
         dl.View = Matrix4x4.CreateLookAt(CamPos, CamPos + CamForward, Vector3.UnitY);
         dl.Proj = Matrix4x4.CreatePerspectiveFieldOfView(Fov, aspect, 0.05f, 800f);
-        float a = alpha;
+        DrawWorld(dl, true);
+        DrawHud(dl, dl.Overlay, width, height);
+    }
 
+    /// <summary>The level and everything in it, without the camera or the HUD (the Map Editor draws its preview with this).</summary>
+    public void DrawWorld(DrawList dl, bool withPlayer)
+    {
+        float a = alpha;
         foreach (var s in Level.Solids)
             dl.Box(s.Box.Center, s.Box.Half * 2, s.Box.Rot, s.Color, s.Grid ? DrawFlags.Grid : DrawFlags.None);
 
         DrawZones(dl);
-        DrawPlayer(dl, a);
+        if (withPlayer) DrawPlayer(dl, a);
         DrawDummies(dl, a);
         DrawGerms(dl);
         foreach (var pr in Props)
@@ -47,8 +53,6 @@ public sealed partial class Game
         foreach (var pj in Projectiles)
             dl.Sphere(Vector3.Lerp(pj.PrevPos, pj.Pos, a), Projectile.Radius, MathX.Rgb(0x70C040), DrawFlags.Unlit);
         DrawEffects(dl);
-
-        DrawHud(dl, dl.Overlay, width, height);
     }
 
     void DrawZones(DrawList dl)

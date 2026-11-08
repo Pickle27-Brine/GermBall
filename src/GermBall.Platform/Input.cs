@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using GermBall.Sim;
+using GermBall.Engine;
 using Vortice.XInput;
 
 namespace GermBall.Win;
@@ -26,6 +27,27 @@ public static class Input
         down[vk] = isDown;
     }
     internal static void ReleaseAll() => Array.Clear(down);
+    internal static void Repeat(int vk) { vk &= 0xFF; if (vk == 0x08 || vk == 0x2E || (vk >= 0x25 && vk <= 0x28)) pressed[vk] = true; }   // held editing keys repeat
+    internal static void MouseMove(int x, int y) { CursorX = x; CursorY = y; }
+    public static int CursorX, CursorY;
+    internal static readonly System.Text.StringBuilder Typed = new();
+    internal static bool DoubleClicked;
+    static int lastUiX, lastUiY;
+
+    /// <summary>The editors' view of the mouse and keyboard this frame.</summary>
+    public static void ReadUi(UiInput u)
+    {
+        u.ClearFrame();
+        u.MouseDX = CursorX - lastUiX; u.MouseDY = CursorY - lastUiY; lastUiX = CursorX; lastUiY = CursorY;
+        u.MouseX = CursorX; u.MouseY = CursorY; u.Wheel = Wheel;
+        int[] vks = { VK_LBUTTON, VK_RBUTTON, VK_MBUTTON };
+        for (int i = 0; i < 3; i++) { bool was = u.Down[i]; u.Down[i] = down[vks[i]]; u.Pressed[i] = pressed[vks[i]]; u.Released[i] = was && !u.Down[i]; }
+        u.Ctrl = down[0x11]; u.Shift = down[0x10]; u.Alt = down[0x12];
+        u.KeysDown.Clear();
+        for (int k = 8; k < 256; k++) { if (down[k]) u.KeysDown.Add(k); if (pressed[k]) u.KeysPressed.Add(k); }
+        u.Typed = u.Ctrl ? "" : Typed.ToString(); Typed.Clear();
+        u.DoubleClick = DoubleClicked; DoubleClicked = false;
+    }
 
     static bool D(int vk) => down[vk];
     static bool P(int vk) => pressed[vk];
@@ -98,7 +120,7 @@ public static class Input
         return v / l * MathF.Min(1, (l - dead) / (1 - dead));
     }
 
-    public static void EndFrame() { Array.Clear(pressed); MouseDX = MouseDY = 0; Wheel = 0; }
+    public static void EndFrame() { Array.Clear(pressed); MouseDX = MouseDY = 0; Wheel = 0; Typed.Clear(); DoubleClicked = false; }
 
     // ---- cursor capture for mouse look
     public static bool Captured { get; private set; }

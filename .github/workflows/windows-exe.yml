@@ -1,6 +1,6 @@
-# Builds the Windows exe on every push, so nobody has to build locally.
-#   - Each branch gets a pre-release named "build-<branch>" with GermBall-win-x64.zip
-#     (one self-contained GermBall.exe, no .NET install needed).
+# Builds the Windows exes on every push, so nobody has to build locally.
+#   - Each branch gets a pre-release named "build-<branch>" with GermBall-win-x64.zip: GermBall.exe (the game),
+#     EntityEditor.exe, MapEditor.exe and the content folder they share. Self-contained, no .NET install needed.
 #   - Germ Ball 1.0 (deprecated, in legacy/) is published once as the "v1.0" release and never rebuilt.
 name: Windows exe
 
@@ -33,10 +33,11 @@ jobs:
       - name: Tests
         run: dotnet run --project tests/GermBall.Tests -c Release
 
-      - name: Publish GermBall.exe
+      - name: Publish the game and the editors
         run: |
-          dotnet publish src/GermBall/GermBall.csproj $PUBLISH -o out
-          (cd out && zip -q -9 ../GermBall-win-x64.zip GermBall.exe)
+          for p in GermBall GermBall.EntityEditor GermBall.MapEditor; do dotnet publish src/$p/$p.csproj $PUBLISH -o out; done
+          cp -r content out/
+          (cd out && zip -q -9 -r ../GermBall-win-x64.zip GermBall.exe EntityEditor.exe MapEditor.exe content)
 
       - uses: actions/upload-artifact@v4
         with:
@@ -51,7 +52,7 @@ jobs:
           gh release delete "$TAG" --yes --cleanup-tag || true
           gh release create "$TAG" GermBall-win-x64.zip \
             --prerelease --target "$GITHUB_SHA" --title "Germ Ball 2.0-dev: ${GITHUB_REF_NAME}" \
-            --notes "Built automatically from ${GITHUB_SHA::7}. Unzip and double-click GermBall.exe; no .NET install needed."
+            --notes "Built automatically from ${GITHUB_SHA::7}. Unzip, then double-click GermBall.exe (the game), EntityEditor.exe or MapEditor.exe. Keep the content folder next to them: the editors save into it and the game loads from it. No .NET install needed."
 
       - name: Publish Germ Ball 1.0 once
         env:

@@ -123,7 +123,7 @@ public sealed unsafe class Renderer : IDisposable
     }
 
     // ---------------------------------------------------------------- frame
-    readonly List<DrawItem> opaque = new();
+    readonly List<DrawItem> opaque = new(), onTop = new();
     readonly List<(DrawItem it, float d)> transp = new();
     readonly List<Vert2D> verts2d = new();
 
@@ -134,12 +134,14 @@ public sealed unsafe class Renderer : IDisposable
         ctx.ClearDepthStencilView(dsv, DepthStencilClearFlags.Depth | DepthStencilClearFlags.Stencil, 1, 0);
         ctx.RSSetViewport(new Viewport(0, 0, Width, Height));
         ctx.RSSetState(rs);
+        var vp = dl.ViewportOr(Width, Height);
 
         // sky: a vertical gradient behind everything
         verts2d.Clear();
         var top = new Vector4(dl.SkyColor * 0.85f, 1); var hor = new Vector4(dl.FogColor, 1);
-        AddQuad(0, 0, Width, Height, top, top, hor, hor);
+        AddQuad(vp.X, vp.Y, vp.Z, vp.W, top, top, hor, hor);
         Draw2D();
+        ctx.RSSetViewport(new Viewport(vp.X, vp.Y, vp.Z, vp.W));
 
         // 3D
         var fd = new FrameData
@@ -153,10 +155,11 @@ public sealed unsafe class Renderer : IDisposable
         ctx.VSSetShader(vs); ctx.PSSetShader(ps);
         ctx.VSSetConstantBuffers(0, new[] { frameCb }); ctx.PSSetConstantBuffers(0, new[] { frameCb });
 
-        opaque.Clear(); transp.Clear();
+        opaque.Clear(); transp.Clear(); onTop.Clear();
         foreach (var it in dl.Items)
         {
-            if (it.Color.W >= 0.999f) opaque.Add(it);
+            if ((it.Flags & DrawFlags.OnTop) != 0) onTop.Add(it);
+            else if (it.Color.W >= 0.999f) opaque.Add(it);
             else transp.Add((it, Vector3.DistanceSquared(it.World.Translation, dl.CamPos)));
         }
         opaque.Sort((a, b) => a.Mesh.CompareTo(b.Mesh));
@@ -166,6 +169,9 @@ public sealed unsafe class Renderer : IDisposable
         DrawRuns(opaque.Count, i => opaque[i]);
         ctx.OMSetBlendState(bsAlpha); ctx.OMSetDepthStencilState(dsRead);
         DrawRuns(transp.Count, i => transp[i].it);
+        ctx.OMSetDepthStencilState(dsOff);
+        DrawRuns(onTop.Count, i => onTop[i]);
+        ctx.RSSetViewport(new Viewport(0, 0, Width, Height));
 
         // HUD
         verts2d.Clear();

@@ -43,10 +43,12 @@ public sealed partial class Game
 
     /// <summary>Where entity definitions come from (the content folder, or the built-in defaults).</summary>
     public readonly ContentStore Store;
+    /// <summary>The entity the player is drawn and animated as.</summary>
+    public readonly string HeroName;
 
-    public Game(Level level, ContentStore store = null)
+    public Game(Level level, ContentStore store = null, string heroEntity = "hero")
     {
-        Level = level; Store = store ?? ContentStore.BuiltIn();
+        Level = level; Store = store ?? ContentStore.BuiltIn(); HeroName = heroEntity;
         foreach (var s in level.Dummies) Dummies.Add(new Dummy(s));
         foreach (var s in level.Props) Props.Add(new Prop(s));
         foreach (var s in level.Pickups) Pickups.Add(new Pickup(s));
