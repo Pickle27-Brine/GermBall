@@ -24,6 +24,8 @@ public sealed partial class EntityEditor
     public EntityDef Def;
     /// <summary>Starts the game with arguments (the exe host provides this).</summary>
     public Action<string> LaunchGame;
+    /// <summary>1.0's music, on the toolbar (the exe host provides it; null without sound).</summary>
+    public GermBall.Audio.Music Music;
     public string Status = "Ready";
 
     EntityView ev; string rigKey;
@@ -141,6 +143,7 @@ public sealed partial class EntityEditor
         Save();
         if (LaunchGame == null) { Status = "Can't start the game from here"; return; }
         LaunchGame(Def.Kind == "player" ? $"--hero {Def.Name}" : $"--spawn {Def.Name}");
+        if (Music != null) Music.Paused = true;   // the game plays its own
         Status = Def.Kind == "player" ? $"Started the game as {Def.Name}" : $"Started the game with a {Def.Name} in front of you";
     }
 

@@ -1,0 +1,4199 @@
+[
+ {
+  "name": "Spore Radio",
+  "gain": 0.85,
+  "bpm": 116,
+  "key": 41,
+  "steps": 16,
+  "swing": 0.08,
+  "scale": [
+   0,
+   1,
+   3,
+   5,
+   7,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   8,
+   8,
+   5,
+   5,
+   1,
+   10
+  ],
+  "seed": 11,
+  "lift": 2,
+  "form": [
+   [
+    4,
+    "kick hat blip pad"
+   ],
+   [
+    8,
+    "kick hat snare bass blip"
+   ],
+   [
+    8,
+    "kick hat snare bass lead stab"
+   ],
+   [
+    4,
+    "pad blip whisper sub"
+   ],
+   [
+    8,
+    "kick hat snare bass lead arp counter"
+   ],
+   [
+    8,
+    "kick hat snare bass arp blip pad shaker"
+   ],
+   [
+    4,
+    "pad blip"
+   ]
+  ],
+  "drums": {
+   "kick": "x...x...x...x..o",
+   "snare": "....x.......x...",
+   "hat": "..x...x...x...xo",
+   "ohat": "..............x.",
+   "shaker": "oooooooooooooooo"
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x.xo.x.xx.x.o.xx",
+   "notes": [
+    0,
+    0,
+    12,
+    0,
+    7,
+    0,
+    12,
+    10,
+    0,
+    0,
+    12,
+    7,
+    0,
+    3,
+    12,
+    10
+   ],
+   "alt": [
+    0,
+    12,
+    0,
+    12,
+    7,
+    0,
+    15,
+    12,
+    0,
+    12,
+    10,
+    7,
+    0,
+    3,
+    5,
+    7
+   ]
+  },
+  "lead": {
+   "patch": "brass",
+   "alt": "lead",
+   "density": 0.45,
+   "oct": 24,
+   "span": 6
+  },
+  "counter": {
+   "patch": "harp",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "bell",
+   "grid": "x.x.x.x.x.x.x.x.",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "pad",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "epiano",
+   "grid": "...x.....x....x.",
+   "oct": 12
+  },
+  "chain": "radio"
+ },
+ {
+  "name": "Glass Larynx",
+  "gain": 0.42,
+  "bpm": 128,
+  "key": 40,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   1,
+   4,
+   5,
+   7,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   1,
+   1,
+   10,
+   10,
+   8,
+   7
+  ],
+  "seed": 23,
+  "lift": 1,
+  "form": [
+   [
+    4,
+    "kick glass"
+   ],
+   [
+    8,
+    "kick hat clap bass glass"
+   ],
+   [
+    8,
+    "kick hat clap bass lead glass"
+   ],
+   [
+    4,
+    "pad glass whisper riser"
+   ],
+   [
+    8,
+    "kick hat clap bass lead arp counter"
+   ],
+   [
+    8,
+    "kick hat clap bass arp glass zap stab"
+   ],
+   [
+    4,
+    "kick glass"
+   ]
+  ],
+  "drums": {
+   "kick": "x...x...x...x...",
+   "clap": "....x.......x...",
+   "hat": "oxoxoxoxoxoxoxox",
+   "zap": "...x.....x....x."
+  },
+  "bass": {
+   "patch": "slap",
+   "grid": "xxxxxxxxxxxxxxxx",
+   "notes": [
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    7,
+    12,
+    10,
+    12
+   ],
+   "alt": [
+    0,
+    12,
+    0,
+    12,
+    1,
+    13,
+    1,
+    13,
+    0,
+    12,
+    0,
+    12,
+    10,
+    12,
+    7,
+    12
+   ]
+  },
+  "lead": {
+   "patch": "lead",
+   "alt": "chip",
+   "density": 0.55,
+   "oct": 24,
+   "span": 7,
+   "ring": true
+  },
+  "counter": {
+   "patch": "clang",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "glass",
+   "grid": "xxxxxxxxxxxxxxxx",
+   "oct": 36
+  },
+  "glass": {
+   "patch": "glass",
+   "oct": 36
+  },
+  "pad": {
+   "patch": "organ",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "clang",
+   "grid": "x.......x.....x.",
+   "oct": 24
+  },
+  "chain": "comb"
+ },
+ {
+  "name": "Moth Cathedral",
+  "gain": 0.95,
+  "bpm": 84,
+  "key": 36,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   1,
+   3,
+   5,
+   6,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   1,
+   0,
+   10,
+   0,
+   6,
+   5,
+   1
+  ],
+  "seed": 37,
+  "lift": -1,
+  "form": [
+   [
+    4,
+    "heart pad sub"
+   ],
+   [
+    8,
+    "heart pad choir bass"
+   ],
+   [
+    8,
+    "heart pad choir bell bass whisper"
+   ],
+   [
+    4,
+    "pad whisper wail sub riser"
+   ],
+   [
+    8,
+    "heart snare pad choir bell bass wail counter"
+   ],
+   [
+    8,
+    "heart snare pad bell bass counter shaker"
+   ],
+   [
+    4,
+    "pad choir sub"
+   ]
+  ],
+  "drums": {
+   "heart": "x..x............",
+   "snare": "............x...",
+   "tom": "..........o...o.",
+   "shaker": "..o...o...o...o."
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x...............",
+   "notes": [
+    0
+   ],
+   "len": 14
+  },
+  "bell": {
+   "patch": "bell",
+   "alt": "harp",
+   "density": 0.18,
+   "oct": 36,
+   "span": 6
+  },
+  "counter": {
+   "patch": "wail",
+   "oct": 12
+  },
+  "pad": {
+   "patch": "pad",
+   "oct": 12,
+   "cluster": true
+  },
+  "choir": {
+   "vowels": "ouaoeu",
+   "oct": 24
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 24
+  },
+  "chain": "cathedral"
+ },
+ {
+  "name": "Hollow Spiral",
+  "gain": 0.75,
+  "bpm": 140,
+  "key": 38,
+  "steps": 16,
+  "swing": 0.12,
+  "scale": [
+   0,
+   2,
+   4,
+   6,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   2,
+   2,
+   10,
+   10,
+   4,
+   6
+  ],
+  "seed": 51,
+  "lift": 2,
+  "form": [
+   [
+    4,
+    "kick hat bass"
+   ],
+   [
+    8,
+    "kick snare hat bass arp"
+   ],
+   [
+    8,
+    "kick snare hat bass lead stab"
+   ],
+   [
+    4,
+    "bass wail zap riser"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass lead arp counter"
+   ],
+   [
+    8,
+    "kick snare hat bass lead zap shaker"
+   ],
+   [
+    4,
+    "bass wail"
+   ]
+  ],
+  "drums": {
+   "kick": "x.....x..x......",
+   "snare": "....x.......x..o",
+   "hat": "x.x.xox.x.x.xox.",
+   "ohat": "......x.......x.",
+   "zap": "..x.......x.....",
+   "shaker": ".o.o.o.o.o.o.o.o"
+  },
+  "bass": {
+   "patch": "acid",
+   "grid": "xxoxxoxxoxxoxoxx",
+   "notes": [
+    0,
+    0,
+    12,
+    0,
+    6,
+    0,
+    12,
+    0,
+    0,
+    10,
+    0,
+    12,
+    4,
+    0,
+    12,
+    8
+   ],
+   "alt": [
+    0,
+    12,
+    0,
+    6,
+    0,
+    12,
+    8,
+    0,
+    0,
+    10,
+    12,
+    0,
+    4,
+    6,
+    8,
+    10
+   ],
+   "slide": true
+  },
+  "lead": {
+   "patch": "lead",
+   "alt": "brass",
+   "density": 0.5,
+   "oct": 24,
+   "span": 8,
+   "bend": true
+  },
+  "counter": {
+   "patch": "chip",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "epiano",
+   "grid": "x..x..x..x..x.x.",
+   "oct": 24
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "clang",
+   "grid": "....x.......x...",
+   "oct": 24
+  },
+  "chain": "spiral"
+ },
+ {
+  "name": "Eye of the Moon",
+  "gain": 0.85,
+  "bpm": 100,
+  "key": 38,
+  "steps": 14,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   -1,
+   -2,
+   -3,
+   -5,
+   -6,
+   -7,
+   -5
+  ],
+  "seed": 67,
+  "lift": 3,
+  "form": [
+   [
+    4,
+    "pad heart sub"
+   ],
+   [
+    8,
+    "kick snare hat bass pad"
+   ],
+   [
+    8,
+    "kick snare hat bass pad lead"
+   ],
+   [
+    4,
+    "pad whisper choir riser"
+   ],
+   [
+    8,
+    "kick snare hat bass lead arp counter"
+   ],
+   [
+    8,
+    "kick snare hat bass pad stab shaker"
+   ],
+   [
+    4,
+    "pad lead"
+   ]
+  ],
+  "drums": {
+   "kick": "x.....x...x...",
+   "snare": "...x......x...",
+   "hat": "x.x.x.x.x.x.xo",
+   "heart": "x.............",
+   "shaker": "oo.oo.oo.oo.o."
+  },
+  "bass": {
+   "patch": "growl",
+   "grid": "x..x..x...x.x.",
+   "notes": [
+    0,
+    0,
+    0,
+    12,
+    0,
+    7,
+    0,
+    0,
+    0,
+    0,
+    0,
+    10,
+    0,
+    0
+   ]
+  },
+  "lead": {
+   "patch": "wail",
+   "alt": "lead",
+   "density": 0.25,
+   "oct": 24,
+   "span": 5,
+   "bend": true
+  },
+  "counter": {
+   "patch": "bell",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "glass",
+   "grid": "x.x.x.x.x.x.x.",
+   "oct": 36
+  },
+  "pad": {
+   "patch": "pad",
+   "oct": 12
+  },
+  "choir": {
+   "vowels": "uoi",
+   "oct": 24
+  },
+  "stab": {
+   "patch": "organ",
+   "grid": "x......x......",
+   "oct": 12
+  },
+  "chain": "eye"
+ },
+ {
+  "name": "Fungal Carousel",
+  "gain": 0.8,
+  "bpm": 96,
+  "key": 36,
+  "steps": 12,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   8,
+   11
+  ],
+  "roots": [
+   0,
+   5,
+   8,
+   7,
+   0,
+   5,
+   1,
+   7
+  ],
+  "seed": 83,
+  "lift": 1,
+  "form": [
+   [
+    4,
+    "pad rim"
+   ],
+   [
+    8,
+    "kick rim bass stab"
+   ],
+   [
+    8,
+    "kick rim bass stab lead"
+   ],
+   [
+    4,
+    "pad choir sub riser"
+   ],
+   [
+    8,
+    "kick rim bass stab lead counter arp"
+   ],
+   [
+    8,
+    "kick rim bass stab arp shaker wail"
+   ],
+   [
+    4,
+    "pad bell"
+   ]
+  ],
+  "drums": {
+   "kick": "x...........",
+   "rim": "....x...x...",
+   "shaker": "..o...o...o."
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x...........",
+   "notes": [
+    0
+   ],
+   "len": 3
+  },
+  "lead": {
+   "patch": "organ",
+   "alt": "wail",
+   "density": 0.4,
+   "oct": 24,
+   "span": 6,
+   "bend": true
+  },
+  "bell": {
+   "patch": "bell",
+   "density": 0.3,
+   "oct": 36,
+   "span": 5
+  },
+  "counter": {
+   "patch": "harp",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "harp",
+   "grid": "x.x.x.x.x.x.",
+   "oct": 24
+  },
+  "stab": {
+   "patch": "organ",
+   "grid": "....x...x...",
+   "oct": 12
+  },
+  "pad": {
+   "patch": "pad",
+   "oct": 12
+  },
+  "choir": {
+   "vowels": "oau",
+   "oct": 24
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 24
+  },
+  "chain": "carousel"
+ },
+ {
+  "name": "Static Saints",
+  "gain": 0.6,
+  "bpm": 108,
+  "key": 40,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   1,
+   3,
+   5,
+   7,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   0,
+   1,
+   0,
+   0,
+   10,
+   8
+  ],
+  "seed": 97,
+  "lift": -2,
+  "form": [
+   [
+    4,
+    "kick zap whisper"
+   ],
+   [
+    8,
+    "kick clap bass glass"
+   ],
+   [
+    8,
+    "kick clap hat bass glass lead"
+   ],
+   [
+    4,
+    "choir whisper sub riser"
+   ],
+   [
+    8,
+    "kick clap hat bass lead stab counter"
+   ],
+   [
+    8,
+    "kick clap hat ohat bass stab zap choir"
+   ],
+   [
+    4,
+    "kick whisper"
+   ]
+  ],
+  "drums": {
+   "kick": "x..x..x.x...x...",
+   "clap": "....x.......x...",
+   "hat": "x.xxx.xxx.xxx.xx",
+   "ohat": "......x.......x.",
+   "zap": ".x.....x.x......"
+  },
+  "bass": {
+   "patch": "growl",
+   "grid": "x..x..x.x...x.x.",
+   "notes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    12,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    10,
+    0
+   ],
+   "alt": [
+    0,
+    0,
+    0,
+    12,
+    0,
+    0,
+    12,
+    0,
+    1,
+    0,
+    13,
+    0,
+    0,
+    0,
+    10,
+    12
+   ]
+  },
+  "lead": {
+   "patch": "brass",
+   "alt": "wail",
+   "density": 0.35,
+   "oct": 24,
+   "span": 5,
+   "ring": true
+  },
+  "counter": {
+   "patch": "clang",
+   "oct": 24
+  },
+  "glass": {
+   "patch": "clang",
+   "oct": 36
+  },
+  "stab": {
+   "patch": "clang",
+   "grid": "x.....x.........",
+   "oct": 24
+  },
+  "choir": {
+   "vowels": "aou",
+   "oct": 24
+  },
+  "chain": "industrial"
+ },
+ {
+  "name": "Neon Larva",
+  "gain": 0.6,
+  "bpm": 152,
+  "key": 45,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   8,
+   10,
+   7,
+   0,
+   8,
+   5,
+   7
+  ],
+  "seed": 101,
+  "lift": 2,
+  "form": [
+   [
+    4,
+    "kick hat bass arp"
+   ],
+   [
+    8,
+    "kick snare hat bass arp"
+   ],
+   [
+    8,
+    "kick snare hat bass lead stab"
+   ],
+   [
+    4,
+    "bass arp riser"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass lead arp counter"
+   ],
+   [
+    8,
+    "kick snare hat bass lead stab shaker"
+   ],
+   [
+    4,
+    "kick bass arp"
+   ]
+  ],
+  "drums": {
+   "kick": "x.......x.x.....",
+   "snare": "....x.......x...",
+   "hat": "x.x.x.x.x.x.x.x.",
+   "ohat": "......x.......x.",
+   "shaker": "oooooooooooooooo"
+  },
+  "bass": {
+   "patch": "slap",
+   "grid": "x.xxx.xxx.xxx.xx",
+   "notes": [
+    0,
+    0,
+    12,
+    0,
+    12,
+    0,
+    0,
+    12,
+    0,
+    0,
+    12,
+    0,
+    10,
+    0,
+    7,
+    12
+   ],
+   "alt": [
+    0,
+    0,
+    12,
+    0,
+    7,
+    0,
+    12,
+    0,
+    0,
+    0,
+    12,
+    0,
+    3,
+    5,
+    7,
+    10
+   ]
+  },
+  "lead": {
+   "patch": "chip",
+   "alt": "brass",
+   "density": 0.6,
+   "oct": 24,
+   "span": 8
+  },
+  "counter": {
+   "patch": "chip",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "epiano",
+   "grid": "xxxxxxxxxxxxxxxx",
+   "oct": 24
+  },
+  "stab": {
+   "patch": "brass",
+   "grid": "x.....x...x.....",
+   "oct": 12
+  },
+  "chain": "clean"
+ },
+ {
+  "name": "Lull Engine",
+  "gain": 1,
+  "bpm": 72,
+  "key": 38,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   4,
+   6,
+   7,
+   9,
+   11
+  ],
+  "roots": [
+   0,
+   0,
+   6,
+   6,
+   2,
+   2,
+   11,
+   9
+  ],
+  "seed": 113,
+  "lift": -3,
+  "form": [
+   [
+    4,
+    "pad sub"
+   ],
+   [
+    8,
+    "pad choir heart sub"
+   ],
+   [
+    8,
+    "pad choir bell heart bass"
+   ],
+   [
+    4,
+    "pad whisper wail riser"
+   ],
+   [
+    8,
+    "pad choir bell heart bass counter shaker"
+   ],
+   [
+    8,
+    "pad bell bass wail arp"
+   ],
+   [
+    4,
+    "pad sub choir"
+   ]
+  ],
+  "drums": {
+   "heart": "x.......x.......",
+   "shaker": "....o.......o..."
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x.......x.......",
+   "notes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    7
+   ],
+   "len": 7
+  },
+  "bell": {
+   "patch": "bell",
+   "alt": "glass",
+   "density": 0.15,
+   "oct": 36,
+   "span": 7
+  },
+  "counter": {
+   "patch": "harp",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "harp",
+   "grid": "x...x...x...x...",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "pad",
+   "oct": 12
+  },
+  "choir": {
+   "vowels": "uoaei",
+   "oct": 24
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 24
+  },
+  "chain": "cathedral"
+ },
+ {
+  "name": "Wet Prism",
+  "gain": 0.75,
+  "bpm": 88,
+  "key": 38,
+  "steps": 16,
+  "swing": 0.16,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   9,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   5,
+   5,
+   10,
+   10,
+   7,
+   9
+  ],
+  "seed": 127,
+  "lift": 2,
+  "form": [
+   [
+    4,
+    "kick rim stab"
+   ],
+   [
+    8,
+    "kick snare hat bass stab"
+   ],
+   [
+    8,
+    "kick snare hat bass stab lead"
+   ],
+   [
+    4,
+    "pad whisper riser sub"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass stab lead counter"
+   ],
+   [
+    8,
+    "kick snare hat bass arp pad shaker"
+   ],
+   [
+    4,
+    "stab pad"
+   ]
+  ],
+  "drums": {
+   "kick": "x.....x...x.....",
+   "snare": "....x.......x..o",
+   "hat": "x.x.x.xox.x.x.xo",
+   "ohat": "..............x.",
+   "rim": "...x.....x.x....",
+   "shaker": "o.o.o.o.o.o.o.o."
+  },
+  "bass": {
+   "patch": "growl",
+   "grid": "x.....x.x.....x.",
+   "notes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    7,
+    0,
+    10,
+    0,
+    0,
+    0,
+    0,
+    0,
+    12,
+    0
+   ],
+   "slide": true
+  },
+  "lead": {
+   "patch": "lead",
+   "alt": "wail",
+   "density": 0.35,
+   "oct": 24,
+   "span": 6,
+   "bend": true
+  },
+  "counter": {
+   "patch": "bell",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "epiano",
+   "grid": "x..x..x.x..x..x.",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "pad",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "epiano",
+   "grid": "x.....x...x.....",
+   "oct": 12
+  },
+  "chain": "spiral"
+ },
+ {
+  "name": "Chrome Hive",
+  "gain": 0.55,
+  "bpm": 132,
+  "key": 41,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   1,
+   4,
+   5,
+   7,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   1,
+   1,
+   0,
+   0,
+   8,
+   10
+  ],
+  "seed": 131,
+  "lift": 1,
+  "form": [
+   [
+    4,
+    "kick zap bass"
+   ],
+   [
+    8,
+    "kick clap hat bass zap"
+   ],
+   [
+    8,
+    "kick clap hat bass lead stab"
+   ],
+   [
+    4,
+    "bass whisper riser glass"
+   ],
+   [
+    8,
+    "kick clap hat ohat bass lead counter arp"
+   ],
+   [
+    8,
+    "kick clap hat bass stab zap shaker glass"
+   ],
+   [
+    4,
+    "kick bass zap"
+   ]
+  ],
+  "drums": {
+   "kick": "x...x...x...x...",
+   "clap": "....x.......x..x",
+   "hat": "xxoxxxoxxxoxxxox",
+   "ohat": "..x...x...x...x.",
+   "zap": "x..x..x..x..x...",
+   "shaker": ".o.o.o.o.o.o.o.o"
+  },
+  "bass": {
+   "patch": "acid",
+   "grid": "xoxxoxxoxxoxxoxx",
+   "notes": [
+    0,
+    0,
+    12,
+    0,
+    1,
+    0,
+    12,
+    0,
+    0,
+    13,
+    0,
+    12,
+    0,
+    1,
+    10,
+    12
+   ],
+   "alt": [
+    0,
+    12,
+    1,
+    13,
+    0,
+    12,
+    10,
+    12,
+    0,
+    12,
+    1,
+    13,
+    8,
+    10,
+    12,
+    13
+   ],
+   "slide": true
+  },
+  "lead": {
+   "patch": "chip",
+   "alt": "clang",
+   "density": 0.5,
+   "oct": 24,
+   "span": 7,
+   "ring": true
+  },
+  "counter": {
+   "patch": "clang",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "chip",
+   "grid": "x.x.x.x.x.x.x.x.",
+   "oct": 36
+  },
+  "glass": {
+   "patch": "glass",
+   "oct": 36
+  },
+  "stab": {
+   "patch": "brass",
+   "grid": "x..x......x.....",
+   "oct": 12
+  },
+  "chain": "industrial"
+ },
+ {
+  "name": "Tidal Ghost",
+  "gain": 0.9,
+  "bpm": 76,
+  "key": 37,
+  "steps": 12,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   8,
+   8,
+   3,
+   3,
+   10,
+   7
+  ],
+  "seed": 137,
+  "lift": 2,
+  "form": [
+   [
+    4,
+    "pad sub whisper"
+   ],
+   [
+    8,
+    "heart pad bass choir"
+   ],
+   [
+    8,
+    "heart pad bass choir bell"
+   ],
+   [
+    4,
+    "pad wail riser sub"
+   ],
+   [
+    8,
+    "heart snare pad bass bell counter arp"
+   ],
+   [
+    8,
+    "heart snare pad bass choir wail shaker"
+   ],
+   [
+    4,
+    "pad bell"
+   ]
+  ],
+  "drums": {
+   "heart": "x.....x.....",
+   "snare": "......x.....",
+   "shaker": "..o..o..o..o"
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x.....x.....",
+   "notes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    7
+   ],
+   "len": 5
+  },
+  "bell": {
+   "patch": "bell",
+   "alt": "glass",
+   "density": 0.22,
+   "oct": 36,
+   "span": 6
+  },
+  "counter": {
+   "patch": "harp",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "harp",
+   "grid": "x.x.x.x.x.x.",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "pad",
+   "oct": 12,
+   "cluster": true
+  },
+  "choir": {
+   "vowels": "oauie",
+   "oct": 24
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 24
+  },
+  "chain": "eye"
+ },
+ {
+  "name": "Velvet Abductor",
+  "gain": 0.7,
+  "bpm": 104,
+  "key": 39,
+  "steps": 16,
+  "swing": 0.2,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   9,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   5,
+   5,
+   3,
+   3,
+   10,
+   7
+  ],
+  "seed": 139,
+  "lift": 2,
+  "form": [
+   [
+    4,
+    "kick rim bass"
+   ],
+   [
+    8,
+    "kick snare hat bass stab"
+   ],
+   [
+    8,
+    "kick snare hat bass stab lead"
+   ],
+   [
+    4,
+    "pad choir riser sub"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass lead counter arp"
+   ],
+   [
+    8,
+    "kick snare hat bass stab pad shaker wail"
+   ],
+   [
+    4,
+    "kick rim bass pad"
+   ]
+  ],
+  "drums": {
+   "kick": "x.....x...x..x..",
+   "snare": "....x.......x...",
+   "hat": "x.xox.xox.xox.xo",
+   "ohat": "......x.........",
+   "rim": "..x.....x.....x.",
+   "shaker": "o.oo.oo.o.oo.oo."
+  },
+  "bass": {
+   "patch": "slap",
+   "grid": "x.x..xx.x.x..x.x",
+   "notes": [
+    0,
+    0,
+    12,
+    0,
+    0,
+    10,
+    12,
+    0,
+    0,
+    0,
+    7,
+    0,
+    0,
+    5,
+    0,
+    3
+   ],
+   "alt": [
+    0,
+    12,
+    0,
+    0,
+    10,
+    12,
+    0,
+    7,
+    0,
+    12,
+    0,
+    0,
+    3,
+    5,
+    7,
+    10
+   ]
+  },
+  "lead": {
+   "patch": "brass",
+   "alt": "lead",
+   "density": 0.4,
+   "oct": 24,
+   "span": 6,
+   "bend": true
+  },
+  "counter": {
+   "patch": "epiano",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "epiano",
+   "grid": "x..x..x...x..x..",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "organ",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "epiano",
+   "grid": "...x...x...x..x.",
+   "oct": 12
+  },
+  "choir": {
+   "vowels": "aeo",
+   "oct": 24
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 24
+  },
+  "chain": "comb"
+ },
+ {
+  "name": "Larval Motorik",
+  "gain": 0.7,
+  "bpm": 120,
+  "key": 43,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   4,
+   5,
+   7,
+   9,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   0,
+   0,
+   5,
+   5,
+   10,
+   10
+  ],
+  "seed": 149,
+  "lift": 2,
+  "form": [
+   [
+    4,
+    "kick hat bass"
+   ],
+   [
+    8,
+    "kick snare hat bass arp"
+   ],
+   [
+    8,
+    "kick snare hat bass arp lead"
+   ],
+   [
+    4,
+    "arp pad riser"
+   ],
+   [
+    8,
+    "kick snare hat bass lead counter stab"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass arp pad blip shaker"
+   ],
+   [
+    4,
+    "kick hat bass"
+   ]
+  ],
+  "drums": {
+   "kick": "x...x...x...x...",
+   "snare": "....x.......x...",
+   "hat": "xxxxxxxxxxxxxxxx",
+   "ohat": "..x...x...x...x.",
+   "shaker": "o.o.o.o.o.o.o.o."
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x.x.x.x.x.x.x.x.",
+   "notes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    12,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    7,
+    10
+   ],
+   "alt": [
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    7,
+    10,
+    12,
+    14
+   ]
+  },
+  "lead": {
+   "patch": "organ",
+   "alt": "chip",
+   "density": 0.3,
+   "oct": 24,
+   "span": 6
+  },
+  "counter": {
+   "patch": "bell",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "chip",
+   "grid": "xxxxxxxxxxxxxxxx",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "pad",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "brass",
+   "grid": "x.......x.......",
+   "oct": 12
+  },
+  "chain": "radio"
+ },
+ {
+  "name": "Saturn Lung",
+  "gain": 0.95,
+  "bpm": 92,
+  "key": 36,
+  "steps": 10,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   4,
+   6,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   2,
+   2,
+   8,
+   8,
+   6,
+   4
+  ],
+  "seed": 151,
+  "lift": -2,
+  "form": [
+   [
+    4,
+    "pad sub"
+   ],
+   [
+    8,
+    "heart pad bass bell"
+   ],
+   [
+    8,
+    "heart tom pad bass bell choir"
+   ],
+   [
+    4,
+    "pad wail whisper riser"
+   ],
+   [
+    8,
+    "heart tom pad bass bell counter arp"
+   ],
+   [
+    8,
+    "heart tom pad bass choir wail shaker"
+   ],
+   [
+    4,
+    "pad choir sub"
+   ]
+  ],
+  "drums": {
+   "heart": "x....x....",
+   "tom": "...o....o.",
+   "shaker": ".o.o..o.o."
+  },
+  "bass": {
+   "patch": "growl",
+   "grid": "x....x....",
+   "notes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    6
+   ],
+   "len": 4
+  },
+  "bell": {
+   "patch": "bell",
+   "alt": "glass",
+   "density": 0.2,
+   "oct": 36,
+   "span": 5
+  },
+  "counter": {
+   "patch": "wail",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "glass",
+   "grid": "x.x.x.x.x.",
+   "oct": 36
+  },
+  "pad": {
+   "patch": "pad",
+   "oct": 12,
+   "cluster": true
+  },
+  "choir": {
+   "vowels": "uouio",
+   "oct": 24
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 24
+  },
+  "chain": "cathedral"
+ },
+ {
+  "name": "Grub Parade",
+  "gain": 0.55,
+  "bpm": 160,
+  "key": 46,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   1,
+   3,
+   5,
+   6,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   1,
+   0,
+   6,
+   0,
+   1,
+   10,
+   8
+  ],
+  "seed": 157,
+  "lift": 1,
+  "form": [
+   [
+    4,
+    "kick hat bass zap"
+   ],
+   [
+    8,
+    "kick snare hat bass zap"
+   ],
+   [
+    8,
+    "kick snare hat bass lead stab"
+   ],
+   [
+    4,
+    "bass wail riser"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass lead counter arp"
+   ],
+   [
+    8,
+    "kick snare hat bass lead zap stab shaker"
+   ],
+   [
+    4,
+    "kick bass wail"
+   ]
+  ],
+  "drums": {
+   "kick": "x..x..x...x..x..",
+   "snare": "....x.......x...",
+   "hat": "x.x.x.x.x.x.x.x.",
+   "ohat": "..............x.",
+   "zap": "......x.......x.",
+   "shaker": "oooooooooooooooo"
+  },
+  "bass": {
+   "patch": "growl",
+   "grid": "x.xx.xx.x.xx.x.x",
+   "notes": [
+    0,
+    0,
+    12,
+    0,
+    0,
+    1,
+    0,
+    0,
+    6,
+    0,
+    0,
+    12,
+    0,
+    10,
+    0,
+    8
+   ],
+   "alt": [
+    0,
+    12,
+    0,
+    1,
+    13,
+    0,
+    6,
+    0,
+    0,
+    12,
+    0,
+    6,
+    8,
+    10,
+    12,
+    13
+   ],
+   "slide": true
+  },
+  "lead": {
+   "patch": "lead",
+   "alt": "brass",
+   "density": 0.55,
+   "oct": 24,
+   "span": 8,
+   "bend": true
+  },
+  "counter": {
+   "patch": "chip",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "clang",
+   "grid": "x..x..x..x..x..x",
+   "oct": 24
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "clang",
+   "grid": "x...x.....x.....",
+   "oct": 24
+  },
+  "chain": "spiral"
+ },
+ {
+  "name": "Mitochondria Funk",
+  "gain": 0.7,
+  "bpm": 108,
+  "key": 40,
+  "steps": 16,
+  "swing": 0.14,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   9,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   5,
+   5,
+   0,
+   0,
+   7,
+   5
+  ],
+  "seed": 211,
+  "lift": 2,
+  "sweep": true,
+  "form": [
+   [
+    4,
+    "kick snap bass"
+   ],
+   [
+    8,
+    "kick snare hat bass stab"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass stab lead"
+   ],
+   [
+    4,
+    "bass pad riser"
+   ],
+   [
+    8,
+    "kick snare hat bass stab lead counter cowbell"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass arp stab lead shaker"
+   ],
+   [
+    4,
+    "kick snap bass stab"
+   ]
+  ],
+  "drums": {
+   "kick": "x.....x..x....x.",
+   "snare": "....x.......x...",
+   "snap": "....x.......x...",
+   "hat": "x.xox.xox.xox.xo",
+   "ohat": "......x.........",
+   "cowbell": "x..x..x...x..x..",
+   "shaker": "o.o.o.o.o.o.o.o."
+  },
+  "bass": {
+   "patch": "slap",
+   "grid": "x..x.xx..x.x.xx.",
+   "notes": [
+    0,
+    0,
+    0,
+    12,
+    0,
+    10,
+    12,
+    0,
+    0,
+    7,
+    0,
+    3,
+    0,
+    5,
+    7,
+    10
+   ],
+   "alt": [
+    0,
+    12,
+    0,
+    12,
+    10,
+    12,
+    7,
+    0,
+    0,
+    12,
+    3,
+    5,
+    7,
+    10,
+    12,
+    15
+   ]
+  },
+  "lead": {
+   "patch": "rhodes",
+   "alt": "brass",
+   "density": 0.4,
+   "oct": 24,
+   "span": 6,
+   "harm": 2,
+   "bend": true
+  },
+  "counter": {
+   "patch": "cello",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "pluck",
+   "grid": "x.x..x.x..x.x.x.",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "strings",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "brass",
+   "grid": "...x......x..x..",
+   "oct": 12
+  },
+  "chain": "clean"
+ },
+ {
+  "name": "Plasmid Dub",
+  "gain": 0.85,
+  "bpm": 74,
+  "key": 38,
+  "steps": 16,
+  "swing": 0.06,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   9,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   0,
+   0,
+   5,
+   5,
+   7,
+   7
+  ],
+  "seed": 223,
+  "lift": 0,
+  "form": [
+   [
+    4,
+    "kick2 rim bass"
+   ],
+   [
+    8,
+    "kick2 snare rim bass stab"
+   ],
+   [
+    8,
+    "kick2 snare rim hat bass stab lead"
+   ],
+   [
+    4,
+    "bass whisper pad"
+   ],
+   [
+    8,
+    "kick2 snare rim hat bass stab lead counter"
+   ],
+   [
+    8,
+    "kick2 snare hat bass stab pad shaker"
+   ],
+   [
+    4,
+    "kick2 bass stab"
+   ]
+  ],
+  "drums": {
+   "kick2": "x.........x.....",
+   "snare": "........x.......",
+   "rim": "..x...x...x...x.",
+   "hat": "..x...x...x...x.",
+   "shaker": "...o...o...o...o"
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x..x..x...x.x...",
+   "notes": [
+    0,
+    0,
+    0,
+    7,
+    0,
+    0,
+    10,
+    0,
+    0,
+    0,
+    12,
+    0,
+    10,
+    0,
+    0,
+    0
+   ],
+   "len": 2
+  },
+  "lead": {
+   "patch": "flute",
+   "alt": "organ",
+   "density": 0.22,
+   "oct": 24,
+   "span": 5,
+   "bend": true
+  },
+  "counter": {
+   "patch": "rhodes",
+   "oct": 12
+  },
+  "pad": {
+   "patch": "organ",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "organ",
+   "grid": "....x.......x...",
+   "oct": 12
+  },
+  "chain": "dub"
+ },
+ {
+  "name": "Capsid Bossa",
+  "gain": 0.7,
+  "bpm": 128,
+  "key": 43,
+  "steps": 16,
+  "swing": 0.05,
+  "scale": [
+   0,
+   2,
+   4,
+   5,
+   7,
+   9,
+   11
+  ],
+  "roots": [
+   0,
+   0,
+   2,
+   7,
+   4,
+   9,
+   2,
+   7
+  ],
+  "seed": 227,
+  "lift": 1,
+  "form": [
+   [
+    4,
+    "rim shaker bass"
+   ],
+   [
+    8,
+    "kick rim shaker bass stab"
+   ],
+   [
+    8,
+    "kick rim shaker bass stab lead"
+   ],
+   [
+    4,
+    "pad lead"
+   ],
+   [
+    8,
+    "kick rim shaker conga bass stab lead counter"
+   ],
+   [
+    8,
+    "kick rim shaker conga bass arp pad"
+   ],
+   [
+    4,
+    "rim bass stab"
+   ]
+  ],
+  "drums": {
+   "kick": "x..x....x..x....",
+   "rim": "x..x..x...x..x..",
+   "shaker": "oxooxooxoxooxoox",
+   "conga": "..x..x....x..x.x"
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x..x....x..x....",
+   "notes": [
+    0,
+    0,
+    0,
+    7,
+    0,
+    0,
+    0,
+    0,
+    7,
+    0,
+    0,
+    12
+   ],
+   "len": 2
+  },
+  "lead": {
+   "patch": "flute",
+   "alt": "rhodes",
+   "density": 0.35,
+   "oct": 24,
+   "span": 7,
+   "harm": 2
+  },
+  "counter": {
+   "patch": "pluck",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "pluck",
+   "grid": "x..x..x...x..x..",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "strings",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "rhodes",
+   "grid": "..x..x....x..x..",
+   "oct": 12
+  },
+  "chain": "shimmer"
+ },
+ {
+  "name": "Flagellum Breaks",
+  "gain": 0.6,
+  "bpm": 172,
+  "key": 41,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   8,
+   8,
+   3,
+   3,
+   10,
+   10
+  ],
+  "seed": 229,
+  "lift": 2,
+  "sweep": true,
+  "form": [
+   [
+    4,
+    "pad sub"
+   ],
+   [
+    8,
+    "kick snare hat bass pad"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass lead pad"
+   ],
+   [
+    4,
+    "pad choir riser"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass lead counter arp"
+   ],
+   [
+    8,
+    "kick snare hat bass stab arp zap shaker"
+   ],
+   [
+    4,
+    "pad sub"
+   ]
+  ],
+  "drums": {
+   "kick": "x.........x.....",
+   "snare": "....x..o.o..x...",
+   "hat": "x.xxx.x.x.xxx.x.",
+   "ohat": "......x.......x.",
+   "zap": "..........x.....",
+   "shaker": "oooooooooooooooo"
+  },
+  "bass": {
+   "patch": "reese",
+   "grid": "x.......x.......",
+   "notes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    10
+   ],
+   "len": 7
+  },
+  "lead": {
+   "patch": "supersaw",
+   "alt": "lead",
+   "density": 0.3,
+   "oct": 24,
+   "span": 7,
+   "harm": 4
+  },
+  "counter": {
+   "patch": "bell",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "glass",
+   "grid": "x..x..x..x..x...",
+   "oct": 36
+  },
+  "pad": {
+   "patch": "strings",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "supersaw",
+   "grid": "x.......x.......",
+   "oct": 12
+  },
+  "choir": {
+   "vowels": "aoe",
+   "oct": 24
+  },
+  "chain": "clean"
+ },
+ {
+  "name": "Membrane Shoegaze",
+  "gain": 0.8,
+  "bpm": 96,
+  "key": 40,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   4,
+   5,
+   7,
+   9,
+   11
+  ],
+  "roots": [
+   0,
+   0,
+   5,
+   5,
+   9,
+   9,
+   7,
+   7
+  ],
+  "seed": 233,
+  "lift": 2,
+  "form": [
+   [
+    4,
+    "pad sub"
+   ],
+   [
+    8,
+    "kick snare ride pad bass"
+   ],
+   [
+    8,
+    "kick snare ride pad bass lead"
+   ],
+   [
+    4,
+    "pad wail whisper riser"
+   ],
+   [
+    8,
+    "kick snare ride hat pad bass lead counter arp"
+   ],
+   [
+    8,
+    "kick snare ride hat pad bass lead wail crash"
+   ],
+   [
+    4,
+    "pad sub"
+   ]
+  ],
+  "drums": {
+   "kick": "x.......x.x.....",
+   "snare": "....x.......x...",
+   "ride": "x.x.x.x.x.x.x.x.",
+   "hat": "..x...x...x...x."
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x.x.x.x.x.x.x.x.",
+   "notes": [
+    0
+   ],
+   "len": 1
+  },
+  "lead": {
+   "patch": "supersaw",
+   "alt": "wail",
+   "density": 0.2,
+   "oct": 24,
+   "span": 5,
+   "bend": true,
+   "harm": 2,
+   "harmAlways": true
+  },
+  "counter": {
+   "patch": "cello",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "glass",
+   "grid": "x...x...x...x...",
+   "oct": 36
+  },
+  "pad": {
+   "patch": "supersaw",
+   "oct": 12
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 24
+  },
+  "chain": "vapor"
+ },
+ {
+  "name": "Antibody March",
+  "gain": 0.8,
+  "bpm": 112,
+  "key": 38,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   8,
+   11
+  ],
+  "roots": [
+   0,
+   0,
+   7,
+   7,
+   0,
+   5,
+   7,
+   0
+  ],
+  "seed": 239,
+  "lift": 1,
+  "form": [
+   [
+    4,
+    "snare tom"
+   ],
+   [
+    8,
+    "kick2 snare tom bass stab"
+   ],
+   [
+    8,
+    "kick2 snare tom bass stab lead"
+   ],
+   [
+    4,
+    "snare pad choir"
+   ],
+   [
+    8,
+    "kick2 snare tom bass stab lead counter"
+   ],
+   [
+    8,
+    "kick2 snare tom bass lead choir crash"
+   ],
+   [
+    4,
+    "snare tom"
+   ]
+  ],
+  "drums": {
+   "kick2": "x.......x.......",
+   "snare": "x.xxx.x.x.xxx.xx",
+   "tom": "..........x.x.x."
+  },
+  "bass": {
+   "patch": "cello",
+   "grid": "x...x...x...x...",
+   "notes": [
+    0,
+    0,
+    0,
+    0,
+    7,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    7,
+    0,
+    0,
+    0
+   ],
+   "len": 3
+  },
+  "lead": {
+   "patch": "brass",
+   "alt": "organ",
+   "density": 0.4,
+   "oct": 24,
+   "span": 6,
+   "harm": 2
+  },
+  "counter": {
+   "patch": "flute",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "strings",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "brass",
+   "grid": "x.......x.....x.",
+   "oct": 12
+  },
+  "choir": {
+   "vowels": "aao",
+   "oct": 24
+  },
+  "chain": "cathedral"
+ },
+ {
+  "name": "Cilia Waltz",
+  "gain": 0.85,
+  "bpm": 138,
+  "key": 41,
+  "steps": 12,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   4,
+   5,
+   7,
+   9,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   5,
+   5,
+   7,
+   7,
+   0,
+   0
+  ],
+  "seed": 241,
+  "lift": 2,
+  "form": [
+   [
+    4,
+    "bass stab"
+   ],
+   [
+    8,
+    "kick rim bass stab"
+   ],
+   [
+    8,
+    "kick rim bass stab lead"
+   ],
+   [
+    4,
+    "pad lead"
+   ],
+   [
+    8,
+    "kick rim bass stab lead counter arp"
+   ],
+   [
+    8,
+    "kick rim bass stab arp pad shaker"
+   ],
+   [
+    4,
+    "bass stab"
+   ]
+  ],
+  "drums": {
+   "kick": "x...........",
+   "rim": "....x...x...",
+   "shaker": "o.o.o.o.o.o."
+  },
+  "bass": {
+   "patch": "cello",
+   "grid": "x...........",
+   "notes": [
+    0
+   ],
+   "len": 3
+  },
+  "lead": {
+   "patch": "kalimba",
+   "alt": "flute",
+   "density": 0.4,
+   "oct": 24,
+   "span": 7,
+   "harm": 2
+  },
+  "counter": {
+   "patch": "cello",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "marimba",
+   "grid": "x.x.x.x.x.x.",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "strings",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "pluck",
+   "grid": "....x...x...",
+   "oct": 12
+  },
+  "chain": "carousel"
+ },
+ {
+  "name": "Golgi Express",
+  "gain": 0.7,
+  "bpm": 126,
+  "key": 45,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   4,
+   5,
+   7,
+   9,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   0,
+   0,
+   10,
+   10,
+   5,
+   5
+  ],
+  "seed": 251,
+  "lift": 2,
+  "sweep": true,
+  "form": [
+   [
+    4,
+    "kick hat bass"
+   ],
+   [
+    8,
+    "kick snare hat bass arp"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass arp lead"
+   ],
+   [
+    4,
+    "arp pad riser"
+   ],
+   [
+    8,
+    "kick snare hat bass lead counter stab"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass arp lead pad shaker"
+   ],
+   [
+    4,
+    "kick hat bass arp"
+   ]
+  ],
+  "drums": {
+   "kick": "x...x...x...x...",
+   "snare": "....x.......x...",
+   "hat": "xxxxxxxxxxxxxxxx",
+   "ohat": "..x...x...x...x.",
+   "shaker": "o.o.o.o.o.o.o.o."
+  },
+  "bass": {
+   "patch": "slap",
+   "grid": "x.xxx.xxx.xxx.xx",
+   "notes": [
+    0,
+    0,
+    12,
+    0,
+    0,
+    0,
+    12,
+    0,
+    0,
+    0,
+    12,
+    0,
+    0,
+    0,
+    7,
+    10
+   ]
+  },
+  "lead": {
+   "patch": "sitar",
+   "alt": "chip",
+   "density": 0.35,
+   "oct": 24,
+   "span": 6,
+   "bend": true
+  },
+  "counter": {
+   "patch": "marimba",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "pluck",
+   "grid": "xxxxxxxxxxxxxxxx",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "strings",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "brass",
+   "grid": "x.......x.......",
+   "oct": 12
+  },
+  "chain": "radio"
+ },
+ {
+  "name": "Lysosome Lounge",
+  "gain": 0.75,
+  "bpm": 84,
+  "key": 39,
+  "steps": 16,
+  "swing": 0.22,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   9,
+   10
+  ],
+  "roots": [
+   0,
+   5,
+   10,
+   3,
+   8,
+   2,
+   7,
+   7
+  ],
+  "seed": 257,
+  "lift": 0,
+  "form": [
+   [
+    4,
+    "ride bass stab"
+   ],
+   [
+    8,
+    "kick snare ride bass stab"
+   ],
+   [
+    8,
+    "kick snare ride bass stab lead"
+   ],
+   [
+    4,
+    "ride pad counter"
+   ],
+   [
+    8,
+    "kick snare ride hat bass stab lead counter"
+   ],
+   [
+    8,
+    "kick snare ride bass stab arp pad"
+   ],
+   [
+    4,
+    "ride bass stab"
+   ]
+  ],
+  "drums": {
+   "kick": "x.........x.....",
+   "snare": "....o.......o...",
+   "ride": "x..xx..xx..xx..x",
+   "hat": "....x.......x..."
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x...x...x...x...",
+   "notes": [
+    0,
+    0,
+    0,
+    0,
+    7,
+    0,
+    0,
+    0,
+    12,
+    0,
+    0,
+    0,
+    10,
+    0,
+    0,
+    0
+   ],
+   "len": 3
+  },
+  "lead": {
+   "patch": "rhodes",
+   "alt": "flute",
+   "density": 0.3,
+   "oct": 24,
+   "span": 7,
+   "bend": true
+  },
+  "counter": {
+   "patch": "cello",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "harp",
+   "grid": "x..x..x..x..x...",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "rhodes",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "rhodes",
+   "grid": "...x......x.....",
+   "oct": 12
+  },
+  "chain": "tape"
+ },
+ {
+  "name": "Phagocyte Chase",
+  "gain": 0.6,
+  "bpm": 150,
+  "key": 40,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   1,
+   3,
+   5,
+   7,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   1,
+   1,
+   0,
+   0,
+   10,
+   8
+  ],
+  "seed": 263,
+  "lift": 1,
+  "sweep": true,
+  "sweepLow": 500,
+  "form": [
+   [
+    4,
+    "kick bass zap"
+   ],
+   [
+    8,
+    "kick clap hat bass zap"
+   ],
+   [
+    8,
+    "kick clap hat bass lead stab"
+   ],
+   [
+    4,
+    "bass riser glass"
+   ],
+   [
+    8,
+    "kick clap hat ohat bass lead counter arp"
+   ],
+   [
+    8,
+    "kick clap hat bass lead stab zap shaker"
+   ],
+   [
+    4,
+    "kick bass"
+   ]
+  ],
+  "drums": {
+   "kick": "x...x...x...x...",
+   "clap": "....x.......x...",
+   "hat": "..x...x...x...x.",
+   "ohat": "..x...x...x...x.",
+   "zap": "x.....x.....x...",
+   "shaker": "oooooooooooooooo"
+  },
+  "bass": {
+   "patch": "wobbass",
+   "grid": "x.xxx.xxx.xxx.xx",
+   "notes": [
+    0,
+    0,
+    12,
+    0,
+    1,
+    0,
+    12,
+    0,
+    0,
+    0,
+    12,
+    0,
+    13,
+    0,
+    10,
+    12
+   ]
+  },
+  "lead": {
+   "patch": "supersaw",
+   "alt": "lead",
+   "density": 0.5,
+   "oct": 24,
+   "span": 7,
+   "harm": 4
+  },
+  "counter": {
+   "patch": "chip",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "glass",
+   "grid": "x.xx.xx.x.xx.xx.",
+   "oct": 36
+  },
+  "glass": {
+   "patch": "glass",
+   "oct": 36
+  },
+  "stab": {
+   "patch": "supersaw",
+   "grid": "x..x..x.........",
+   "oct": 12
+  },
+  "chain": "industrial"
+ },
+ {
+  "name": "Endoplasmic Drift",
+  "gain": 1,
+  "bpm": 66,
+  "key": 36,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   4,
+   7,
+   9
+  ],
+  "roots": [
+   0,
+   0,
+   9,
+   9,
+   5,
+   5,
+   7,
+   7
+  ],
+  "seed": 269,
+  "lift": 2,
+  "form": [
+   [
+    4,
+    "pad sub"
+   ],
+   [
+    8,
+    "pad bell sub"
+   ],
+   [
+    8,
+    "pad bell heart bass choir"
+   ],
+   [
+    4,
+    "pad whisper wail riser"
+   ],
+   [
+    8,
+    "pad bell heart bass choir counter arp"
+   ],
+   [
+    8,
+    "pad heart bass wail arp shaker"
+   ],
+   [
+    4,
+    "pad bell sub"
+   ]
+  ],
+  "drums": {
+   "heart": "x...............",
+   "shaker": "......o.......o."
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x...............",
+   "notes": [
+    0
+   ],
+   "len": 15
+  },
+  "bell": {
+   "patch": "kalimba",
+   "alt": "glass",
+   "density": 0.14,
+   "oct": 36,
+   "span": 6
+  },
+  "counter": {
+   "patch": "flute",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "marimba",
+   "grid": "x.....x.....x...",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "strings",
+   "oct": 12
+  },
+  "choir": {
+   "vowels": "ouu",
+   "oct": 24
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 24
+  },
+  "chain": "underwater"
+ },
+ {
+  "name": "Ribosome Factory",
+  "gain": 0.55,
+  "bpm": 118,
+  "key": 40,
+  "steps": 14,
+  "swing": 0,
+  "scale": [
+   0,
+   1,
+   3,
+   5,
+   7,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   0,
+   1,
+   0,
+   0,
+   10,
+   8
+  ],
+  "seed": 271,
+  "lift": 1,
+  "poly": true,
+  "form": [
+   [
+    4,
+    "kick cowbell bass"
+   ],
+   [
+    8,
+    "kick clap hat cowbell bass"
+   ],
+   [
+    8,
+    "kick clap hat cowbell bass lead stab"
+   ],
+   [
+    4,
+    "cowbell glass riser"
+   ],
+   [
+    8,
+    "kick clap hat cowbell bass lead counter arp"
+   ],
+   [
+    8,
+    "kick clap hat ohat cowbell bass stab zap glass"
+   ],
+   [
+    4,
+    "kick cowbell"
+   ]
+  ],
+  "drums": {
+   "kick": "x...x..x...x..",
+   "clap": "...x......x...",
+   "hat": "x.x.x",
+   "ohat": "...x...",
+   "cowbell": "x..x.",
+   "zap": "......x"
+  },
+  "bass": {
+   "patch": "growl",
+   "grid": "x.x.xx.x.x.xx.",
+   "notes": [
+    0,
+    0,
+    12,
+    0,
+    0,
+    1,
+    0,
+    0,
+    12,
+    0,
+    10,
+    0,
+    0,
+    13
+   ]
+  },
+  "lead": {
+   "patch": "clang",
+   "alt": "sitar",
+   "density": 0.35,
+   "oct": 24,
+   "span": 5,
+   "ring": true
+  },
+  "counter": {
+   "patch": "chip",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "marimba",
+   "grid": "x.x.x.x.x.x.x.",
+   "oct": 24
+  },
+  "glass": {
+   "patch": "clang",
+   "oct": 36
+  },
+  "stab": {
+   "patch": "growl",
+   "grid": "x......x......",
+   "oct": 12
+  },
+  "chain": "industrial"
+ },
+ {
+  "name": "Bloodstream Highway",
+  "gain": 0.7,
+  "bpm": 104,
+  "key": 42,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   8,
+   8,
+   3,
+   3,
+   10,
+   10
+  ],
+  "seed": 277,
+  "lift": 2,
+  "sweep": true,
+  "form": [
+   [
+    4,
+    "kick bass pad"
+   ],
+   [
+    8,
+    "kick snare hat bass pad arp"
+   ],
+   [
+    8,
+    "kick snare hat bass lead arp pad"
+   ],
+   [
+    4,
+    "pad riser wail"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass lead counter arp stab"
+   ],
+   [
+    8,
+    "kick snare hat bass lead pad arp shaker"
+   ],
+   [
+    4,
+    "pad lead"
+   ]
+  ],
+  "drums": {
+   "kick": "x...x...x...x...",
+   "snare": "....x.......x...",
+   "hat": "..x...x...x...x.",
+   "ohat": "..............x.",
+   "shaker": "o.o.o.o.o.o.o.o."
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x.x.x.x.x.x.x.x.",
+   "notes": [
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    0,
+    12,
+    0,
+    12
+   ]
+  },
+  "lead": {
+   "patch": "supersaw",
+   "alt": "brass",
+   "density": 0.38,
+   "oct": 24,
+   "span": 7,
+   "bend": true,
+   "harm": 2
+  },
+  "counter": {
+   "patch": "cello",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "pluck",
+   "grid": "x.xx.xx.x.xx.xx.",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "strings",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "supersaw",
+   "grid": "x.....x.........",
+   "oct": 12
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 24
+  },
+  "chain": "spiral"
+ },
+ {
+  "name": "Synapse Spark",
+  "gain": 0.55,
+  "bpm": 140,
+  "key": 43,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   3,
+   5,
+   7,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   3,
+   3,
+   5,
+   5,
+   10,
+   7
+  ],
+  "seed": 281,
+  "lift": 1,
+  "form": [
+   [
+    4,
+    "kick2 hat"
+   ],
+   [
+    8,
+    "kick2 clap hat bass zap"
+   ],
+   [
+    8,
+    "kick2 clap hat bass lead zap"
+   ],
+   [
+    4,
+    "pad bass riser"
+   ],
+   [
+    8,
+    "kick2 clap hat ohat bass lead counter arp"
+   ],
+   [
+    8,
+    "kick2 clap hat bass stab zap arp shaker"
+   ],
+   [
+    4,
+    "kick2 hat"
+   ]
+  ],
+  "drums": {
+   "kick2": "x......x..x.....",
+   "clap": "........x.......",
+   "hat": "x.xxx.x.xxxxx.xx",
+   "ohat": "...........x....",
+   "zap": "......x.......xx",
+   "shaker": "o.o.o.o.o.o.o.o."
+  },
+  "bass": {
+   "patch": "reese",
+   "grid": "x......x..x.....",
+   "notes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    10,
+    0,
+    0,
+    7
+   ],
+   "len": 3
+  },
+  "lead": {
+   "patch": "chip",
+   "alt": "bell",
+   "density": 0.45,
+   "oct": 24,
+   "span": 6,
+   "bend": true
+  },
+  "counter": {
+   "patch": "glass",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "bell",
+   "grid": "x...x..x...x..x.",
+   "oct": 36
+  },
+  "pad": {
+   "patch": "pad",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "glass",
+   "grid": "x.......x.......",
+   "oct": 24
+  },
+  "chain": "eye"
+ },
+ {
+  "name": "Quorum Sensing",
+  "gain": 0.65,
+  "bpm": 122,
+  "key": 41,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   9,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   0,
+   0,
+   3,
+   3,
+   5,
+   5
+  ],
+  "seed": 283,
+  "lift": 2,
+  "poly": true,
+  "sweep": true,
+  "form": [
+   [
+    4,
+    "kick arp"
+   ],
+   [
+    8,
+    "kick hat bass arp"
+   ],
+   [
+    8,
+    "kick clap hat bass arp lead"
+   ],
+   [
+    4,
+    "arp pad riser"
+   ],
+   [
+    8,
+    "kick clap hat bass arp lead counter"
+   ],
+   [
+    8,
+    "kick clap hat ohat bass arp stab pad shaker"
+   ],
+   [
+    4,
+    "kick arp"
+   ]
+  ],
+  "drums": {
+   "kick": "x...x...x...x...",
+   "clap": "....x.......x...",
+   "hat": "x.xx.x.xx.x",
+   "ohat": "..x...x..",
+   "shaker": "ooo.o"
+  },
+  "bass": {
+   "patch": "acid",
+   "grid": "x.xx.xx.x.xx.x.x",
+   "notes": [
+    0,
+    0,
+    12,
+    0,
+    3,
+    0,
+    0,
+    12,
+    0,
+    0,
+    10,
+    0,
+    7,
+    0,
+    5,
+    3
+   ],
+   "slide": true
+  },
+  "lead": {
+   "patch": "marimba",
+   "alt": "kalimba",
+   "density": 0.45,
+   "oct": 24,
+   "span": 7,
+   "harm": 4,
+   "harmAlways": true
+  },
+  "counter": {
+   "patch": "pluck",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "pluck",
+   "grid": "x.xx.x.xx.xx.x.",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "pad",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "rhodes",
+   "grid": "...x.....x....x.",
+   "oct": 12
+  },
+  "chain": "spiral"
+ },
+ {
+  "name": "Tardigrade Stomp",
+  "gain": 0.7,
+  "bpm": 90,
+  "key": 36,
+  "steps": 16,
+  "swing": 0.1,
+  "scale": [
+   0,
+   3,
+   5,
+   6,
+   7,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   0,
+   0,
+   5,
+   5,
+   0,
+   7
+  ],
+  "seed": 293,
+  "lift": 2,
+  "form": [
+   [
+    4,
+    "kick2 clap bass"
+   ],
+   [
+    8,
+    "kick2 clap tom bass stab"
+   ],
+   [
+    8,
+    "kick2 clap tom bass stab lead"
+   ],
+   [
+    4,
+    "bass choir riser"
+   ],
+   [
+    8,
+    "kick2 clap tom bass stab lead counter"
+   ],
+   [
+    8,
+    "kick2 clap tom bass stab lead choir shaker crash"
+   ],
+   [
+    4,
+    "kick2 clap bass"
+   ]
+  ],
+  "drums": {
+   "kick2": "x.....x...x.....",
+   "clap": "....x.......x...",
+   "tom": "..............xx",
+   "shaker": "o..o..o..o..o..o"
+  },
+  "bass": {
+   "patch": "wobbass",
+   "grid": "x.....x...x...x.",
+   "notes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    6,
+    0
+   ],
+   "len": 3
+  },
+  "lead": {
+   "patch": "growl",
+   "alt": "brass",
+   "density": 0.3,
+   "oct": 12,
+   "span": 5,
+   "bend": true
+  },
+  "counter": {
+   "patch": "sitar",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "organ",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "brass",
+   "grid": "x.........x.....",
+   "oct": 12
+  },
+  "choir": {
+   "vowels": "oau",
+   "oct": 12
+  },
+  "chain": "comb"
+ },
+ {
+  "name": "Diatom Ballet",
+  "gain": 0.95,
+  "bpm": 78,
+  "key": 40,
+  "steps": 12,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   8,
+   11
+  ],
+  "roots": [
+   0,
+   5,
+   8,
+   7,
+   0,
+   3,
+   5,
+   7
+  ],
+  "seed": 307,
+  "lift": 3,
+  "form": [
+   [
+    4,
+    "pad harp"
+   ],
+   [
+    8,
+    "pad bass arp"
+   ],
+   [
+    8,
+    "pad bass arp lead"
+   ],
+   [
+    4,
+    "pad choir wail riser"
+   ],
+   [
+    8,
+    "pad bass arp lead counter rim"
+   ],
+   [
+    8,
+    "pad bass arp lead choir shaker"
+   ],
+   [
+    4,
+    "pad arp"
+   ]
+  ],
+  "drums": {
+   "rim": "x.....x.....",
+   "shaker": "..o...o...o."
+  },
+  "bass": {
+   "patch": "cello",
+   "grid": "x...........",
+   "notes": [
+    0
+   ],
+   "len": 11
+  },
+  "lead": {
+   "patch": "flute",
+   "alt": "strings",
+   "density": 0.28,
+   "oct": 24,
+   "span": 7,
+   "harm": 2
+  },
+  "counter": {
+   "patch": "cello",
+   "oct": 12
+  },
+  "arp": {
+   "patch": "harp",
+   "grid": "xxxxxxxxxxxx",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "strings",
+   "oct": 12
+  },
+  "choir": {
+   "vowels": "aeiou",
+   "oct": 24
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 24
+  },
+  "chain": "shimmer"
+ },
+ {
+  "name": "Hyphae Hymn",
+  "loops": 1,
+  "gain": 1,
+  "bpm": 60,
+  "key": 34,
+  "steps": 16,
+  "swing": 0,
+  "scale": [
+   0,
+   1,
+   3,
+   5,
+   7,
+   8,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   8,
+   8,
+   1,
+   1,
+   10,
+   10
+  ],
+  "seed": 311,
+  "lift": -2,
+  "form": [
+   [
+    4,
+    "sub pad"
+   ],
+   [
+    8,
+    "sub pad choir"
+   ],
+   [
+    8,
+    "sub pad choir bell heart"
+   ],
+   [
+    4,
+    "pad whisper wail"
+   ],
+   [
+    8,
+    "sub pad choir bell heart counter"
+   ],
+   [
+    8,
+    "sub pad choir wail heart tom"
+   ],
+   [
+    4,
+    "sub pad"
+   ]
+  ],
+  "drums": {
+   "heart": "x.......x.......",
+   "tom": "............o..."
+  },
+  "bass": {
+   "patch": "reese",
+   "grid": "x...............",
+   "notes": [
+    0
+   ],
+   "len": 15
+  },
+  "bell": {
+   "patch": "bell",
+   "alt": "clang",
+   "density": 0.12,
+   "oct": 36,
+   "span": 5
+  },
+  "counter": {
+   "patch": "cello",
+   "oct": 12
+  },
+  "pad": {
+   "patch": "organ",
+   "oct": 12,
+   "cluster": true
+  },
+  "choir": {
+   "vowels": "uouo",
+   "oct": 12
+  },
+  "wail": {
+   "patch": "wail",
+   "oct": 24
+  },
+  "chain": "cathedral"
+ },
+ {
+  "name": "Prion Polka",
+  "loops": 3,
+  "gain": 0.65,
+  "bpm": 168,
+  "key": 43,
+  "steps": 8,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   4,
+   5,
+   7,
+   9,
+   11
+  ],
+  "roots": [
+   0,
+   0,
+   7,
+   7,
+   0,
+   0,
+   7,
+   0
+  ],
+  "seed": 313,
+  "lift": 1,
+  "form": [
+   [
+    4,
+    "kick snare bass"
+   ],
+   [
+    8,
+    "kick snare bass stab lead"
+   ],
+   [
+    8,
+    "kick snare hat bass stab lead counter"
+   ],
+   [
+    4,
+    "lead pad"
+   ],
+   [
+    8,
+    "kick snare hat bass stab lead counter cowbell"
+   ],
+   [
+    8,
+    "kick snare hat bass stab lead arp cowbell"
+   ],
+   [
+    4,
+    "kick snare bass stab"
+   ]
+  ],
+  "drums": {
+   "kick": "x...x...",
+   "snare": "..x...x.",
+   "hat": "x.x.x.x.",
+   "cowbell": "......x."
+  },
+  "bass": {
+   "patch": "slap",
+   "grid": "x...x...",
+   "notes": [
+    0,
+    0,
+    0,
+    0,
+    7
+   ]
+  },
+  "lead": {
+   "patch": "organ",
+   "alt": "chip",
+   "density": 0.6,
+   "oct": 24,
+   "span": 7,
+   "harm": 2
+  },
+  "counter": {
+   "patch": "flute",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "chip",
+   "grid": "x.x.x.x.",
+   "oct": 36
+  },
+  "pad": {
+   "patch": "organ",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "organ",
+   "grid": "..x...x.",
+   "oct": 12
+  },
+  "chain": "carousel"
+ },
+ {
+  "name": "Cytoplasm Tide",
+  "gain": 0.85,
+  "bpm": 100,
+  "key": 38,
+  "steps": 10,
+  "swing": 0,
+  "scale": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   9,
+   10
+  ],
+  "roots": [
+   0,
+   0,
+   5,
+   5,
+   10,
+   10,
+   3,
+   7
+  ],
+  "seed": 317,
+  "lift": 2,
+  "sweep": true,
+  "form": [
+   [
+    4,
+    "pad sub arp"
+   ],
+   [
+    8,
+    "kick snare hat bass arp pad"
+   ],
+   [
+    8,
+    "kick snare hat bass arp lead"
+   ],
+   [
+    4,
+    "pad whisper riser"
+   ],
+   [
+    8,
+    "kick snare hat bass arp lead counter conga"
+   ],
+   [
+    8,
+    "kick snare hat ohat bass arp stab pad conga shaker"
+   ],
+   [
+    4,
+    "pad arp"
+   ]
+  ],
+  "drums": {
+   "kick": "x....x....",
+   "snare": "...x....x.",
+   "hat": "x.x.x.x.x.",
+   "ohat": "........x.",
+   "conga": "..x..x.x..",
+   "shaker": "o.oo.o.oo."
+  },
+  "bass": {
+   "patch": "fmBass",
+   "grid": "x..x.x..x.",
+   "notes": [
+    0,
+    0,
+    0,
+    7,
+    0,
+    10,
+    0,
+    0,
+    12
+   ]
+  },
+  "lead": {
+   "patch": "kalimba",
+   "alt": "rhodes",
+   "density": 0.4,
+   "oct": 24,
+   "span": 6,
+   "bend": true
+  },
+  "counter": {
+   "patch": "flute",
+   "oct": 24
+  },
+  "arp": {
+   "patch": "marimba",
+   "grid": "x.xx.x.xx.",
+   "oct": 24
+  },
+  "pad": {
+   "patch": "pad",
+   "oct": 12
+  },
+  "stab": {
+   "patch": "rhodes",
+   "grid": "x....x....",
+   "oct": 12
+  },
+  "chain": "underwater"
+ }
+]

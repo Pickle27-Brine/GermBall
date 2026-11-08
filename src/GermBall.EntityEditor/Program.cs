@@ -17,6 +17,8 @@ public static class Program
             string open = args.Length > 0 && !args[0].StartsWith("--") ? args[0] : null;
             var ed = new GermBall.Tools.EntityEditor.EntityEditor(store, open);
             ed.LaunchGame = a => { if (!EditorHost.LaunchGame(a, out var err)) ed.Status = err; };
+            using var audio = new AudioOut();
+            ed.Music = MusicLoader.Start(audio, store);
             EditorHost.Run("Germ Ball Entity Editor", ed.Frame);
             return 0;
         }

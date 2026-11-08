@@ -65,6 +65,7 @@ public sealed partial class Game
     /// <summary>Advances the game by one rendered frame: camera look, menu keys, then as many fixed steps as the time allows.</summary>
     public void Frame(float dt, InputFrame input)
     {
+        songShowT -= dt;
         HandleMenuKeys(input);
         aimHeld = input.Has(Btn.Aim);
         if (Paused) { pendingPressed = 0; UpdateCamera(alpha, 0); return; }
@@ -87,8 +88,22 @@ public sealed partial class Game
         UpdateCamera(alpha, dt);
     }
 
+    /// <summary>1.0's music (the platform plays it; null when there's no sound). N skips, B goes back, L loops the song, M pauses.</summary>
+    public GermBall.Audio.Music Music;
+    string lastSong = ""; float songShowT;
+
+    void MusicKeys(in InputFrame input)
+    {
+        var m = Music; if (m == null) return;
+        if (input.Hit(Btn.MusicNext)) m.Next();
+        if (input.Hit(Btn.MusicPrev)) m.Previous();
+        if (input.Hit(Btn.MusicLoop)) { m.Loop = !m.Loop; Say(m.Loop ? "Music: looping this song" : "Music: loop off"); songShowT = 4; }
+        if (input.Hit(Btn.MusicPause)) { m.TogglePause(); Say(m.Paused ? "Music paused" : "Music playing"); songShowT = 4; }
+    }
+
     void HandleMenuKeys(in InputFrame input)
     {
+        MusicKeys(input);
         if (input.Hit(Btn.Pause)) Paused = !Paused;
         if (input.Hit(Btn.Help)) ShowHelp = !ShowHelp;
         if (input.Hit(Btn.Debug)) ShowDebug = !ShowDebug;

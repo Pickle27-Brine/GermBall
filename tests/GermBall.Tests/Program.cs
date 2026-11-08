@@ -60,6 +60,8 @@ public static class Program
         Run("entity editor: hover and click pieces of the model", EntityPicking);
         Run("entity editor: bones drawn from their pivot, picking, limb options", EntityBonesAndLimbs);
         Run("taper and curve shapes; the hero's two-part torso", TaperCurveAbdomen);
+        Run("music: 1.0's songs play; skip, previous, pick, loop, pause", MusicPlayer);
+        Run("music player: game keys and the Entity Editor's toolbar", MusicControls);
         Run("editors survive random clicking and typing", EditorFuzz);
         Run("random input soak (every landmark)", Soak);
 
@@ -769,6 +771,7 @@ public static class Program
         Directory.CreateDirectory(dir);
         var ee = new GermBall.Tools.EntityEditor.EntityEditor(ScratchContent(), "hero");
         var d = new EditorDriver(1600, 900, (i, dt, dl) => ee.Frame(i, dt, 1600, 900, dl));
+        try { ee.Music = GermBall.Audio.Music.Load(MusicDir()); Listen(ee.Music, 0.1f); } catch { }
         d.Step(3);
         d.Shot(Path.Combine(dir, "ee-01-hero.png"));
         ee.LeftTab = 0; ee.Target = GermBall.Tools.EntityEditor.EntityEditor.EditTarget.Shape;
@@ -1135,6 +1138,95 @@ public static class Program
         Check(ge.Def.Layers[ge.SelLayer].ActiveIn.SequenceEqual(new[] { "stagger" }), "ticking a state for a layer");
     }
 
+    // ---------------------------------------------------------------- music
+    /// <summary>The repository's content/music (the tests run from somewhere inside the repository).</summary>
+    static string MusicDir()
+    {
+        for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
+            if (File.Exists(Path.Combine(d.FullName, "content", "music", "songs.json"))) return Path.Combine(d.FullName, "content", "music");
+        throw new Exception("content/music not found");
+    }
+    static float Listen(GermBall.Audio.Music m, float seconds)
+    {
+        var buf = new float[768 * 2]; double sum = 0; long n = 0;
+        for (int b = 0; b < seconds * GermBall.Audio.AudioFormat.Rate / 768; b++)
+        {
+            Array.Clear(buf); m.Mix(buf, 768);
+            foreach (var x in buf) { Check(float.IsFinite(x), "music produced a bad sample"); sum += x * x; n++; }
+        }
+        return (float)Math.Sqrt(sum / Math.Max(1, n));
+    }
+
+    static void MusicPlayer()
+    {
+        var m = GermBall.Audio.Music.Load(MusicDir());
+        Check(m.LoadError == null && m.Songs.Count == 36, $"songs: {m.Songs.Count} ({m.LoadError})");
+        float rms = Listen(m, 2);
+        Check(m.Current.Length > 0 && rms > 0.001f, $"{m.Current} plays at rms {rms:0.0000}");
+        string first = m.Current;
+        // skip and back
+        m.Next(); Listen(m, 0.1f);
+        string second = m.Current;
+        Check(second != first, "Next should change the song");
+        m.Previous(); Listen(m, 0.1f);
+        Check(m.Current == first, $"Previous went to {m.Current}, not {first}");
+        // pick one by name
+        int pick = m.Songs.FindIndex(x => x.name == "Cilia Waltz");
+        m.Play(pick); Listen(m, 0.1f);
+        Check(m.Current == "Cilia Waltz" && m.CurrentIndex == pick, $"picked {m.Current}");
+        // loop: at the end it starts the same song again; without loop it moves on
+        m.Loop = true; m.Seek(1); Listen(m, 0.5f);
+        Check(m.Current == "Cilia Waltz" && m.Progress < 0.1f, $"looping: {m.Current} at {m.Progress:0.00}");
+        m.Loop = false; m.Seek(1); Listen(m, 0.5f);
+        Check(m.Current != "Cilia Waltz", "without loop the song should move on at its end");
+        // pause fades out and holds its place; play carries on
+        Listen(m, 1);
+        m.Paused = true; Listen(m, 0.1f);
+        float held = m.Progress, quiet = Listen(m, 1);
+        Check(quiet < 1e-6f && m.Progress == held, $"paused: rms {quiet}, progress {held:0.000} -> {m.Progress:0.000}");
+        m.Paused = false;
+        Check(Listen(m, 1.5f) > 0.001f, "unpausing should play again");
+    }
+
+    static void MusicControls()
+    {
+        // the game: N, B, L, M
+        var g = New(); var m = GermBall.Audio.Music.Load(MusicDir()); g.Music = m; Listen(m, 0.2f);
+        string first = m.Current;
+        g.Frame(Game.DT, new InputFrame { Pressed = Btn.MusicNext }); Listen(m, 0.05f);
+        Check(m.Current != first, "N should skip the song");
+        g.Frame(Game.DT, new InputFrame { Pressed = Btn.MusicLoop });
+        Check(m.Loop, "L should loop the song");
+        g.Frame(Game.DT, new InputFrame { Pressed = Btn.MusicPause });
+        Check(m.Paused, "M should pause");
+        g.Frame(Game.DT, new InputFrame { Pressed = Btn.MusicPause | Btn.Pause });   // works on the pause screen too
+        Check(!m.Paused && g.Paused, "M on the pause screen");
+        g.Frame(Game.DT, new InputFrame { Pressed = Btn.MusicPrev }); Listen(m, 0.05f);
+        Check(m.Current == first, $"B should go back to {first}, got {m.Current}");
+        var dl = new DrawList(); g.Draw(dl, 1280, 720);   // the HUD player draws
+
+        // the Entity Editor's toolbar
+        var (ee, d) = NewEntityEditor("hero"); var ui = ee.Ui;
+        var em = GermBall.Audio.Music.Load(MusicDir()); ee.Music = em; Listen(em, 0.2f); d.Step(2);
+        string a = em.Current;
+        GuiDriving.ClickLabel(ui, d, ">>"); Listen(em, 0.05f);
+        Check(em.Current != a, "the toolbar's >> should skip");
+        GuiDriving.ClickLabel(ui, d, "<<"); Listen(em, 0.05f);
+        Check(em.Current == a, "the toolbar's << should go back");
+        GuiDriving.ClickLabel(ui, d, "Loop");
+        Check(em.Loop, "the toolbar's Loop");
+        GuiDriving.ClickLabel(ui, d, "||");
+        Check(em.Paused, "the toolbar's pause");
+        GuiDriving.ClickLabel(ui, d, "|>");
+        Check(!em.Paused, "the toolbar's play");
+        d.Step();
+        GuiDriving.PickCombo(ui, d, "music/" + em.Current, em.Songs.FindIndex(x => x.name == "Static Saints"));
+        Listen(em, 0.05f);
+        Check(em.Current == "Static Saints", $"picking a song from the toolbar gave {em.Current}");
+        ee.TestInGame();
+        Check(em.Paused, "Play in game should pause the editor's music");
+    }
+
     static void TaperCurveAbdomen()
     {
         // a tapered capsule is narrower at the top, a curved one bends toward +X
@@ -1232,8 +1324,11 @@ public static class Program
     {
         Directory.CreateDirectory(dir);
         var sr = new SoftRenderer(w, h); var dl = new DrawList();
+        GermBall.Audio.Music music = null;
+        try { music = GermBall.Audio.Music.Load(MusicDir()); Listen(music, 0.1f); } catch { }
         void Shot(string name, Game g)
         {
+            g.Music ??= music;
             g.Frame(0, default); g.Draw(dl, w, h); sr.Render(dl);
             var path = Path.Combine(dir, name + ".png"); sr.SavePng(path);
             Console.WriteLine("  shot  " + path);

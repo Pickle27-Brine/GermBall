@@ -29,6 +29,9 @@ public sealed partial class Game
         "F5  respawn      F6/F7  teleport next/prev",
         "F8  god mode     F9  slow motion",
         "Esc pause        F11 fullscreen",
+        "",
+        "MUSIC  N next song   B previous",
+        "       L loop song   M pause",
     };
 
     void DrawHud(DrawList dl, Overlay o, int w, int h)
@@ -124,7 +127,8 @@ public sealed partial class Game
         if (flags.Length > 0) { o.TextShadow(10 * s, statusY, flags, s, Red); statusY += lh; }
 
         if (ShowHelp) DrawPanel(o, 10 * s, statusY + 4 * s, HelpLines, MathF.Max(1, MathF.Round(s * 0.5f)));
-        if (ShowDebug) DrawDebug(dl, o, w, h, s);
+        float musicH = DrawMusic(o, w, s);
+        if (ShowDebug) DrawDebug(dl, o, w, h, s, musicH);
 
         if (!p.Alive && !Paused)
         {
@@ -137,6 +141,7 @@ public sealed partial class Game
             o.Rect(0, 0, w, h, new Vector4(0, 0, 0, 0.45f));
             o.TextCentered(w / 2f, h * 0.3f, "PAUSED", s * 3, White);
             o.TextCentered(w / 2f, h * 0.3f + 30 * s, "Esc to resume", s, Dim);
+            if (Music != null) o.TextCentered(w / 2f, h * 0.3f + 44 * s, "Music:  N next   B previous   L loop   M pause", s, Dim);
         }
     }
 
@@ -169,7 +174,30 @@ public sealed partial class Game
         }
     }
 
-    void DrawDebug(DrawList dl, Overlay o, int w, int h, float s)
+    /// <summary>The music player, top right: the song, a progress bar, loop and pause marks (the keys are on the help panel and the pause screen).
+    /// Returns its height, so the debug panel sits below it.</summary>
+    float DrawMusic(Overlay o, int w, float s)
+    {
+        var m = Music; if (m == null || m.Songs.Count == 0) return 0;
+        string song = m.Current;
+        if (song != lastSong) { lastSong = song; songShowT = 4; }
+        float sc = MathF.Max(1, MathF.Round(s * 0.5f)), lh = Overlay.LineHeight(sc);
+        bool big = songShowT > 0 || Paused;
+        string line = (song.Length > 0 ? song.ToUpperInvariant() : "...") + (m.Loop ? "  [LOOP]" : "") + (m.Paused ? "  [PAUSED]" : "");
+        string keys = "N next  B prev  L loop  M pause";
+        float tw = MathF.Max(Overlay.TextWidth("MUSIC  " + line, sc), big ? Overlay.TextWidth(keys, sc) : 0) + 12 * sc;
+        float x = w - tw - 10 * s, y = 8 * s, ph = (big ? 3 : 2) * lh + 8 * sc;
+        o.Rect(x, y, tw, ph, Panel);
+        o.Text(x + 6 * sc, y + 4 * sc, "MUSIC", sc, Accent);
+        o.Text(x + 6 * sc + Overlay.TextWidth("MUSIC  ", sc), y + 4 * sc, line, sc, m.Paused ? Dim : White);
+        float by = y + 4 * sc + lh + sc, bw = tw - 12 * sc;
+        o.Rect(x + 6 * sc, by, bw, 2 * sc, new Vector4(1, 1, 1, 0.15f));
+        o.Rect(x + 6 * sc, by, bw * m.Progress, 2 * sc, Accent);
+        if (big) o.Text(x + 6 * sc, by + lh * 0.6f, keys, sc, Dim);
+        return ph + 4 * s;
+    }
+
+    void DrawDebug(DrawList dl, Overlay o, int w, int h, float s, float top = 0)
     {
         var p = Player;
         float slope = MathF.Acos(MathX.Clamp(p.GroundNormal.Y, -1, 1)) / MathX.Deg;
@@ -193,6 +221,6 @@ public sealed partial class Game
         };
         float sc = MathF.Max(1, MathF.Round(s * 0.5f));
         float wMax = 0; foreach (var l in lines) wMax = MathF.Max(wMax, Overlay.TextWidth(l, sc));
-        DrawPanel(o, w - wMax - 22 * sc, 8 * s, lines, sc);
+        DrawPanel(o, w - wMax - 22 * sc, 8 * s + top, lines, sc);
     }
 }

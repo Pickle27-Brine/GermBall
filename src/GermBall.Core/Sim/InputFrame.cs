@@ -12,6 +12,8 @@ public enum Btn : uint
     // debug and menu
     Help = 1 << 16, Debug = 1 << 17, Respawn = 1 << 18, NextZone = 1 << 19, Noclip = 1 << 20,
     SlowMo = 1 << 21, God = 1 << 22, ShowZones = 1 << 23, Pause = 1 << 24, PrevZone = 1 << 25, Up = 1 << 26, Down = 1 << 27,
+    // the music player
+    MusicNext = 1 << 28, MusicPrev = 1 << 29, MusicLoop = 1 << 30, MusicPause = 1u << 31,
 }
 
 /// <summary>One frame of input, already mapped from keyboard, mouse or controller by the platform layer.</summary>

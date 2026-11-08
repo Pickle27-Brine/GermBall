@@ -61,6 +61,11 @@ Keep the `content` folder next to them: the editors save into it and the game lo
   - Target dummies stand still or slide along a rail.
   - Physics balls can be shot, punched, blasted or pushed.
   - Pickups give health, ammo, the rifle and the lobber.
+- **Music:** 1.0's soundtrack is back: 36 songs on its FM sound chip, shuffled.
+  - A player in the top-right corner shows the song and how far through it you are.
+  - N skips, B goes back (to the start of the song, or the previous song if it just started), L loops the current song, and M pauses.
+  - Start with `--nomusic` to begin paused.
+  - The songs are `content/music/songs.json` and `patches.json`, the same format as 1.0.
 - **Trigger zones:** area names, acid, a heal pad, a kill volume, jump pads, boost pads, low gravity, an updraft and a checkpoint.
 
 ## Controls
@@ -81,6 +86,8 @@ The camera is locked behind the hero: looking turns the hero. Aiming eases the c
 | Reload | R | X |
 | Weapons | 1 2 3, mouse wheel | Y |
 | Pause | Esc | Start |
+| Music: next / previous song | N / B | |
+| Music: loop this song / pause | L / M | |
 
 Click the window to capture the mouse. Esc frees it.
 
@@ -132,6 +139,12 @@ The level is a flat 240 m square. North is -Z. Every solid has a 1 m grid, and s
 The game uses all of this.
 
 **Toolbar:** New (humanoid, hero copy, germ copy or empty) and Open menus, Save, Undo and Redo, the Move / Rotate / Scale gizmo, and **Play in game**. Hover over any control for a short tip about it.
+
+**Music player** (right end of the toolbar): the game's soundtrack while you build.
+- `<<` previous, `||` / `|>` pause and play, and `>>` skip.
+- **Loop** repeats the song.
+- Click the song name to pick any of the 36 songs.
+- Play in game pauses it, since the game plays its own.
 
 **Left panel:**
 
@@ -240,6 +253,7 @@ The game uses all of this.
 src/GermBall.Core/    platform-free engine and game
   Engine/             math, oriented-box collision, unit meshes, the draw list, a 5x7 pixel font, skeleton and ragdoll, UI input
   Content/            entity and map formats, the content store, the animation pipeline, entity drawing, the default entities
+  Audio/              1.0's FM music synth and its player (skip, previous, pick, loop, pause)
   Sim/                Level (built from maps), Player, HeroAnim (rig joints), Enemies (germs), Bodies (dash hits,
                       contact, ragdolls), BodyDraw, Weapons, Entities, Game (loop, camera), Draw, Hud
 src/GermBall.Platform/ Windows: Win32 window, keyboard/mouse/XInput, Direct3D 11 renderer, the editor host
@@ -276,6 +290,6 @@ dotnet run --project tests/GermBall.Tests -c Release -- editor-shots out
 
 - **AI.** Germs stand still, and there are no companions or pathfinding.
 - **Stage art.** The level is boxes and a grid only.
-- **Other 1.0 systems:** audio and music, menus, the customizer, vehicles, grabbing and throwing, the charged homing dash, and saves.
+- **Other 1.0 systems:** sound effects, menus, the customizer, vehicles, grabbing and throwing, the charged homing dash, and saves.
 
 These can come back one at a time.

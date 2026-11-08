@@ -26,6 +26,7 @@ The repository ships two editor exes next to the game: **EntityEditor.exe** and 
 - `src/GermBall.Core`: platform-free.
   - `Engine/` holds math, collision, meshes, the draw list, skeleton and ragdoll, and UI input.
   - `Content/` holds the entity and map formats, `ContentStore`, the animation pipeline (`Animation.cs`), `EntityView` and the default entities.
+  - `Audio/` holds 1.0's music synth and player (songs in `content/music/`). `AudioOut` in Platform plays it. The game's HUD and the Entity Editor's toolbar (`Tools/Ui/MusicBar.cs`) both drive it.
   - `Sim/` is the game.
 - `src/GermBall.Platform`: Windows (Win32 window, input, D3D11 renderer, `EditorHost`).
 - `src/GermBall`: the game exe.

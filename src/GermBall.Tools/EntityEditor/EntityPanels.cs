@@ -29,6 +29,10 @@ public sealed partial class EntityEditor
     // ---------------------------------------------------------------- toolbar
     void Toolbar(Vector4 r)
     {
+        // the music player takes what's left at the right end
+        float musicW = Music != null ? MusicBar.Width(Ui, r.Z - (81 * Ui.CharW + 12 * Ui.Gap + 2 * Ui.Pad)) : 0;
+        if (musicW > 0) MusicBar.Draw(Ui, Music, new Vector4(r.X + r.Z - musicW, r.Y, musicW, r.W));
+        r.Z -= musicW;
         Ui.BeginArea("toolbar", r, Gui.TitleBg);
         float bw = 7 * Ui.CharW;
         var n = Ui.Menu("New...", Templates, 9 * Ui.CharW); if (n != null) New(n);

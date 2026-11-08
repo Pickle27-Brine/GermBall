@@ -39,6 +39,10 @@ public static class Program
         if (spawnName != null) level.Germ(level.Spawn + MathX.Forward(level.SpawnYaw, 0) * 6, level.SpawnYaw / MathX.Deg + 180, spawnName);
         // --hero <entity>: play as another entity
         var game = new Game(level, store, Arg("--hero") ?? "hero");
+        // 1.0's music, from content/music (--nomusic to start without it)
+        using var audio = new AudioOut();
+        var music = MusicLoader.Start(audio, store, Array.IndexOf(args, "--nomusic") < 0);
+        game.Music = music;
         var dl = new DrawList();
         var clock = Stopwatch.StartNew();
         double last = 0, fpsT = 0; int frames = 0;

@@ -79,6 +79,7 @@ public static class Input
         Map(Btn.Help, false, P(VK_F1)); Map(Btn.Debug, false, P(VK_F1 + 1)); Map(Btn.ShowZones, false, P(VK_F1 + 2)); Map(Btn.Noclip, false, P(VK_F1 + 3));
         Map(Btn.Respawn, false, P(VK_F1 + 4)); Map(Btn.NextZone, false, P(VK_F1 + 5)); Map(Btn.PrevZone, false, P(VK_F1 + 6));
         Map(Btn.God, false, P(VK_F1 + 7)); Map(Btn.SlowMo, false, P(VK_F1 + 8)); Map(Btn.Pause, false, P(VK_ESCAPE));
+        Map(Btn.MusicNext, false, PK('N')); Map(Btn.MusicPrev, false, PK('B')); Map(Btn.MusicLoop, false, PK('L')); Map(Btn.MusicPause, false, PK('M'));
 
         // ---- controller (first one connected; empty slots are only polled once a second because that's slow)
         if (padConnected || now >= nextPadScan)
