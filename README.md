@@ -1,5 +1,7 @@
 # Germ Ball (native Windows)
 
+> **New prototype:** [`proto/`](proto/README.md) is a scaled-back rebuild on a new, much smaller engine. It has the core systems (movement, rolling, weapons, damage, pickups, trigger zones), a debug level of plain geometry with test areas, and no AI. The full game below is unchanged.
+
 Germ Ball rewritten in C# as a native Windows game. The browser build (one HTML file running three.js) is gone. This version uses:
 
 - a raw Win32 window, with borderless fullscreen and per-monitor DPI awareness,
